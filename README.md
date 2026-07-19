@@ -1,0 +1,133 @@
+﻿# 材料写作硬审系统
+
+<p align="center"><strong>把“写作要求”变成可执行的质量门禁，而不是只写进提示词。</strong></p>
+<p align="center">本地优先 · 证据约束 · 规则硬审 · OpenAI 兼容接口 · Word 导出</p>
+
+> 当前版本为可运行的早期版本（MVP）。它已经具备材料录入、缺项阻断、证据台账、确定性审稿、模型调用和 DOCX 导出能力；政策资料自动入库、混合检索、逐段修复和国标级 Word 排版仍在路线图中。
+
+## 为什么做这个项目
+
+传统“材料写作提示词”常见的问题不是规则写得不够多，而是模型可以忽略规则、自检流于形式，甚至补造政策、数据和责任信息。本项目把关键要求放到模型之外执行：
+
+```text
+任务录入 → 文种必填项检查 → 证据绑定 → 受约束起草 → 独立复审 → Word 导出
+             不通过则阻断          不通过则标记或阻断
+```
+
+模型负责表达，程序负责守门。即使更换模型，核心质量约束仍然存在。
+
+## 当前能力
+
+| 模块 | 已实现 |
+|---|---|
+| 文种建模 | 工作方案、工作汇报、领导讲话、通知、请示 |
+| 缺项阻断 | 按文种检查必填事实和必要章节，缺失时禁止直接生成 |
+| 证据台账 | 录入政策、数据、事实与来源，供审稿和提示词使用 |
+| 确定性审稿 | 检查空泛表述、责任主体、完成时限、可验证结果和无依据主张 |
+| 模型接入 | 支持 OpenAI 兼容的 `/chat/completions` 接口 |
+| 无 Key 模式 | 不调用模型，仍可输出严格提示词、缺项报告和审稿结果 |
+| 本地存储 | 草稿保存在浏览器本地；后端使用本地 SQLite |
+| Word 导出 | 生成基础 DOCX 草稿 |
+| 零前端依赖 | 无 CDN、无 npm，Python 标准库即可启动 |
+
+## 快速开始
+
+要求 Windows 10/11 与 Python 3.10+。模型服务可选。
+
+```powershell
+git clone https://github.com/wuyutanhongyuxin-cell/cailiao.git
+cd cailiao
+.\start.ps1
+```
+
+启动脚本会隐藏询问 API Key；Key 只进入当前进程，不写入文件。打开 `http://127.0.0.1:8765`。
+
+也可预先配置：
+
+```powershell
+$env:MATERIAL_LLM_BASE_URL = "https://api.openai.com/v1"
+$env:MATERIAL_LLM_API_KEY = "YOUR_KEY"
+$env:MATERIAL_LLM_MODEL = "gpt-4.1"
+.\start.ps1
+```
+
+| 变量 | 默认值 | 说明 |
+|---|---|---|
+| `MATERIAL_PORT` | `8765` | 本地服务端口 |
+| `MATERIAL_LLM_BASE_URL` | `https://api.openai.com/v1` | OpenAI 兼容接口根地址 |
+| `MATERIAL_LLM_API_KEY` | 无 | API Key，不应写入仓库 |
+| `MATERIAL_LLM_MODEL` | `gpt-4.1` | 模型名称 |
+
+## 推荐流程
+
+1. 选择文种，填写标题和必填事实。
+2. 将政策条文、统计数据、内部事实录入证据台账。
+3. 点击审稿，先解决所有阻断项。
+4. 点击生成；有模型时起草，无模型时生成严格提示词。
+5. 对成稿复审，确认没有无依据政策、数据和空泛措施。
+6. 导出 Word，进行人工终审和正式版式处理。
+
+## 目录结构
+
+```text
+cailiao/
+├─ backend/server.py          # 服务、规则、模型调用、SQLite、DOCX
+├─ frontend/                  # 本地工作台
+├─ rules/material_rules.json # 文种和硬审规则
+├─ tests/test_rules.py        # 核心门禁回归测试
+├─ docs/ARCHITECTURE.md       # 架构和边界
+├─ docs/ROADMAP.md            # 路线图与验收标准
+└─ start.ps1                  # Windows 启动脚本
+```
+
+## 数据与安全边界
+
+- 服务仅监听 `127.0.0.1`，默认不暴露到局域网或公网。
+- `.env`、SQLite 数据库、缓存和导出文件都被 Git 忽略。
+- API Key 不通过前端保存，也不应提交到仓库。
+- 配置云模型后，提交给模型的任务内容与证据会离开本机；敏感材料是否可用取决于所选服务的数据政策或私有部署。
+- 当前版本不替代保密审查、法制审核、事实核验或签发流程。
+
+## 质量原则
+
+- **事实先于表达**：缺少事实时阻断，不让模型自行补齐。
+- **证据绑定主张**：政策名、年份、比例和数量应可追溯。
+- **措施必须可执行**：空泛用语应具备主体、时限、机制和结果。
+- **失败必须可定位**：审稿指出具体问题，不用笼统的“请优化”。
+- **生成与校验分离**：不让同一模型既写作又证明自己正确。
+
+## 项目状态
+
+- 当前阶段：`MVP / 本地硬审工作台`
+- 当前重点：可信资料库、引用溯源和逐段修复闭环
+- [完整路线图](docs/ROADMAP.md)
+- [架构与实施方案](docs/ARCHITECTURE.md)
+
+## 权威来源与参考项目
+
+- [GB/T 9704-2012《党政机关公文格式》官方标准信息](https://openstd.samr.gov.cn/bzgk/std/newGbInfo?hcno=F3CC9BEF482524C895FDA7A08BB4A70E&refer=outter)
+- [国务院政策文件库](https://sousuo.www.gov.cn/zcwjk/policyDocumentLibrary)
+- [国家法律法规数据库](https://flk.npc.gov.cn/)
+- [MackDing/zh-policy-rag](https://github.com/MackDing/zh-policy-rag)：MIT 许可，作为政策 RAG 架构参考
+- [Rimagination/gongwen-draft](https://github.com/Rimagination/gongwen-draft)：仅研究产品流程；因未确认许可证，不复制其代码、字体或资源
+
+## 已知限制
+
+- DOCX 是结构有效的基础稿，不等同于完整落实 GB/T 9704-2012 的正式排版。
+- 当前证据匹配是规则与字符串启发式，不等同于成熟语义检索与引用蕴含验证。
+- 前端证据主要保存在浏览器本地，尚无完整资料库管理界面。
+- 尚未建立真实材料匿名评测集，不能以主观观感代替质量指标。
+- 所有模型输出仍需人工终审。
+
+## 测试
+
+```powershell
+python -m unittest discover -s tests -v
+python backend\server.py
+```
+
+健康检查：`GET http://127.0.0.1:8765/api/health`
+
+## 许可证
+
+仓库暂未附加开源许可证。除非后续明确加入许可证，否则默认保留全部权利。第三方项目的权利归各自作者所有。

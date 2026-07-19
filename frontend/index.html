@@ -1,0 +1,101 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>材料写作硬审系统</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="mark">文</span>
+        <div>
+          <h1>材料硬审</h1>
+          <p id="providerState">检测中</p>
+        </div>
+      </div>
+      <nav>
+        <button class="nav active" data-panel="compose">起草</button>
+        <button class="nav" data-panel="evidence">证据</button>
+        <button class="nav" data-panel="review">审稿</button>
+        <button class="nav" data-panel="export">导出</button>
+      </nav>
+      <div class="statusBox">
+        <span>规则状态</span>
+        <strong id="statusText">未审</strong>
+      </div>
+    </aside>
+
+    <main>
+      <section class="topbar">
+        <div>
+          <h2>中文机关材料工作台</h2>
+          <p>先核事实，再成文；规则失败会给出可定位修改点。</p>
+        </div>
+        <div class="toolbar">
+          <button id="analyzeBtn" title="执行硬审">审</button>
+          <button id="generateBtn" title="生成或输出严格提示词">写</button>
+          <button id="saveLocalBtn" title="保存当前草稿">存</button>
+        </div>
+      </section>
+
+      <section id="compose" class="panel active">
+        <div class="grid two">
+          <div class="block">
+            <label>文种</label>
+            <select id="genre"></select>
+          </div>
+          <div class="block">
+            <label>标题</label>
+            <input id="title" value="关于推进重点工作的方案" />
+          </div>
+        </div>
+        <div id="fields" class="fieldGrid"></div>
+        <div class="block tall">
+          <label>事实素材</label>
+          <textarea id="facts" placeholder="粘贴会议纪要、任务要求、领导原话、数据口径、责任分工。"></textarea>
+        </div>
+        <div class="block tall">
+          <label>草稿</label>
+          <textarea id="draft" placeholder="生成后在这里编辑；也可以粘贴旧稿直接审。"></textarea>
+        </div>
+      </section>
+
+      <section id="evidence" class="panel">
+        <div class="grid two evidenceForm">
+          <div class="block"><label>来源标题</label><input id="evTitle" placeholder="例如：国务院办公厅关于..." /></div>
+          <div class="block"><label>来源机构</label><input id="evSource" placeholder="中国政府网 / 国家法律法规数据库 / 单位文件" /></div>
+          <div class="block wide"><label>链接或文号</label><input id="evUrl" placeholder="URL、文号或内部来源编号" /></div>
+          <div class="block wide tall"><label>原文摘录</label><textarea id="evBody" placeholder="只放可核验原文片段。涉及数据、年份、政策依据时必须录入。"></textarea></div>
+        </div>
+        <button id="addEvidenceBtn" class="primary">加入证据台账</button>
+        <div id="evidenceList" class="list"></div>
+      </section>
+
+      <section id="review" class="panel">
+        <div class="reviewHeader">
+          <div><span>通过率</span><strong id="score">0</strong></div>
+          <div><span>状态</span><strong id="reviewState">未审</strong></div>
+        </div>
+        <div id="issues" class="issues"></div>
+        <div class="block tall">
+          <label>严格提示词</label>
+          <textarea id="prompt" readonly></textarea>
+        </div>
+      </section>
+
+      <section id="export" class="panel">
+        <div class="exportActions">
+          <button id="exportDocxBtn" class="primary">导出 Word</button>
+          <button id="copyPromptBtn">复制提示词</button>
+          <button id="clearBtn">清空本地草稿</button>
+        </div>
+        <pre id="exportLog"></pre>
+      </section>
+    </main>
+  </div>
+  <script src="./app.js"></script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+/data/
+/tests/*.docx
+/vendor/
+.env
+*.log
+.DS_Store
+Thumbs.db
+.venv/
+venv/
