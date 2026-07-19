@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import json
 import os
@@ -244,4 +244,3 @@ if __name__ == "__main__":
     server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
     print(f"Serving http://127.0.0.1:{port}", flush=True)
     server.serve_forever()
-
