@@ -15,6 +15,66 @@ spec = importlib.util.spec_from_file_location("server", SERVER)
 server = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(server)
 
+import io
+import zipfile
+
+
+def build_xlsx(rows, sheet_name="Sheet1"):
+    """Build a minimal valid .xlsx (OOXML) with shared strings for the given rows.
+
+    rows: list[list[str]] of cell text. Returns raw bytes.
+    """
+    strings = []
+    index = {}
+    for row in rows:
+        for cell in row:
+            if cell not in index:
+                index[cell] = len(strings)
+                strings.append(cell)
+    ct = ('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+          '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+          '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+          '<Default Extension="xml" ContentType="application/xml"/>'
+          '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+          '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+          '<Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/>'
+          '</Types>')
+    root_rels = ('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+                 '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+                 '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
+                 '</Relationships>')
+    workbook = ('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+                '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
+                'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+                f'<sheets><sheet name="{sheet_name}" sheetId="1" r:id="rId1"/></sheets></workbook>')
+    wb_rels = ('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+               '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+               '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
+               '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/>'
+               '</Relationships>')
+    sst = ('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+           f'<sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="{len(strings)}" uniqueCount="{len(strings)}">'
+           + "".join(f"<si><t>{s}</t></si>" for s in strings) + "</sst>")
+    sheet_rows = []
+    for ri, row in enumerate(rows, start=1):
+        cells = []
+        for ci, cell in enumerate(row):
+            col = chr(ord("A") + ci)
+            cells.append(f'<c r="{col}{ri}" t="s"><v>{index[cell]}</v></c>')
+        sheet_rows.append(f'<row r="{ri}">' + "".join(cells) + "</row>")
+    sheet = ('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+             '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+             '<sheetData>' + "".join(sheet_rows) + '</sheetData></worksheet>')
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("[Content_Types].xml", ct)
+        z.writestr("_rels/.rels", root_rels)
+        z.writestr("xl/workbook.xml", workbook)
+        z.writestr("xl/_rels/workbook.xml.rels", wb_rels)
+        z.writestr("xl/sharedStrings.xml", sst)
+        z.writestr("xl/worksheets/sheet1.xml", sheet)
+    return buf.getvalue()
+
 
 class EvidenceLibraryTest(unittest.TestCase):
     def setUp(self):
@@ -82,14 +142,17 @@ class EvidenceLibraryTest(unittest.TestCase):
 
     def test_sha256_unique_constraint_enforced(self):
         # The race-hardening in import_document relies on this DB-level guarantee.
+        # Use named columns so this targets the UNIQUE(sha256) constraint rather
+        # than column-count mismatches as the schema grows (Phase 1B).
         first = server.import_document({"title": "唯一约束", "format": "txt", "text": "唯一内容。"})
         conn = server.db()
         try:
             with self.assertRaises(sqlite3.IntegrityError):
                 conn.execute(
-                    "INSERT INTO documents VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-                    ("dup-id", "副本", "", "", "", "", "effective", "txt",
-                     first["sha256"], 10, "x", "2026-01-01T00:00:00"),
+                    "INSERT INTO documents (id, title, status, format, sha256, char_count, "
+                    "content, imported_at) VALUES (?,?,?,?,?,?,?,?)",
+                    ("dup-id", "副本", "effective", "txt", first["sha256"], 10, "x",
+                     "2026-01-01T00:00:00"),
                 )
                 conn.commit()
         finally:
@@ -188,6 +251,158 @@ class EvidenceLibraryTest(unittest.TestCase):
         self.assertEqual(len(server.list_jobs()), 1)
 
 
+class EvidenceLibraryPhase1BTest(unittest.TestCase):
+    """Phase 1B: authority ranking, version linking, incremental update, XLSX, location."""
+
+    def setUp(self):
+        self._tmp = tempfile.NamedTemporaryFile(suffix=".sqlite3", delete=False)
+        self._tmp.close()
+        self._orig_db_path = server.DB_PATH
+        server.DB_PATH = Path(self._tmp.name)
+
+    def tearDown(self):
+        server.DB_PATH = self._orig_db_path
+        Path(self._tmp.name).unlink(missing_ok=True)
+
+    # --- authority ranking ---------------------------------------------
+    def test_source_type_normalization_and_authority(self):
+        self.assertEqual(server.normalize_source_type("法律法规"), "law_regulation")
+        self.assertEqual(server.normalize_source_type("ministry"), "ministry")
+        self.assertEqual(server.normalize_source_type("乱写"), "unknown")
+        self.assertEqual(server.authority_level_for("law_regulation"), 6)
+        self.assertGreater(server.authority_level_for("state_council"),
+                           server.authority_level_for("local_government"))
+
+    def test_authority_inferred_from_org_conservatively(self):
+        res = server.import_document({"title": "地方通知", "format": "txt",
+                                      "text": "地方正文。", "organization": "广东省人民政府"})
+        self.assertEqual(res["source_type"], "local_government")
+        self.assertEqual(res["authority_level"], 3)
+        # No org, no explicit type -> unknown (never inferred from body content).
+        res2 = server.import_document({"title": "无出处", "format": "txt", "text": "无出处正文。"})
+        self.assertEqual(res2["source_type"], "unknown")
+        self.assertEqual(res2["authority_level"], 0)
+
+    def test_explicit_source_type_overrides_heuristic(self):
+        res = server.import_document({"title": "法条", "format": "txt", "text": "法条正文。",
+                                      "organization": "广东省人民政府", "source_type": "law_regulation"})
+        self.assertEqual(res["source_type"], "law_regulation")
+
+    def test_documents_sorted_by_authority(self):
+        server.import_document({"title": "低", "format": "txt", "text": "低权威。",
+                                "source_type": "user_fact"})
+        server.import_document({"title": "高", "format": "txt", "text": "高权威。",
+                                "source_type": "law_regulation"})
+        ordered = server.list_documents(sort="authority")
+        self.assertEqual(ordered[0]["title"], "高")
+        self.assertGreaterEqual(ordered[0]["authority_level"], ordered[-1]["authority_level"])
+
+    def test_documents_filtered_by_source_type_and_min_authority(self):
+        server.import_document({"title": "法规A", "format": "txt", "text": "法规正文。",
+                                "source_type": "law_regulation"})
+        server.import_document({"title": "事实B", "format": "txt", "text": "事实正文。",
+                                "source_type": "user_fact"})
+        laws = server.list_documents(source_type="law_regulation")
+        self.assertEqual([d["title"] for d in laws], ["法规A"])
+        high = server.list_documents(min_authority="4")
+        self.assertEqual([d["title"] for d in high], ["法规A"])
+
+    # --- manual version linking ----------------------------------------
+    def test_manual_version_link_by_id(self):
+        old = server.import_document({"title": "旧办法", "format": "txt", "text": "旧办法正文。"})
+        new = server.import_document({"title": "新办法", "format": "txt", "text": "新办法正文。",
+                                      "supersedes": old["document_id"]})
+        self.assertEqual(new["status"], "new_version")
+        self.assertEqual(new["supersedes"], old["document_id"])
+        old_doc = server.get_document(old["document_id"])
+        self.assertEqual(old_doc["status"], "superseded")
+        self.assertEqual(old_doc["superseded_by"], new["document_id"])
+        self.assertTrue(all(c["status"] == "prohibited"
+                            for c in server.list_chunks(old["document_id"])))
+
+    def test_manual_link_by_document_number(self):
+        old = server.import_document({"title": "旧", "format": "txt", "text": "旧正文A。",
+                                      "document_number": "粤府〔2024〕1号"})
+        new = server.import_document({"title": "新", "format": "txt", "text": "新正文B。",
+                                      "supersedes": "粤府〔2024〕1号"})
+        self.assertEqual(new["supersedes"], old["document_id"])
+
+    # --- incremental update by source ----------------------------------
+    def test_changed_source_url_creates_new_version(self):
+        old = server.import_document({"title": "政策v1", "format": "txt", "text": "版本一正文。",
+                                      "source_url": "https://gov.example/policy"})
+        new = server.import_document({"title": "政策v2", "format": "txt", "text": "版本二正文。",
+                                      "source_url": "https://gov.example/policy"})
+        self.assertEqual(new["status"], "new_version")
+        self.assertEqual(new["version"], 2)
+        self.assertEqual(new["supersedes"], old["document_id"])
+        self.assertEqual(server.get_document(old["document_id"])["status"], "superseded")
+
+    def test_same_content_still_duplicate(self):
+        p = {"title": "同", "format": "txt", "text": "完全相同正文。",
+             "source_url": "https://gov.example/dup"}
+        server.import_document(dict(p))
+        second = server.import_document(dict(p))
+        self.assertEqual(second["status"], "duplicate")
+
+    def test_update_document_status_prohibits_chunks(self):
+        doc = server.import_document({"title": "待废止", "format": "txt", "text": "正文将被废止。"})
+        self.assertTrue(all(c["status"] == "citable"
+                            for c in server.list_chunks(doc["document_id"])))
+        res = server.update_document({"document_id": doc["document_id"], "status": "已废止"})
+        self.assertEqual(res["status"], "updated")
+        self.assertEqual(server.get_document(doc["document_id"])["status"], "repealed")
+        self.assertTrue(all(c["status"] == "prohibited"
+                            for c in server.list_chunks(doc["document_id"])))
+
+    # --- XLSX parse -----------------------------------------------------
+    def test_xlsx_parse_rows(self):
+        raw = build_xlsx([["姓名", "数量"], ["甲", "12"], ["乙", "34"]], sheet_name="表一")
+        res = server.import_document({"title": "台账", "format": "xlsx",
+                                      "content_base64": base64.b64encode(raw).decode()})
+        self.assertEqual(res["status"], "succeeded")
+        chunks = server.list_chunks(res["document_id"])
+        self.assertEqual(len(chunks), 3)
+        self.assertEqual(chunks[0]["location_kind"], "row")
+        self.assertTrue(chunks[0]["location_value"].startswith("表一!"))
+        self.assertIn("姓名", chunks[0]["content"])
+
+    def test_malformed_xlsx_quarantined(self):
+        res = server.import_document({"title": "坏表.xlsx", "format": "xlsx",
+                                      "content_base64": base64.b64encode(b"not a zip at all").decode()})
+        self.assertEqual(res["status"], "quarantined")
+        self.assertEqual(res["error_code"], "unsupported_format")
+
+    def test_xlsx_missing_workbook_quarantined(self):
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as z:
+            z.writestr("random.xml", "<x/>")
+        res = server.import_document({"title": "缺workbook.xlsx", "format": "xlsx",
+                                      "content_base64": base64.b64encode(buf.getvalue()).decode()})
+        self.assertEqual(res["status"], "quarantined")
+
+    def test_xls_still_quarantined(self):
+        res = server.import_document({"title": "老表.xls", "format": "xls",
+                                      "content_base64": base64.b64encode(b"\xd0\xcf\x11\xe0").decode()})
+        self.assertEqual(res["status"], "quarantined")
+
+    # --- chunk location fields + snapshot ------------------------------
+    def test_paragraph_location_and_snapshot(self):
+        res = server.import_document({"title": "定位", "format": "txt",
+                                      "text": "第一段。\n\n第二段。", "original_filename": "定位.txt"})
+        doc = server.get_document(res["document_id"])
+        self.assertEqual(doc["original_filename"], "定位.txt")
+        self.assertEqual(doc["mime_type"], "text/plain")
+        self.assertGreater(doc["byte_size"], 0)
+        self.assertTrue(doc["raw_text"])
+        chunks = server.list_chunks(res["document_id"])
+        self.assertEqual(chunks[0]["location_kind"], "paragraph")
+        self.assertEqual(chunks[0]["location_value"], "0")
+        # Offset stability preserved from Phase 1A.
+        for c in chunks:
+            self.assertEqual(doc["content"][c["char_start"]:c["char_end"]], c["content"])
+
+
 class EvidenceLibraryHTTPTest(unittest.TestCase):
     """End-to-end tests over the real HTTP handler on an ephemeral local port."""
 
@@ -279,6 +494,60 @@ class EvidenceLibraryHTTPTest(unittest.TestCase):
         self.assertEqual(len(quarantined["items"]), 1)
         self.assertTrue(quarantined["items"][0]["quarantined"])
         self.assertEqual(quarantined["items"][0]["error_code"], "unsupported_format")
+
+    # --- Phase 1B over HTTP --------------------------------------------
+    def test_http_authority_sort_and_filter(self):
+        self._post("/api/library/import", {"title": "低", "format": "txt",
+                                           "text": "低权威正文。", "source_type": "user_fact"})
+        self._post("/api/library/import", {"title": "高", "format": "txt",
+                                           "text": "高权威正文。", "source_type": "law_regulation"})
+        status, docs = self._get("/api/library/documents?sort=authority")
+        self.assertEqual(status, 200)
+        self.assertEqual(docs["items"][0]["title"], "高")
+        status, laws = self._get("/api/library/documents?source_type=law_regulation")
+        self.assertEqual([d["title"] for d in laws["items"]], ["高"])
+        status, high = self._get("/api/library/documents?min_authority=4")
+        self.assertEqual([d["title"] for d in high["items"]], ["高"])
+
+    def test_http_new_version_flow(self):
+        status, old = self._post("/api/library/import", {
+            "title": "v1", "format": "txt", "text": "第一版正文。",
+            "source_url": "https://gov.example/http-ver"})
+        self.assertEqual(old["status"], "succeeded")
+        status, new = self._post("/api/library/import", {
+            "title": "v2", "format": "txt", "text": "第二版正文。",
+            "source_url": "https://gov.example/http-ver"})
+        self.assertEqual(status, 201)
+        self.assertEqual(new["status"], "new_version")
+        self.assertEqual(new["supersedes"], old["document_id"])
+        status, jobs = self._get("/api/library/jobs?status=new_version")
+        self.assertEqual(len(jobs["items"]), 1)
+
+    def test_http_xlsx_import_and_location(self):
+        raw = build_xlsx([["列一", "列二"], ["甲", "乙"]], sheet_name="Sheet1")
+        status, res = self._post("/api/library/import", {
+            "title": "表格", "format": "xlsx",
+            "content_base64": base64.b64encode(raw).decode()})
+        self.assertEqual(status, 201)
+        self.assertEqual(res["status"], "succeeded")
+        status, chunks = self._get(f"/api/library/chunks?document_id={res['document_id']}")
+        self.assertEqual(status, 200)
+        self.assertTrue(all(c["location_kind"] == "row" for c in chunks["items"]))
+
+    def test_http_update_endpoint(self):
+        status, doc = self._post("/api/library/import",
+                                 {"title": "改状态", "format": "txt", "text": "待更新正文。"})
+        status, res = self._post("/api/library/update",
+                                 {"document_id": doc["document_id"], "status": "已废止"})
+        self.assertEqual(status, 200)
+        self.assertEqual(res["status"], "updated")
+        status, chunks = self._get(f"/api/library/chunks?document_id={doc['document_id']}")
+        self.assertTrue(all(c["status"] == "prohibited" for c in chunks["items"]))
+
+    def test_http_update_unknown_404(self):
+        status, res = self._post("/api/library/update", {"document_id": "nope", "status": "有效"})
+        self.assertEqual(status, 404)
+        self.assertEqual(res["error_code"], "not_found")
 
 
 if __name__ == "__main__":

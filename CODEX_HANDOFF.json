@@ -1,35 +1,37 @@
 {
   "status": "ready_for_review",
-  "phase": "ROADMAP 阶段 1：可信证据库",
+  "phase": "ROADMAP 阶段 1B：完善可信证据库（权威分级、版本治理、增量更新、XLSX、更丰富快照/定位）",
+  "baseline": "本地 Phase 1A 基线 4055299；GitHub main Phase 1A 630cdc1",
   "changed_files": [
     "backend/server.py",
     "frontend/index.html",
     "frontend/app.js",
-    "frontend/styles.css",
     "tests/test_library.py",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "SQLite 幂等 schema：init_schema() 新增 documents / evidence_chunks / import_jobs 三表并保留原 evidence / evidence_fts；建立 sha256 UNIQUE 约束与索引，db() 每次连接自动初始化",
-    "文档元数据：title, source_url, organization, document_number, publish_date, status(有效性), format, sha256, char_count, content(原文快照), imported_at",
-    "文本抽取（仅标准库）：TXT 多编码解码(utf-8/gb18030 回退)；HTML 用 html.parser 去除 script/style 并保留段落；DOCX 用 zipfile+ElementTree 解析 word/document.xml",
-    "PDF 及 xlsx/xls/doc 显式隔离：extract_content 抛 QuarantineError，import_job 记为 quarantined+quarantined=1，绝不静默入库",
-    "SHA256 去重：对 normalize_content 后的正文哈希，命中已存在文档时写 duplicate job 并复用原 document_id，不新增文档",
-    "分段：chunk_content 基于段落切分并对超长段按 600 字再切；记录 chunk_index 与相对 content 的 char_start/char_end（offset 稳定，测试校验 content[start:end]==chunk）",
-    "引用状态：chunk status = citable/reference_only/prohibited；废止/失效文档默认 prohibited；支持 payload.chunk_status 覆盖",
-    "失败可查询：import_jobs 记录 error_code/error_reason/quarantined，list_jobs(status) 支持按 succeeded/duplicate/failed/quarantined 过滤",
-    "后端 API：POST /api/library/import；GET /api/library/documents | /document?id= | /chunks?document_id= | /jobs?status=",
-    "前端资料库面板：录入元数据+粘贴文本或选择文件(base64)导入，文档/分段/导入记录切换视图与状态标签",
-    "tests/test_library.py：schema 幂等、txt/html/docx 导入、去重、PDF 隔离、chunk 状态与偏移、失败作业查询"
+    "权威分级元数据：documents 新增 source_type/authority_level/region/jurisdiction；source_type 归一到 law_regulation/state_council/ministry/local_government/official_media/user_fact/unknown；authority_level 仅由 source_type 派生（6..0）",
+    "保守推断：infer_source_type 优先用显式 payload.source_type，其次按机构名启发式（国务院/部委/地方政府/权威媒体），否则 unknown；绝不从正文内容推断权威",
+    "文档排序/过滤：list_documents 支持 sort=authority（authority_level DESC, imported_at DESC）与 source_type/region/min_authority 过滤；list_chunks 支持 sort=authority（按所属文档权威等级）",
+    "版本与有效性关系：documents 新增 supersedes/superseded_by/related_document_id/version/version_note/valid_from/valid_to；新增 superseded 状态并纳入 NON_CITABLE_STATUS（chunks 默认 prohibited）",
+    "手动链接：import/update 支持 supersedes/related_document_id 按 document_id→document_number→source_url 解析（仅在唯一匹配时链接）；被取代文档标记 superseded 且其 chunks 置为 prohibited，关系在 API 中可见（supersedes/superseded_by 字段与 import_jobs.related_document_id）",
+    "增量更新：相同 SHA256 仍为 duplicate；相同 source_url 或 document_number 且内容变化时，创建新版本文档、version+1、链接并取代旧版本，import_job 记为 new_version（成功新建/去重/新版本分别为 succeeded/duplicate/new_version）",
+    "手动更新接口 update_document：仅改元数据与版本关系、不重解析正文，记 updated 作业；状态变为不可引用（废止/失效/取代）时级联把该文档 chunks 置 prohibited",
+    "XLSX 基础解析（仅标准库）：把 .xlsx 作为 OOXML zip 解析 sharedStrings + workbook 关系 + worksheets，按行生成段落，location_kind=row、location_value=\"<sheet>!<row>\"；结构损坏/缺 workbook/子部件解析失败一律 QuarantineError 隔离；.xls/.doc/.pdf/.ppt/.pptx 继续隔离",
+    "更丰富快照/定位：documents 新增 original_filename/mime_type/byte_size/raw_text（raw_text 为规范化正文快照，上限 200k 字符，不保存二进制原文）；evidence_chunks 新增 location_kind/location_value（段落序号 或 sheet!row）",
+    "分段重构：extract_segments→build_content→chunk_segments 流水线，保持 content[char_start:char_end]==chunk 的偏移不变式，并携带定位信息",
+    "Schema 迁移：init_schema 内建幂等 _ensure_columns（PRAGMA table_info + ALTER TABLE ADD COLUMN）为旧库补列；所有库表写入改为具名列 _insert_row，随列增长稳健；新增 source_url/document_number 索引",
+    "API：POST /api/library/import（扩展字段与 new_version）、POST /api/library/update（404 未找到）；GET /documents 支持 source_type/region/min_authority/sort，/chunks 支持 sort，/document 与 /jobs 返回新字段",
+    "前端：资料库面板新增来源类型（权威等级）、地区、取代文档输入与 XLSX 选项；文档列表展示来源类型/权威等级/地区/版本/取代关系；分段展示 location_kind/location_value；导入结果区分 succeeded/new_version/duplicate/隔离",
+    "测试：新增 EvidenceLibraryPhase1BTest（单元）与扩展 EvidenceLibraryHTTPTest（HTTP，沿用 Phase 1A 的 ProxyHandler({}) 绕过代理）覆盖权威归一/推断/排序/过滤、手动版本链接（id 与文号）、同源变更新版本、同内容仍去重、update 级联禁用、XLSX 解析与行定位、畸形/缺 workbook XLSX 隔离、.xls 隔离、段落定位与快照字段"
   ],
   "not_implemented": [
-    "向量检索 / BM25 / RRF 融合（阶段 2）",
-    "引用蕴含与冲突证据检测（阶段 2）",
-    "政策版本链与自动废止推导（本阶段仅存单文档 status 字段，未建版本关系）",
-    "权威等级排序（法律法规>国务院>地方>媒体>用户事实，未建模）",
-    "XLSX 解析（当前与 PDF 一并隔离）",
-    "自动抓取 / crawler、微调、正式 DOCX 排版、评测打分（明确排除）",
-    "增量更新（同 URL 新版本合并；当前仅按内容 SHA256 去重）"
+    "阶段 2：中文 BM25/向量检索、RRF 融合、重排、引用蕴含与冲突检测（明确不在本阶段）",
+    "自动法律废止推断：仅支持显式/手动关系与保守的同源启发式，不做基于内容的自动废止判定",
+    "多义匹配自动链接：同一 source_url/document_number 命中多个候选时不自动链接（避免误关联），需显式 supersedes",
+    "XLSX 高级特性：公式计算值以外的样式、合并单元格语义、图表、日期数字格式化；数值/日期按原始字符串或共享字符串读取",
+    "二进制原文留存：仅存 raw_text 文本快照与 byte_size，不落地原始文件字节",
+    "旧版 .doc/.xls 二进制解析（保持隔离）"
   ],
   "test_commands": [
     "cd /home/kiro/kiro-work/work/cailiao && python -m unittest discover -s tests -v",
@@ -38,23 +40,23 @@
   ],
   "dependencies": [
     "无新增外部依赖，仅 Python 标准库（sqlite3, zipfile, xml.etree.ElementTree, html.parser, hashlib, base64, urllib.parse）",
-    "DOCX 解析未使用 python-docx；为纯标准库的 OOXML 段落抽取，仅取 w:t 文本，不含表格/页眉页脚",
-    "graceful fallback：未知/不支持格式一律进入隔离状态而非报错崩溃或静默丢弃"
+    "XLSX 解析为纯标准库 OOXML 读取；无 openpyxl，无网络",
+    "graceful fallback：未知/不支持格式与结构损坏一律隔离，不静默入库"
   ],
-  "review_fixes": [
-    "修复 tests/test_library.py 中 HTML 用例的非 ASCII bytes 字面量（SyntaxError: bytes can only contain ASCII literal characters）：改为 str + .encode('utf-8')。已扫描全部 .py，其余 bytes 字面量（b\"%PDF-1.4 fake\"、b\"not a zip\"）均为纯 ASCII；非 ASCII 中文内容一律走 str（text 或 base64），不再出现在 bytes 字面量中",
-    "新增真实 HTTP API 测试（EvidenceLibraryHTTPTest，在 127.0.0.1:0 用 ThreadingHTTPServer 拉起 server.Handler）：POST /api/library/import(TXT)=201；GET /api/library/documents 返回已导入文档；GET /api/library/document?id= 返回 content（未知 id=404）；GET /api/library/chunks?document_id= 返回分段(citable)；GET /api/library/jobs 与 /api/library/jobs?status=quarantined 可查询并按状态过滤。每个用例独立临时 DB，tearDown 关闭服务并删库，确定性、无外网",
-    "修复 sqlite3.Connection monkeypatch 问题：sqlite3.Connection 是 C 类型不可类级改写，改用连接代理 / 非全局补丁——test_integrity_error_falls_back_to_duplicate 替换本模块 server.db() 接缝返回 thin 连接代理，仅让首个 sha256 预检 SELECT 落空以确定性触发 IntegrityError 回退路径，用完即恢复，避免脆弱的全局补丁",
-    "SHA256 UNIQUE IntegrityError 回退：documents INSERT 命中 sha256 UNIQUE 冲突时捕获 sqlite3.IntegrityError、rollback 并复查已存在文档，记录 duplicate import_job 并返回 duplicate（不再是 HTTP 500）；保留原有预检快速路径，重复逻辑抽到 _record_duplicate_job 复用。测试 test_sha256_unique_constraint_enforced 验证 DB 级 UNIQUE 抛错，test_integrity_error_falls_back_to_duplicate 验证返回 duplicate 且仅一份文档、一条 duplicate 作业",
-    "HTTP 测试绕过主机代理访问 127.0.0.1，使 Windows 代理设置无法拦截本地 API 测试（HTTP tests bypass host proxy for 127.0.0.1 so Windows proxy settings cannot intercept local API tests）：_post/_get 改用 urllib.request.build_opener(urllib.request.ProxyHandler({})) 的本地 opener.open() 直连，仅改测试、不改生产代理行为（此前 Windows 上本地请求被系统代理拦截返回 503 空响应）"
+  "review_notes": [
+    "未在本环境运行测试：代码作者角色无 Bash 权限，命令见 test_commands，需 Codex 执行验证。HTTP 测试监听 127.0.0.1 随机端口并用空 ProxyHandler 绕过系统代理（兼容 Windows 代理设置）",
+    "硬审行为未改：analyze_payload/build_prompt/call_llm/export_docx 保持原样，仅新增只读的资料库元数据展示",
+    "Schema 迁移策略：新库由 CREATE TABLE 直接建全列；旧 Phase 1A 库由 _ensure_columns 增量补列，均幂等。data/ 被 gitignore，通常为全新库",
+    "权威等级仅来自 source_type，不从正文推断；机构启发式为保守前缀/包含匹配，命中失败回落 unknown",
+    "版本链接遵循“显式优先、唯一才自动”原则：优先 payload.supersedes 显式引用，其次同源唯一 head；多义不自动链接",
+    "chunk 偏移仍基于规范化正文（build_content 逐段拼接），content[start:end]==chunk 不变式由测试覆盖；raw_text 快照上限 200k 字符"
   ],
   "risks": [
-    "未在本环境运行测试：代码作者角色无 Bash 权限，测试命令见 test_commands，需 Codex 执行验证。HTTP 测试会临时监听 127.0.0.1 随机端口（server_address[1]），受限网络环境需允许本地回环绑定",
-    "DOCX 抽取仅提取正文段落 w:t，忽略表格、文本框、页眉页脚，复杂公文可能漏内容（阶段 1 可接受）",
-    "chunk 偏移基于 normalize_content 后的存储正文而非原始文件字节，定位以规范化文本为准",
-    "HTMLParser 对畸形 HTML 采取尽力解析；极端畸形输入可能产出不理想分段但不会静默入库为空（空正文会 parse_error）",
-    "import_jobs 无自动清理，长期使用会累积；本阶段未做保留期策略",
-    "并发重复导入已由 sha256 UNIQUE 回退覆盖，但事务隔离仍是基础级别，应在负载测试下重新评估（concurrent duplicate handling is covered by UNIQUE fallback, but transaction isolation is still basic and should be revisited under load testing）",
-    "前端 setPanel 采用运行时重赋值包装以在切到资料库时刷新列表，依赖函数声明可重赋值特性"
+    "XLSX 解析覆盖常见 sharedStrings/inlineStr/worksheet 结构；对异形工作簿（自定义部件路径、加密、宏表）可能解析为空或隔离，属预期保守行为",
+    "同源新版本判定依赖 source_url/document_number 唯一匹配；若历史数据中同源存在多个 head，则不自动链接，需人工用 update/supersedes 指定",
+    "raw_text 仅保存规范化文本快照（≤200k 字），不等于原始文件字节；超长文档快照会截断",
+    "并发重复导入由 sha256 UNIQUE 回退覆盖，但事务隔离仍是基础级别，应在负载测试下重新评估",
+    "authority 启发式基于中文机构名前缀/关键词，边缘命名可能落入 unknown，可用显式 source_type 纠正",
+    "DOCX 抽取仍仅取正文段落 w:t，忽略表格/文本框/页眉页脚；XLSX 仅取单元格文本，均为阶段 1 可接受范围"
   ]
 }

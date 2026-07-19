@@ -159,8 +159,12 @@ $('clearBtn').addEventListener('click', () => {
 const STATUS_LABEL = {
   citable: '可引用', reference_only: '仅参考', prohibited: '禁止使用',
   effective: '现行有效', revised: '已修订', repealed: '已废止',
-  expired: '已失效', draft: '征求意见', unknown: '未知',
-  succeeded: '成功', duplicate: '重复跳过', failed: '失败', quarantined: '隔离',
+  expired: '已失效', superseded: '已被取代', draft: '征求意见', unknown: '未知',
+  succeeded: '成功', duplicate: '重复跳过', new_version: '新版本',
+  updated: '已更新', failed: '失败', quarantined: '隔离',
+  law_regulation: '法律法规', state_council: '国务院', ministry: '部委',
+  local_government: '地方政府', official_media: '权威媒体', user_fact: '用户/内部事实',
+  paragraph: '段落', row: '行',
 };
 const label = (v) => STATUS_LABEL[v] || v || '';
 
@@ -181,11 +185,15 @@ async function importDocument() {
     document_number: $('libNumber').value.trim(),
     publish_date: $('libDate').value.trim(),
     source_url: $('libUrl').value.trim(),
+    source_type: $('libSourceType').value,
+    region: $('libRegion').value.trim(),
+    supersedes: $('libSupersedes').value.trim(),
     status: $('libStatus').value,
     format: $('libFormat').value,
   };
   if (file) {
     body.content_base64 = await readFileBase64(file);
+    body.original_filename = file.name;
     const ext = file.name.split('.').pop().toLowerCase();
     if (ext) body.format = ext;
   } else {
@@ -196,7 +204,8 @@ async function importDocument() {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
     });
     const data = await res.json();
-    if (data.status === 'succeeded') $('libMsg').textContent = `导入成功，分段 ${data.chunk_count} 段。`;
+    if (data.status === 'succeeded') $('libMsg').textContent = `导入成功，分段 ${data.chunk_count} 段（权威等级 ${data.authority_level}）。`;
+    else if (data.status === 'new_version') $('libMsg').textContent = `已作为新版本入库（v${data.version}），取代旧版本 ${data.supersedes || ''}。`;
     else if (data.status === 'duplicate') $('libMsg').textContent = '内容重复，已跳过。';
     else $('libMsg').textContent = `未入库（${label(data.status)}）：${data.error_reason || ''}`;
   } catch (err) {
@@ -211,11 +220,14 @@ async function renderDocuments() {
   $('libDocs').innerHTML = items.map((d) => `
     <div class="item" data-doc="${d.id}">
       <strong>${escapeHtml(d.title || '未命名')}（${label(d.status)}）</strong>
+      <div>${escapeHtml(label(d.source_type))} · 权威等级 ${d.authority_level ?? 0}${d.region ? ' · ' + escapeHtml(d.region) : ''}${d.version ? ' · v' + d.version : ''}</div>
       <div>${escapeHtml(d.organization || '')} ${escapeHtml(d.document_number || '')} ${escapeHtml(d.publish_date || '')}</div>
       <div>格式 ${escapeHtml(d.format || '')} · ${d.char_count || 0} 字 · SHA256 ${escapeHtml((d.sha256 || '').slice(0, 12))}…</div>
+      ${d.supersedes ? `<div>取代旧版本：${escapeHtml(d.supersedes)}</div>` : ''}
+      ${d.superseded_by ? `<div>已被取代 → ${escapeHtml(d.superseded_by)}</div>` : ''}
       <div>${escapeHtml(d.source_url || '')}</div>
     </div>
-  `).join('') || '<div class="item">资料库为空。导入 TXT/HTML/DOCX 后在这里查看。</div>';
+  `).join('') || '<div class="item">资料库为空。导入 TXT/HTML/DOCX/XLSX 后在这里查看。</div>';
   document.querySelectorAll('[data-doc]').forEach((el) => el.addEventListener('click', () => renderChunks(el.dataset.doc)));
 }
 
@@ -223,7 +235,7 @@ async function renderChunks(docId) {
   const { items } = await fetch(`/api/library/chunks?document_id=${encodeURIComponent(docId)}`).then((r) => r.json());
   $('libChunks').innerHTML = '<strong>分段（' + items.length + '）</strong>' + items.map((c) => `
     <div class="item ${c.status}">
-      <strong>#${c.chunk_index} · ${label(c.status)} · [${c.char_start}-${c.char_end}]</strong>
+      <strong>#${c.chunk_index} · ${label(c.status)} · ${label(c.location_kind)} ${escapeHtml(c.location_value || '')} · [${c.char_start}-${c.char_end}]</strong>
       <p>${escapeHtml((c.content || '').slice(0, 300))}</p>
     </div>
   `).join('');

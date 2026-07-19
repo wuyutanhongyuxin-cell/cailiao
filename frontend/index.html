@@ -83,26 +83,43 @@
           <div class="block"><label>发布日期</label><input id="libDate" placeholder="2025-01-01" /></div>
           <div class="block"><label>来源 URL</label><input id="libUrl" placeholder="https://..." /></div>
           <div class="block">
+            <label>来源类型（权威等级）</label>
+            <select id="libSourceType">
+              <option value="">自动推断（按机构）</option>
+              <option value="law_regulation">法律法规（6）</option>
+              <option value="state_council">国务院（5）</option>
+              <option value="ministry">部委（4）</option>
+              <option value="local_government">地方政府（3）</option>
+              <option value="official_media">权威媒体（2）</option>
+              <option value="user_fact">用户/内部事实（1）</option>
+              <option value="unknown">未知（0）</option>
+            </select>
+          </div>
+          <div class="block"><label>地区 / 管辖</label><input id="libRegion" placeholder="例如：广东省 / 全国" /></div>
+          <div class="block">
             <label>有效性</label>
             <select id="libStatus">
               <option value="有效">现行有效</option>
               <option value="已修订">已修订</option>
               <option value="已废止">已废止</option>
               <option value="已失效">已失效</option>
+              <option value="已被取代">已被取代</option>
               <option value="征求意见">征求意见稿</option>
               <option value="未知">未知</option>
             </select>
           </div>
+          <div class="block"><label>取代文档（ID/文号/URL，可选）</label><input id="libSupersedes" placeholder="旧版本的 ID、文号或 URL" /></div>
           <div class="block">
             <label>格式</label>
             <select id="libFormat">
               <option value="txt">TXT</option>
               <option value="html">HTML</option>
               <option value="docx">DOCX（选择文件）</option>
+              <option value="xlsx">XLSX（选择文件）</option>
               <option value="pdf">PDF（将被隔离）</option>
             </select>
           </div>
-          <div class="block"><label>选择文件（DOCX/PDF）</label><input id="libFile" type="file" accept=".txt,.html,.htm,.docx,.pdf" /></div>
+          <div class="block"><label>选择文件（DOCX/XLSX/PDF）</label><input id="libFile" type="file" accept=".txt,.html,.htm,.docx,.xlsx,.pdf" /></div>
           <div class="block wide tall"><label>粘贴正文（TXT/HTML）</label><textarea id="libText" placeholder="直接粘贴纯文本或 HTML；选择文件时以文件为准。"></textarea></div>
         </div>
         <button id="importBtn" class="primary">导入资料库</button>
