@@ -19,6 +19,7 @@
       <nav>
         <button class="nav active" data-panel="compose">起草</button>
         <button class="nav" data-panel="evidence">证据</button>
+        <button class="nav" data-panel="library">资料库</button>
         <button class="nav" data-panel="review">审稿</button>
         <button class="nav" data-panel="export">导出</button>
       </nav>
@@ -72,6 +73,47 @@
         </div>
         <button id="addEvidenceBtn" class="primary">加入证据台账</button>
         <div id="evidenceList" class="list"></div>
+      </section>
+
+      <section id="library" class="panel">
+        <div class="grid two evidenceForm">
+          <div class="block"><label>文件标题</label><input id="libTitle" placeholder="例如：某某管理办法" /></div>
+          <div class="block"><label>发文机关</label><input id="libOrg" placeholder="国务院办公厅 / 某市政府" /></div>
+          <div class="block"><label>文号</label><input id="libNumber" placeholder="国办发〔2025〕1号" /></div>
+          <div class="block"><label>发布日期</label><input id="libDate" placeholder="2025-01-01" /></div>
+          <div class="block"><label>来源 URL</label><input id="libUrl" placeholder="https://..." /></div>
+          <div class="block">
+            <label>有效性</label>
+            <select id="libStatus">
+              <option value="有效">现行有效</option>
+              <option value="已修订">已修订</option>
+              <option value="已废止">已废止</option>
+              <option value="已失效">已失效</option>
+              <option value="征求意见">征求意见稿</option>
+              <option value="未知">未知</option>
+            </select>
+          </div>
+          <div class="block">
+            <label>格式</label>
+            <select id="libFormat">
+              <option value="txt">TXT</option>
+              <option value="html">HTML</option>
+              <option value="docx">DOCX（选择文件）</option>
+              <option value="pdf">PDF（将被隔离）</option>
+            </select>
+          </div>
+          <div class="block"><label>选择文件（DOCX/PDF）</label><input id="libFile" type="file" accept=".txt,.html,.htm,.docx,.pdf" /></div>
+          <div class="block wide tall"><label>粘贴正文（TXT/HTML）</label><textarea id="libText" placeholder="直接粘贴纯文本或 HTML；选择文件时以文件为准。"></textarea></div>
+        </div>
+        <button id="importBtn" class="primary">导入资料库</button>
+        <span id="libMsg" class="muted"></span>
+        <div class="libTabs">
+          <button class="libTab active" data-lib="docs">文档</button>
+          <button class="libTab" data-lib="jobs">导入记录</button>
+        </div>
+        <div id="libDocs" class="list"></div>
+        <div id="libJobs" class="list" style="display:none"></div>
+        <div id="libChunks" class="list"></div>
       </section>
 
       <section id="review" class="panel">

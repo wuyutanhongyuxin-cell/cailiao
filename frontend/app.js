@@ -154,6 +154,110 @@ $('clearBtn').addEventListener('click', () => {
   location.reload();
 });
 
+// --- Phase 1: trusted evidence library UI -----------------------------------
+
+const STATUS_LABEL = {
+  citable: '可引用', reference_only: '仅参考', prohibited: '禁止使用',
+  effective: '现行有效', revised: '已修订', repealed: '已废止',
+  expired: '已失效', draft: '征求意见', unknown: '未知',
+  succeeded: '成功', duplicate: '重复跳过', failed: '失败', quarantined: '隔离',
+};
+const label = (v) => STATUS_LABEL[v] || v || '';
+
+function readFileBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(',')[1] || '');
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function importDocument() {
+  const file = $('libFile').files[0];
+  const body = {
+    title: $('libTitle').value.trim(),
+    organization: $('libOrg').value.trim(),
+    document_number: $('libNumber').value.trim(),
+    publish_date: $('libDate').value.trim(),
+    source_url: $('libUrl').value.trim(),
+    status: $('libStatus').value,
+    format: $('libFormat').value,
+  };
+  if (file) {
+    body.content_base64 = await readFileBase64(file);
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (ext) body.format = ext;
+  } else {
+    body.text = $('libText').value;
+  }
+  try {
+    const res = await fetch('/api/library/import', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (data.status === 'succeeded') $('libMsg').textContent = `导入成功，分段 ${data.chunk_count} 段。`;
+    else if (data.status === 'duplicate') $('libMsg').textContent = '内容重复，已跳过。';
+    else $('libMsg').textContent = `未入库（${label(data.status)}）：${data.error_reason || ''}`;
+  } catch (err) {
+    $('libMsg').textContent = `导入失败：${err.message}`;
+  }
+  renderDocuments();
+  renderJobs();
+}
+
+async function renderDocuments() {
+  const { items } = await fetch('/api/library/documents').then((r) => r.json());
+  $('libDocs').innerHTML = items.map((d) => `
+    <div class="item" data-doc="${d.id}">
+      <strong>${escapeHtml(d.title || '未命名')}（${label(d.status)}）</strong>
+      <div>${escapeHtml(d.organization || '')} ${escapeHtml(d.document_number || '')} ${escapeHtml(d.publish_date || '')}</div>
+      <div>格式 ${escapeHtml(d.format || '')} · ${d.char_count || 0} 字 · SHA256 ${escapeHtml((d.sha256 || '').slice(0, 12))}…</div>
+      <div>${escapeHtml(d.source_url || '')}</div>
+    </div>
+  `).join('') || '<div class="item">资料库为空。导入 TXT/HTML/DOCX 后在这里查看。</div>';
+  document.querySelectorAll('[data-doc]').forEach((el) => el.addEventListener('click', () => renderChunks(el.dataset.doc)));
+}
+
+async function renderChunks(docId) {
+  const { items } = await fetch(`/api/library/chunks?document_id=${encodeURIComponent(docId)}`).then((r) => r.json());
+  $('libChunks').innerHTML = '<strong>分段（' + items.length + '）</strong>' + items.map((c) => `
+    <div class="item ${c.status}">
+      <strong>#${c.chunk_index} · ${label(c.status)} · [${c.char_start}-${c.char_end}]</strong>
+      <p>${escapeHtml((c.content || '').slice(0, 300))}</p>
+    </div>
+  `).join('');
+}
+
+async function renderJobs() {
+  const { items } = await fetch('/api/library/jobs').then((r) => r.json());
+  $('libJobs').innerHTML = items.map((j) => `
+    <div class="item ${j.status === 'succeeded' ? 'pass' : j.status === 'duplicate' ? 'warning' : 'fail'}">
+      <strong>${label(j.status)} · ${escapeHtml(j.title || '')} (${escapeHtml(j.format || '')})</strong>
+      <div>${escapeHtml(j.created_at || '')} ${j.quarantined ? '· 已隔离' : ''}</div>
+      ${j.error_reason ? `<div>${escapeHtml(j.error_reason)}</div>` : ''}
+    </div>
+  `).join('') || '<div class="item">暂无导入记录。</div>';
+}
+
+const importBtn = $('importBtn');
+if (importBtn) {
+  importBtn.addEventListener('click', importDocument);
+  document.querySelectorAll('.libTab').forEach((btn) => btn.addEventListener('click', () => {
+    document.querySelectorAll('.libTab').forEach((b) => b.classList.toggle('active', b === btn));
+    const showDocs = btn.dataset.lib === 'docs';
+    $('libDocs').style.display = showDocs ? '' : 'none';
+    $('libChunks').style.display = showDocs ? '' : 'none';
+    $('libJobs').style.display = showDocs ? 'none' : '';
+  }));
+}
+
+const origSetPanel = setPanel;
+setPanel = function (name) {
+  origSetPanel(name);
+  if (name === 'library') { renderDocuments(); renderJobs(); }
+};
+
 init().catch((err) => {
   document.body.innerHTML = `<pre>启动失败：${escapeHtml(err.message)}</pre>`;
 });

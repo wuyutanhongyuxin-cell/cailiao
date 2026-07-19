@@ -1,0 +1,60 @@
+{
+  "status": "ready_for_review",
+  "phase": "ROADMAP 阶段 1：可信证据库",
+  "changed_files": [
+    "backend/server.py",
+    "frontend/index.html",
+    "frontend/app.js",
+    "frontend/styles.css",
+    "tests/test_library.py",
+    "CODEX_HANDOFF.json"
+  ],
+  "implemented": [
+    "SQLite 幂等 schema：init_schema() 新增 documents / evidence_chunks / import_jobs 三表并保留原 evidence / evidence_fts；建立 sha256 UNIQUE 约束与索引，db() 每次连接自动初始化",
+    "文档元数据：title, source_url, organization, document_number, publish_date, status(有效性), format, sha256, char_count, content(原文快照), imported_at",
+    "文本抽取（仅标准库）：TXT 多编码解码(utf-8/gb18030 回退)；HTML 用 html.parser 去除 script/style 并保留段落；DOCX 用 zipfile+ElementTree 解析 word/document.xml",
+    "PDF 及 xlsx/xls/doc 显式隔离：extract_content 抛 QuarantineError，import_job 记为 quarantined+quarantined=1，绝不静默入库",
+    "SHA256 去重：对 normalize_content 后的正文哈希，命中已存在文档时写 duplicate job 并复用原 document_id，不新增文档",
+    "分段：chunk_content 基于段落切分并对超长段按 600 字再切；记录 chunk_index 与相对 content 的 char_start/char_end（offset 稳定，测试校验 content[start:end]==chunk）",
+    "引用状态：chunk status = citable/reference_only/prohibited；废止/失效文档默认 prohibited；支持 payload.chunk_status 覆盖",
+    "失败可查询：import_jobs 记录 error_code/error_reason/quarantined，list_jobs(status) 支持按 succeeded/duplicate/failed/quarantined 过滤",
+    "后端 API：POST /api/library/import；GET /api/library/documents | /document?id= | /chunks?document_id= | /jobs?status=",
+    "前端资料库面板：录入元数据+粘贴文本或选择文件(base64)导入，文档/分段/导入记录切换视图与状态标签",
+    "tests/test_library.py：schema 幂等、txt/html/docx 导入、去重、PDF 隔离、chunk 状态与偏移、失败作业查询"
+  ],
+  "not_implemented": [
+    "向量检索 / BM25 / RRF 融合（阶段 2）",
+    "引用蕴含与冲突证据检测（阶段 2）",
+    "政策版本链与自动废止推导（本阶段仅存单文档 status 字段，未建版本关系）",
+    "权威等级排序（法律法规>国务院>地方>媒体>用户事实，未建模）",
+    "XLSX 解析（当前与 PDF 一并隔离）",
+    "自动抓取 / crawler、微调、正式 DOCX 排版、评测打分（明确排除）",
+    "增量更新（同 URL 新版本合并；当前仅按内容 SHA256 去重）"
+  ],
+  "test_commands": [
+    "cd /home/kiro/kiro-work/work/cailiao && python -m unittest discover -s tests -v",
+    "cd /home/kiro/kiro-work/work/cailiao && python -m unittest tests.test_library -v",
+    "cd /home/kiro/kiro-work/work/cailiao && python -m unittest tests.test_rules -v"
+  ],
+  "dependencies": [
+    "无新增外部依赖，仅 Python 标准库（sqlite3, zipfile, xml.etree.ElementTree, html.parser, hashlib, base64, urllib.parse）",
+    "DOCX 解析未使用 python-docx；为纯标准库的 OOXML 段落抽取，仅取 w:t 文本，不含表格/页眉页脚",
+    "graceful fallback：未知/不支持格式一律进入隔离状态而非报错崩溃或静默丢弃"
+  ],
+  "review_fixes": [
+    "修复 tests/test_library.py 中 HTML 用例的非 ASCII bytes 字面量（SyntaxError: bytes can only contain ASCII literal characters）：改为 str + .encode('utf-8')。已扫描全部 .py，其余 bytes 字面量（b\"%PDF-1.4 fake\"、b\"not a zip\"）均为纯 ASCII；非 ASCII 中文内容一律走 str（text 或 base64），不再出现在 bytes 字面量中",
+    "新增真实 HTTP API 测试（EvidenceLibraryHTTPTest，在 127.0.0.1:0 用 ThreadingHTTPServer 拉起 server.Handler）：POST /api/library/import(TXT)=201；GET /api/library/documents 返回已导入文档；GET /api/library/document?id= 返回 content（未知 id=404）；GET /api/library/chunks?document_id= 返回分段(citable)；GET /api/library/jobs 与 /api/library/jobs?status=quarantined 可查询并按状态过滤。每个用例独立临时 DB，tearDown 关闭服务并删库，确定性、无外网",
+    "修复 sqlite3.Connection monkeypatch 问题：sqlite3.Connection 是 C 类型不可类级改写，改用连接代理 / 非全局补丁——test_integrity_error_falls_back_to_duplicate 替换本模块 server.db() 接缝返回 thin 连接代理，仅让首个 sha256 预检 SELECT 落空以确定性触发 IntegrityError 回退路径，用完即恢复，避免脆弱的全局补丁",
+    "SHA256 UNIQUE IntegrityError 回退：documents INSERT 命中 sha256 UNIQUE 冲突时捕获 sqlite3.IntegrityError、rollback 并复查已存在文档，记录 duplicate import_job 并返回 duplicate（不再是 HTTP 500）；保留原有预检快速路径，重复逻辑抽到 _record_duplicate_job 复用。测试 test_sha256_unique_constraint_enforced 验证 DB 级 UNIQUE 抛错，test_integrity_error_falls_back_to_duplicate 验证返回 duplicate 且仅一份文档、一条 duplicate 作业",
+    "HTTP 测试绕过主机代理访问 127.0.0.1，使 Windows 代理设置无法拦截本地 API 测试（HTTP tests bypass host proxy for 127.0.0.1 so Windows proxy settings cannot intercept local API tests）：_post/_get 改用 urllib.request.build_opener(urllib.request.ProxyHandler({})) 的本地 opener.open() 直连，仅改测试、不改生产代理行为（此前 Windows 上本地请求被系统代理拦截返回 503 空响应）"
+  ],
+  "risks": [
+    "未在本环境运行测试：代码作者角色无 Bash 权限，测试命令见 test_commands，需 Codex 执行验证。HTTP 测试会临时监听 127.0.0.1 随机端口（server_address[1]），受限网络环境需允许本地回环绑定",
+    "DOCX 抽取仅提取正文段落 w:t，忽略表格、文本框、页眉页脚，复杂公文可能漏内容（阶段 1 可接受）",
+    "chunk 偏移基于 normalize_content 后的存储正文而非原始文件字节，定位以规范化文本为准",
+    "HTMLParser 对畸形 HTML 采取尽力解析；极端畸形输入可能产出不理想分段但不会静默入库为空（空正文会 parse_error）",
+    "import_jobs 无自动清理，长期使用会累积；本阶段未做保留期策略",
+    "并发重复导入已由 sha256 UNIQUE 回退覆盖，但事务隔离仍是基础级别，应在负载测试下重新评估（concurrent duplicate handling is covered by UNIQUE fallback, but transaction isolation is still basic and should be revisited under load testing）",
+    "前端 setPanel 采用运行时重赋值包装以在切到资料库时刷新列表，依赖函数声明可重赋值特性"
+  ]
+}
