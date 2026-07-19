@@ -403,6 +403,80 @@ class EvidenceLibraryPhase1BTest(unittest.TestCase):
             self.assertEqual(doc["content"][c["char_start"]:c["char_end"]], c["content"])
 
 
+class EvidenceLibraryPhase2ATest(unittest.TestCase):
+    """Phase 2A: deterministic retrieval, RRF, conservative claim verification."""
+
+    def setUp(self):
+        self._tmp = tempfile.NamedTemporaryFile(suffix=".sqlite3", delete=False)
+        self._tmp.close()
+        self._orig_db_path = server.DB_PATH
+        server.DB_PATH = Path(self._tmp.name)
+
+    def tearDown(self):
+        server.DB_PATH = self._orig_db_path
+        Path(self._tmp.name).unlink(missing_ok=True)
+
+    def _seed(self):
+        law = server.import_document({
+            "title": "Alpha Support Policy", "format": "txt",
+            "text": "Alpha project shall receive 30 grants in 2026. Beta unrelated text.",
+            "source_type": "law_regulation", "status": "effective", "region": "GZ",
+            "document_number": "A-2026-1",
+        })
+        user = server.import_document({
+            "title": "Alpha Field Note", "format": "txt",
+            "text": "Alpha field note says 12 teams requested help in 2025.",
+            "source_type": "user_fact", "status": "effective", "region": "GZ",
+        })
+        old = server.import_document({
+            "title": "Old Alpha", "format": "txt",
+            "text": "Alpha old rule mentions 99 obsolete grants.",
+            "source_type": "law_regulation", "status": "repealed", "region": "GZ",
+        })
+        return law, user, old
+
+    def test_search_ranks_authoritative_exact_hit(self):
+        self._seed()
+        res = server.search_library("Alpha project 30 grants 2026", filters={"effective_only": "true"}, limit=5)
+        self.assertFalse(res["vector"]["enabled"])
+        self.assertTrue(res["items"])
+        top = res["items"][0]
+        self.assertEqual(top["document_title"], "Alpha Support Policy")
+        self.assertIn("lexical_exact", top["channels"])
+        self.assertIn("fts_or_ngram", top["channels"])
+
+    def test_search_filters_source_type_and_authority(self):
+        self._seed()
+        laws = server.search_library("Alpha", filters={"source_type": "law_regulation", "effective_only": "true"}, limit=10)
+        self.assertTrue(laws["items"])
+        self.assertTrue(all(i["source_type"] == "law_regulation" for i in laws["items"]))
+        high = server.search_library("Alpha", filters={"min_authority": "4", "effective_only": "true"}, limit=10)
+        self.assertTrue(all(i["authority_level"] >= 4 for i in high["items"]))
+
+    def test_effective_only_excludes_repealed_chunks(self):
+        self._seed()
+        res = server.search_library("99 obsolete", filters={"effective_only": "true"}, limit=10)
+        self.assertEqual(res["items"], [])
+
+    def test_claim_supported_requires_markers_present(self):
+        self._seed()
+        res = server.verify_claim("Alpha project shall receive 30 grants in 2026.", filters={"effective_only": "true"})
+        self.assertEqual(res["status"], "supported")
+        self.assertIn("30", " ".join(res["required_markers"]))
+        self.assertTrue(res["cited_chunk_ids"])
+
+    def test_claim_missing_number_needs_verification(self):
+        self._seed()
+        res = server.verify_claim("Alpha project shall receive 31 grants in 2026.", filters={"effective_only": "true"})
+        self.assertIn(res["status"], {"needs_verification", "unsupported"})
+        self.assertIn("31", res["missing_markers"])
+
+    def test_metric_helpers(self):
+        self.assertEqual(server.recall_at_k(["a", "b"], {"b", "c"}, 2), 0.5)
+        mrr = server.mean_reciprocal_rank([["x", "a"], ["b"]], [{"a"}, {"b"}])
+        self.assertEqual(mrr, 0.75)
+
+
 class EvidenceLibraryHTTPTest(unittest.TestCase):
     """End-to-end tests over the real HTTP handler on an ephemeral local port."""
 
@@ -543,6 +617,24 @@ class EvidenceLibraryHTTPTest(unittest.TestCase):
         self.assertEqual(res["status"], "updated")
         status, chunks = self._get(f"/api/library/chunks?document_id={doc['document_id']}")
         self.assertTrue(all(c["status"] == "prohibited" for c in chunks["items"]))
+
+
+    def test_http_library_search_and_verify_claim(self):
+        self._post("/api/library/import", {
+            "title": "Search Policy", "format": "txt",
+            "text": "Gamma policy provides 45 service windows in 2026.",
+            "source_type": "law_regulation", "status": "effective", "region": "HZ",
+        })
+        status, search = self._get("/api/library/search?q=Gamma%2045%202026&effective_only=true&min_authority=4")
+        self.assertEqual(status, 200)
+        self.assertFalse(search["vector"]["enabled"])
+        self.assertEqual(search["items"][0]["document_title"], "Search Policy")
+        status, verify = self._post("/api/library/verify-claim", {
+            "claim": "Gamma policy provides 45 service windows in 2026.",
+            "filters": {"effective_only": "true"},
+        })
+        self.assertEqual(status, 200)
+        self.assertEqual(verify["status"], "supported")
 
     def test_http_update_unknown_404(self):
         status, res = self._post("/api/library/update", {"document_id": "nope", "status": "有效"})

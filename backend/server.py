@@ -939,6 +939,231 @@ def list_jobs(status: str = "") -> list[dict[str, Any]]:
     return out
 
 
+# --- Phase 2A: deterministic retrieval and conservative citation checks -------
+
+RRF_K = 60
+
+
+def _cjk_chars(text: str) -> list[str]:
+    return [ch for ch in text if '\u4e00' <= ch <= '\u9fff']
+
+
+def tokenize_query(text: str) -> list[str]:
+    """No-dependency mixed tokenizer for Chinese and ASCII policy text."""
+    text = (text or "").lower()
+    ascii_tokens = re.findall(r"[a-z0-9_]+", text)
+    cjk = _cjk_chars(text)
+    cjk_tokens = cjk + ["".join(cjk[i:i + 2]) for i in range(max(0, len(cjk) - 1))]
+    return [t for t in ascii_tokens + cjk_tokens if t.strip()]
+
+
+def _required_claim_markers(text: str) -> list[str]:
+    """Markers that must be present in evidence before a claim can be supported.
+
+    Keep the extractor encoding-robust: numeric facts are mandatory markers;
+    policy-title brackets are handled by Unicode code points instead of literal
+    non-ASCII regex text.
+    """
+    text = text or ""
+    markers = re.findall(r"\d+(?:\.\d+)?(?:%|[A-Za-z]+)?", text)
+    markers += re.findall("\u300a[^\u300b]{2,80}\u300b", text)
+    markers += re.findall(r"[\u4e00-\u9fa5]{1,6}\u3014\d{4}\u3015\d+\u53f7", text)
+    out = []
+    for m in markers:
+        if m and m not in out:
+            out.append(m)
+    return out
+
+
+def _chunk_search_rows(conn: sqlite3.Connection, filters: dict[str, str]) -> list[dict[str, Any]]:
+    cols = [
+        "c.id", "c.document_id", "c.chunk_index", "c.char_start", "c.char_end", "c.status",
+        "c.content", "c.location_kind", "c.location_value", "d.title", "d.source_url",
+        "d.organization", "d.document_number", "d.publish_date", "d.status", "d.source_type",
+        "d.authority_level", "d.region", "d.version",
+    ]
+    names = [
+        "chunk_id", "document_id", "chunk_index", "char_start", "char_end", "chunk_status",
+        "content", "location_kind", "location_value", "document_title", "source_url",
+        "organization", "document_number", "publish_date", "document_status", "source_type",
+        "authority_level", "region", "version",
+    ]
+    where = []
+    params: list[Any] = []
+    if filters.get("source_type"):
+        where.append("d.source_type=?")
+        params.append(normalize_source_type(filters["source_type"]))
+    if filters.get("region"):
+        where.append("d.region=?")
+        params.append(filters["region"])
+    if filters.get("status"):
+        where.append("c.status=?")
+        params.append(filters["status"])
+    if filters.get("document_status"):
+        where.append("d.status=?")
+        params.append(normalize_status(filters["document_status"]))
+    if filters.get("effective_only") in ("1", "true", "yes", "on", True):
+        where.append("d.status='effective'")
+        where.append("c.status='citable'")
+    if str(filters.get("min_authority", "")).strip():
+        try:
+            where.append("d.authority_level>=?")
+            params.append(int(filters["min_authority"]))
+        except (TypeError, ValueError):
+            pass
+    if filters.get("date_from"):
+        where.append("d.publish_date>=?")
+        params.append(filters["date_from"])
+    if filters.get("date_to"):
+        where.append("d.publish_date<=?")
+        params.append(filters["date_to"])
+    where_sql = " WHERE " + " AND ".join(where) if where else ""
+    rows = conn.execute(
+        f"SELECT {','.join(cols)} FROM evidence_chunks c JOIN documents d ON d.id=c.document_id{where_sql}",
+        params,
+    ).fetchall()
+    return [dict(zip(names, row)) for row in rows]
+
+
+def _searchable_text(row: dict[str, Any]) -> str:
+    return " ".join(str(row.get(k) or "") for k in (
+        "content", "document_title", "organization", "document_number", "source_url", "region", "source_type"
+    ))
+
+
+def _rank_channel(rows: list[dict[str, Any]], score_fn) -> list[dict[str, Any]]:
+    scored = []
+    for row in rows:
+        score, reason = score_fn(row)
+        if score > 0:
+            scored.append((score, row["chunk_id"], reason, row))
+    scored.sort(key=lambda x: (-x[0], x[1]))
+    out = []
+    for idx, (score, _cid, reason, row) in enumerate(scored, start=1):
+        out.append({"rank": idx, "score": score, "reason": reason, "row": row})
+    return out
+
+
+def search_library(query: str, filters: dict[str, str] | None = None, limit: int = 10) -> dict[str, Any]:
+    """Deterministic Phase 2A retrieval. No vector model is used."""
+    filters = filters or {}
+    query = (query or "").strip()
+    limit = max(1, min(int(limit or 10), 50))
+    tokens = tokenize_query(query)
+    conn = db()
+    try:
+        rows = _chunk_search_rows(conn, filters)
+    finally:
+        conn.close()
+
+    lowered_query = query.lower()
+
+    def lexical(row):
+        text = _searchable_text(row).lower()
+        score = 0.0
+        reasons = []
+        if lowered_query and lowered_query in text:
+            score += 10.0
+            reasons.append("exact_query")
+        for marker in _required_claim_markers(query):
+            if marker.lower() in text:
+                score += 3.0
+                reasons.append(f"marker:{marker}")
+        return score, reasons or ["no_exact_hit"]
+
+    def ngram(row):
+        text = _searchable_text(row).lower()
+        matched = [t for t in tokens if t and t in text]
+        if not matched:
+            return 0.0, ["no_token_hit"]
+        score = len(set(matched)) / max(1, len(set(tokens)))
+        # Authority is a tie-breaker, not a substitute for textual support.
+        score += min(float(row.get("authority_level") or 0), 6.0) / 100.0
+        return score, ["token_overlap:" + ",".join(sorted(set(matched))[:8])]
+
+    channels = {
+        "lexical_exact": _rank_channel(rows, lexical),
+        "fts_or_ngram": _rank_channel(rows, ngram),
+    }
+    fused: dict[str, dict[str, Any]] = {}
+    for channel_name, ranked in channels.items():
+        for item in ranked:
+            cid = item["row"]["chunk_id"]
+            entry = fused.setdefault(cid, {
+                **item["row"], "fused_score": 0.0, "channels": {}, "hit_reasons": [],
+            })
+            entry["fused_score"] += 1.0 / (RRF_K + item["rank"])
+            entry["channels"][channel_name] = {"rank": item["rank"], "score": item["score"]}
+            entry["hit_reasons"].extend(item["reason"])
+    results = list(fused.values())
+    results.sort(key=lambda r: (-r["fused_score"], -(r.get("authority_level") or 0), r["chunk_id"]))
+    for r in results:
+        r["hit_reasons"] = sorted(set(r["hit_reasons"]))
+    return {
+        "query": query,
+        "items": results[:limit],
+        "channels": {name: len(vals) for name, vals in channels.items()},
+        "vector": {"enabled": False, "reason": "Phase 2A has no embeddings/vector retrieval"},
+    }
+
+
+def verify_claim(claim: str, filters: dict[str, str] | None = None, limit: int = 5) -> dict[str, Any]:
+    """Conservative lexical claim support check over retrieved chunks."""
+    result = search_library(claim, filters=filters, limit=limit)
+    items = result["items"]
+    markers = _required_claim_markers(claim)
+    combined = "\n".join(item.get("content") or "" for item in items)
+    missing = [m for m in markers if m not in combined]
+    if not items:
+        status = "unsupported"
+        reasons = ["no_retrieved_evidence"]
+    elif missing:
+        status = "needs_verification"
+        reasons = ["required_markers_missing:" + ",".join(missing)]
+    else:
+        claim_tokens = set(tokenize_query(claim))
+        evidence_tokens = set(tokenize_query(combined))
+        overlap = claim_tokens & evidence_tokens
+        if markers and overlap:
+            status = "supported"
+            reasons = ["required_markers_present", "lexical_overlap"]
+        elif len(overlap) >= max(2, min(5, len(claim_tokens))):
+            status = "needs_verification"
+            reasons = ["lexical_overlap_without_required_markers"]
+        else:
+            status = "unsupported"
+            reasons = ["insufficient_lexical_overlap"]
+    return {
+        "claim": claim,
+        "status": status,
+        "required_markers": markers,
+        "missing_markers": missing,
+        "cited_chunk_ids": [item["chunk_id"] for item in items[:limit]],
+        "reasons": reasons,
+        "search": result,
+    }
+
+
+def recall_at_k(results: list[str], relevant: set[str], k: int = 10) -> float:
+    if not relevant:
+        return 0.0
+    return len(set(results[:k]) & set(relevant)) / len(set(relevant))
+
+
+def mean_reciprocal_rank(ranked_lists: list[list[str]], relevant_sets: list[set[str]]) -> float:
+    if not ranked_lists:
+        return 0.0
+    total = 0.0
+    for ranked, relevant in zip(ranked_lists, relevant_sets):
+        rr = 0.0
+        for idx, item in enumerate(ranked, start=1):
+            if item in relevant:
+                rr = 1.0 / idx
+                break
+        total += rr
+    return total / len(ranked_lists)
+
+
 def split_paragraphs(text: str) -> list[str]:
     return [p.strip() for p in re.split(r"\n\s*\n|(?<=。)\s*\n", text or "") if p.strip()]
 
@@ -1127,6 +1352,10 @@ class Handler(SimpleHTTPRequestHandler):
         if self.path.startswith("/api/library/jobs"):
             self.json_response({"items": list_jobs(self._query_param("status"))})
             return
+        if self.path.startswith("/api/library/search"):
+            filters = {k: self._query_param(k) for k in ("source_type", "region", "min_authority", "status", "document_status", "effective_only", "date_from", "date_to")}
+            self.json_response(search_library(self._query_param("q"), filters=filters, limit=int(self._query_param("limit") or 10)))
+            return
         return super().do_GET()
 
     def _query_param(self, name: str) -> str:
@@ -1161,6 +1390,9 @@ class Handler(SimpleHTTPRequestHandler):
                     self.json_response(result, HTTPStatus.NOT_FOUND)
                 else:
                     self.json_response(result)
+            elif self.path == "/api/library/verify-claim":
+                filters = payload.get("filters", {}) or {}
+                self.json_response(verify_claim(str(payload.get("claim", "")), filters=filters, limit=int(payload.get("limit", 5) or 5)))
             elif self.path == "/api/export/docx":
                 raw = export_docx(payload.get("title", "材料草稿"), payload.get("body", ""))
                 self.send_response(200)

@@ -1,63 +1,52 @@
 {
-  "status": "ready_for_review",
-  "phase": "ROADMAP 阶段 1B：完善可信证据库（权威分级、版本治理、增量更新、XLSX、更丰富快照/定位）",
-  "baseline": "本地 Phase 1A 基线 4055299；GitHub main Phase 1A 630cdc1",
-  "changed_files": [
-    "backend/server.py",
-    "frontend/index.html",
-    "frontend/app.js",
-    "tests/test_library.py",
-    "CODEX_HANDOFF.json"
-  ],
-  "implemented": [
-    "权威分级元数据：documents 新增 source_type/authority_level/region/jurisdiction；source_type 归一到 law_regulation/state_council/ministry/local_government/official_media/user_fact/unknown；authority_level 仅由 source_type 派生（6..0）",
-    "保守推断：infer_source_type 优先用显式 payload.source_type，其次按机构名启发式（国务院/部委/地方政府/权威媒体），否则 unknown；绝不从正文内容推断权威",
-    "文档排序/过滤：list_documents 支持 sort=authority（authority_level DESC, imported_at DESC）与 source_type/region/min_authority 过滤；list_chunks 支持 sort=authority（按所属文档权威等级）",
-    "版本与有效性关系：documents 新增 supersedes/superseded_by/related_document_id/version/version_note/valid_from/valid_to；新增 superseded 状态并纳入 NON_CITABLE_STATUS（chunks 默认 prohibited）",
-    "手动链接：import/update 支持 supersedes/related_document_id 按 document_id→document_number→source_url 解析（仅在唯一匹配时链接）；被取代文档标记 superseded 且其 chunks 置为 prohibited，关系在 API 中可见（supersedes/superseded_by 字段与 import_jobs.related_document_id）",
-    "增量更新：相同 SHA256 仍为 duplicate；相同 source_url 或 document_number 且内容变化时，创建新版本文档、version+1、链接并取代旧版本，import_job 记为 new_version（成功新建/去重/新版本分别为 succeeded/duplicate/new_version）",
-    "手动更新接口 update_document：仅改元数据与版本关系、不重解析正文，记 updated 作业；状态变为不可引用（废止/失效/取代）时级联把该文档 chunks 置 prohibited",
-    "XLSX 基础解析（仅标准库）：把 .xlsx 作为 OOXML zip 解析 sharedStrings + workbook 关系 + worksheets，按行生成段落，location_kind=row、location_value=\"<sheet>!<row>\"；结构损坏/缺 workbook/子部件解析失败一律 QuarantineError 隔离；.xls/.doc/.pdf/.ppt/.pptx 继续隔离",
-    "更丰富快照/定位：documents 新增 original_filename/mime_type/byte_size/raw_text（raw_text 为规范化正文快照，上限 200k 字符，不保存二进制原文）；evidence_chunks 新增 location_kind/location_value（段落序号 或 sheet!row）",
-    "分段重构：extract_segments→build_content→chunk_segments 流水线，保持 content[char_start:char_end]==chunk 的偏移不变式，并携带定位信息",
-    "Schema 迁移：init_schema 内建幂等 _ensure_columns（PRAGMA table_info + ALTER TABLE ADD COLUMN）为旧库补列；所有库表写入改为具名列 _insert_row，随列增长稳健；新增 source_url/document_number 索引",
-    "API：POST /api/library/import（扩展字段与 new_version）、POST /api/library/update（404 未找到）；GET /documents 支持 source_type/region/min_authority/sort，/chunks 支持 sort，/document 与 /jobs 返回新字段",
-    "前端：资料库面板新增来源类型（权威等级）、地区、取代文档输入与 XLSX 选项；文档列表展示来源类型/权威等级/地区/版本/取代关系；分段展示 location_kind/location_value；导入结果区分 succeeded/new_version/duplicate/隔离",
-    "测试：新增 EvidenceLibraryPhase1BTest（单元）与扩展 EvidenceLibraryHTTPTest（HTTP，沿用 Phase 1A 的 ProxyHandler({}) 绕过代理）覆盖权威归一/推断/排序/过滤、手动版本链接（id 与文号）、同源变更新版本、同内容仍去重、update 级联禁用、XLSX 解析与行定位、畸形/缺 workbook XLSX 隔离、.xls 隔离、段落定位与快照字段"
-  ],
-  "not_implemented": [
-    "阶段 2：中文 BM25/向量检索、RRF 融合、重排、引用蕴含与冲突检测（明确不在本阶段）",
-    "自动法律废止推断：仅支持显式/手动关系与保守的同源启发式，不做基于内容的自动废止判定",
-    "多义匹配自动链接：同一 source_url/document_number 命中多个候选时不自动链接（避免误关联），需显式 supersedes",
-    "XLSX 高级特性：公式计算值以外的样式、合并单元格语义、图表、日期数字格式化；数值/日期按原始字符串或共享字符串读取",
-    "二进制原文留存：仅存 raw_text 文本快照与 byte_size，不落地原始文件字节",
-    "旧版 .doc/.xls 二进制解析（保持隔离）"
-  ],
-  "test_commands": [
-    "cd /home/kiro/kiro-work/work/cailiao && python -m unittest discover -s tests -v",
-    "cd /home/kiro/kiro-work/work/cailiao && python -m unittest tests.test_library -v",
-    "cd /home/kiro/kiro-work/work/cailiao && python -m unittest tests.test_rules -v"
-  ],
-  "dependencies": [
-    "无新增外部依赖，仅 Python 标准库（sqlite3, zipfile, xml.etree.ElementTree, html.parser, hashlib, base64, urllib.parse）",
-    "XLSX 解析为纯标准库 OOXML 读取；无 openpyxl，无网络",
-    "graceful fallback：未知/不支持格式与结构损坏一律隔离，不静默入库"
-  ],
-  "review_notes": [
-    "未在本环境运行测试：代码作者角色无 Bash 权限，命令见 test_commands，需 Codex 执行验证。HTTP 测试监听 127.0.0.1 随机端口并用空 ProxyHandler 绕过系统代理（兼容 Windows 代理设置）",
-    "硬审行为未改：analyze_payload/build_prompt/call_llm/export_docx 保持原样，仅新增只读的资料库元数据展示",
-    "Schema 迁移策略：新库由 CREATE TABLE 直接建全列；旧 Phase 1A 库由 _ensure_columns 增量补列，均幂等。data/ 被 gitignore，通常为全新库",
-    "权威等级仅来自 source_type，不从正文推断；机构启发式为保守前缀/包含匹配，命中失败回落 unknown",
-    "版本链接遵循“显式优先、唯一才自动”原则：优先 payload.supersedes 显式引用，其次同源唯一 head；多义不自动链接",
-    "chunk 偏移仍基于规范化正文（build_content 逐段拼接），content[start:end]==chunk 不变式由测试覆盖；raw_text 快照上限 200k 字符"
-  ],
-  "risks": [
-    "XLSX 解析覆盖常见 sharedStrings/inlineStr/worksheet 结构；对异形工作簿（自定义部件路径、加密、宏表）可能解析为空或隔离，属预期保守行为",
-    "同源新版本判定依赖 source_url/document_number 唯一匹配；若历史数据中同源存在多个 head，则不自动链接，需人工用 update/supersedes 指定",
-    "raw_text 仅保存规范化文本快照（≤200k 字），不等于原始文件字节；超长文档快照会截断",
-    "并发重复导入由 sha256 UNIQUE 回退覆盖，但事务隔离仍是基础级别，应在负载测试下重新评估",
-    "authority 启发式基于中文机构名前缀/关键词，边缘命名可能落入 unknown，可用显式 source_type 纠正",
-    "DOCX 抽取仍仅取正文段落 w:t，忽略表格/文本框/页眉页脚；XLSX 仅取单元格文本，均为阶段 1 可接受范围"
-  ],
-  "docs_note": "文档更新（仅 README.md 与 docs/ROADMAP.md）：README 项目状态改为“MVP + 阶段 1 可信资料库已完成”，当前能力补充阶段 1B（权威/来源类型分级、版本/取代关系、同源新版本、XLSX 基础导入、分段定位与更丰富快照），已知限制改为聚焦阶段 2+ 缺口（无 BM25/向量/RRF、无引用蕴含/冲突验证、XLSX 解析基础、不留存二进制原文、暂无 GB/T 正式排版）；ROADMAP 将阶段 1 标记为已完成并含 1A/1B 已完成子节，语义检索项归入阶段 2，保留“不做法律层面自动废止推断、关系仅显式/手动或同源唯一匹配”的保守说明，并加入 Codex 在 WSL 与 Windows 发布仓库 python -m unittest discover -s tests -v 39 项通过的验证说明。对应提交 a9ab130（GitHub main）/ b44f8a8（WSL 基线）。"
+    "status":  "verified_by_codex",
+    "phase":  "ROADMAP 阶段 2A：确定性检索与保守主张核验基础",
+    "baseline":  "GitHub main 阶段 1 完成 bec6adf；Windows 发布仓库在此基础上实现阶段 2A",
+    "changed_files":  [
+                          "backend/server.py",
+                          "frontend/index.html",
+                          "frontend/app.js",
+                          "tests/test_library.py",
+                          "README.md",
+                          "docs/ROADMAP.md",
+                          "CODEX_HANDOFF.json"
+                      ],
+    "implemented":  [
+                        "新增资料库检索核心 search_library：词面精确通道 + 中文字符 ngram/FTS 回退通道，RRF 兼容融合 fused_score，返回通道、命中理由和稳定排序。",
+                        "检索过滤支持 effective_only、min_authority、source_type、region，复用阶段 1 的有效性、权威等级、来源类型和地区元数据。",
+                        "向量检索状态显式返回 enabled=false 与原因，避免把尚未接入的 embedding/向量库伪装成已完成能力。",
+                        "新增保守主张核验 verify_claim：抽取文号、年份、数值、政策标记等硬标记，并结合词面覆盖判断支撑/待核实。证据不足时不生成语义证明。",
+                        "新增 API：GET /api/library/search 与 POST /api/library/verify-claim。",
+                        "前端资料库新增“检索”标签，支持检索条件、结果展示、主张核验和待核实提示。",
+                        "新增 Recall@K 与 MRR 指标 helper，为后续真实匿名 benchmark 打基础。",
+                        "测试扩展到阶段 2A：权威命中排序、过滤、失效文档排除、主张核验、指标 helper 与 HTTP API，完整测试数增至 46。"
+                    ],
+    "not_implemented":  [
+                            "真正向量检索、embedding 生成、向量数据库和语义重排。",
+                            "成熟中文 BM25 参数调优与 50-100 条真实匿名检索评测集。",
+                            "LLM/NLI 级语义蕴含、冲突证据检测和跨句推理。",
+                            "主张到证据的精确段内高亮、引用链报告和大规模人工评测。",
+                            "政府网站自动爬取、增量订阅和数据治理流水线。"
+                        ],
+    "test_commands":  [
+                          "python -m unittest discover -s tests -v",
+                          "python -m py_compile backend/server.py tests/test_library.py",
+                          "git diff --check"
+                      ],
+    "dependencies":  [
+                         "无新增外部依赖；仅 Python 标准库。",
+                         "无网络、无 npm、无 embedding 服务调用。"
+                     ],
+    "review_notes":  [
+                         "Codex 已在 Windows 发布仓库运行完整单元/HTTP 测试：46 tests OK。",
+                         "阶段 2A 是确定性检索基础，不声称完成语义检索或引用蕴含。",
+                         "Claude 非交互调用不可用（Not logged in），本阶段由 Codex 直接实现并验证。",
+                         "文档已同步标记阶段 2A 完成，阶段 2B 继续承担向量、重排、语义核验和更大评测集。"
+                     ],
+    "risks":  [
+                  "词面/字符 ngram 检索可解释、稳定，但召回不等同语义召回；复杂改写查询可能漏召回。",
+                  "保守主张核验可能产生 false negative，也可能无法识别深层语义冲突；因此只作为硬审前置和待核实提示。",
+                  "当前测试集是小规模回归测试，不能替代后续真实匿名 benchmark。",
+                  "未接入向量和重排前，不应宣称已达到成熟 RAG 或政策引用自动核验能力。"
+              ]
 }

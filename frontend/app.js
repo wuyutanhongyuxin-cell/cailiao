@@ -252,16 +252,55 @@ async function renderJobs() {
   `).join('') || '<div class="item">暂无导入记录。</div>';
 }
 
+
+function searchFilters() {
+  return {
+    min_authority: $('libSearchAuthority').value.trim(),
+    source_type: $('libSearchSourceType').value.trim(),
+    region: $('libSearchRegion').value.trim(),
+    effective_only: 'true',
+  };
+}
+
+async function renderSearch() {
+  const params = new URLSearchParams({ q: $('libSearchQuery').value.trim(), limit: '10', ...searchFilters() });
+  const data = await fetch(`/api/library/search?${params.toString()}`).then((r) => r.json());
+  $('searchMsg').textContent = `?? ${data.items.length} ???????${data.vector.enabled ? '??' : '???'}`;
+  $('searchResults').innerHTML = data.items.map((item) => `
+    <div class="item ${item.chunk_status}">
+      <strong>${escapeHtml(item.document_title || '')} ? ${label(item.source_type)} ? ${label(item.location_kind)} ${escapeHtml(item.location_value || '')}</strong>
+      <div>RRF ${item.fused_score.toFixed(4)} ? ${escapeHtml((item.hit_reasons || []).join('?'))}</div>
+      <p>${escapeHtml((item.content || '').slice(0, 360))}</p>
+    </div>
+  `).join('') || '<div class="item">??????????</div>';
+}
+
+async function verifyClaim() {
+  const data = await api('/api/library/verify-claim', { claim: $('libClaim').value.trim(), filters: searchFilters(), limit: 5 });
+  $('searchMsg').textContent = `?????${data.status}????${(data.reasons || []).join('?')}`;
+  $('searchResults').innerHTML = data.search.items.map((item) => `
+    <div class="item ${data.status === 'supported' ? 'pass' : data.status === 'unsupported' ? 'fail' : 'warning'}">
+      <strong>${escapeHtml(item.document_title || '')} ? ${label(item.location_kind)} ${escapeHtml(item.location_value || '')}</strong>
+      <div>${escapeHtml((item.hit_reasons || []).join('?'))}</div>
+      <p>${escapeHtml((item.content || '').slice(0, 360))}</p>
+    </div>
+  `).join('') || '<div class="item">????????</div>';
+}
+
 const importBtn = $('importBtn');
 if (importBtn) {
   importBtn.addEventListener('click', importDocument);
   document.querySelectorAll('.libTab').forEach((btn) => btn.addEventListener('click', () => {
     document.querySelectorAll('.libTab').forEach((b) => b.classList.toggle('active', b === btn));
     const showDocs = btn.dataset.lib === 'docs';
+    const showSearch = btn.dataset.lib === 'search';
     $('libDocs').style.display = showDocs ? '' : 'none';
     $('libChunks').style.display = showDocs ? '' : 'none';
-    $('libJobs').style.display = showDocs ? 'none' : '';
+    $('libSearch').style.display = showSearch ? '' : 'none';
+    $('libJobs').style.display = (!showDocs && !showSearch) ? '' : 'none';
   }));
+  $('searchBtn').addEventListener('click', renderSearch);
+  $('verifyClaimBtn').addEventListener('click', verifyClaim);
 }
 
 const origSetPanel = setPanel;
