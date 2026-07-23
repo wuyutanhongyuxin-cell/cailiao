@@ -1,52 +1,46 @@
 {
-    "status":  "verified_by_codex",
-    "phase":  "ROADMAP 阶段 2A：确定性检索与保守主张核验基础",
-    "baseline":  "GitHub main 阶段 1 完成 bec6adf；Windows 发布仓库在此基础上实现阶段 2A",
-    "changed_files":  [
-                          "backend/server.py",
-                          "frontend/index.html",
-                          "frontend/app.js",
-                          "tests/test_library.py",
-                          "README.md",
-                          "docs/ROADMAP.md",
-                          "CODEX_HANDOFF.json"
-                      ],
-    "implemented":  [
-                        "新增资料库检索核心 search_library：词面精确通道 + 中文字符 ngram/FTS 回退通道，RRF 兼容融合 fused_score，返回通道、命中理由和稳定排序。",
-                        "检索过滤支持 effective_only、min_authority、source_type、region，复用阶段 1 的有效性、权威等级、来源类型和地区元数据。",
-                        "向量检索状态显式返回 enabled=false 与原因，避免把尚未接入的 embedding/向量库伪装成已完成能力。",
-                        "新增保守主张核验 verify_claim：抽取文号、年份、数值、政策标记等硬标记，并结合词面覆盖判断支撑/待核实。证据不足时不生成语义证明。",
-                        "新增 API：GET /api/library/search 与 POST /api/library/verify-claim。",
-                        "前端资料库新增“检索”标签，支持检索条件、结果展示、主张核验和待核实提示。",
-                        "新增 Recall@K 与 MRR 指标 helper，为后续真实匿名 benchmark 打基础。",
-                        "测试扩展到阶段 2A：权威命中排序、过滤、失效文档排除、主张核验、指标 helper 与 HTTP API，完整测试数增至 46。"
-                    ],
-    "not_implemented":  [
-                            "真正向量检索、embedding 生成、向量数据库和语义重排。",
-                            "成熟中文 BM25 参数调优与 50-100 条真实匿名检索评测集。",
-                            "LLM/NLI 级语义蕴含、冲突证据检测和跨句推理。",
-                            "主张到证据的精确段内高亮、引用链报告和大规模人工评测。",
-                            "政府网站自动爬取、增量订阅和数据治理流水线。"
-                        ],
-    "test_commands":  [
-                          "python -m unittest discover -s tests -v",
-                          "python -m py_compile backend/server.py tests/test_library.py",
-                          "git diff --check"
-                      ],
-    "dependencies":  [
-                         "无新增外部依赖；仅 Python 标准库。",
-                         "无网络、无 npm、无 embedding 服务调用。"
-                     ],
-    "review_notes":  [
-                         "Codex 已在 Windows 发布仓库运行完整单元/HTTP 测试：46 tests OK。",
-                         "阶段 2A 是确定性检索基础，不声称完成语义检索或引用蕴含。",
-                         "Claude 非交互调用不可用（Not logged in），本阶段由 Codex 直接实现并验证。",
-                         "文档已同步标记阶段 2A 完成，阶段 2B 继续承担向量、重排、语义核验和更大评测集。"
-                     ],
-    "risks":  [
-                  "词面/字符 ngram 检索可解释、稳定，但召回不等同语义召回；复杂改写查询可能漏召回。",
-                  "保守主张核验可能产生 false negative，也可能无法识别深层语义冲突；因此只作为硬审前置和待核实提示。",
-                  "当前测试集是小规模回归测试，不能替代后续真实匿名 benchmark。",
-                  "未接入向量和重排前，不应宣称已达到成熟 RAG 或政策引用自动核验能力。"
-              ]
+  "status": "verified_by_codex",
+  "phase": "ROADMAP 阶段 2B：检索评测基座",
+  "baseline": "GitHub main 阶段 2A 完成 764cf4c；本轮在此基础上启动阶段 2B 的评测运行器",
+  "changed_files": [
+    "backend/server.py",
+    "tests/test_library.py",
+    "README.md",
+    "docs/ROADMAP.md",
+    "docs/RETRIEVAL_EVALUATION.md",
+    "CODEX_HANDOFF.json"
+  ],
+  "implemented": [
+    "新增 evaluate_retrieval_cases：对查询集运行 search_library，输出文档级与分段级 Recall@K、MRR、miss 列表和逐 case Top K 结果。",
+    "新增 POST /api/library/evaluate-retrieval，支持从外部质量门禁调用检索评测。",
+    "新增单元测试与 HTTP 测试覆盖检索评测命中、漏召回、文档级指标、分段级指标和向量未启用状态。",
+    "新增 docs/RETRIEVAL_EVALUATION.md，定义 case 格式、能力边界和后续复用方式。",
+    "README 与 ROADMAP 已同步标记阶段 2B 评测基座启动。"
+  ],
+  "not_implemented": [
+    "50-100 条真实匿名检索评测集尚未建立。",
+    "中文 BM25/FTS 参数调优尚未实施。",
+    "真正向量检索、embedding 生成、向量数据库和语义重排尚未实施。",
+    "LLM/NLI 级语义蕴含、冲突证据检测和跨句推理尚未实施。",
+    "主张到证据的精确段内高亮和引用链报告尚未实施。"
+  ],
+  "test_commands": [
+    "python -m unittest discover -s tests -v",
+    "python -m py_compile backend/server.py tests/test_library.py",
+    "git diff --check"
+  ],
+  "dependencies": [
+    "无新增外部依赖；仍仅使用 Python 标准库。",
+    "无网络、无 npm、无 embedding 服务调用。"
+  ],
+  "review_notes": [
+    "本轮只建立阶段 2B 的评测基座，不声称完成语义检索或引用蕴含。",
+    "后续 BM25、向量、重排和引用验证变更应复用 evaluate_retrieval_cases 的输出作为质量门禁。",
+    "真实匿名评测集仍是阶段 2B 的下一优先事项。"
+  ],
+  "risks": [
+    "当前评测数据仍是回归测试中的小样本，不能代表真实材料检索质量。",
+    "文档级 relevant_titles 标注较粗，后续需要逐步迁移到 relevant_chunk_ids。",
+    "评测器依赖现有 search_library；若未来引入向量或重排，必须保持指标口径兼容。"
+  ]
 }

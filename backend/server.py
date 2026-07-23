@@ -1164,6 +1164,72 @@ def mean_reciprocal_rank(ranked_lists: list[list[str]], relevant_sets: list[set[
     return total / len(ranked_lists)
 
 
+def evaluate_retrieval_cases(cases: list[dict[str, Any]], k: int = 10) -> dict[str, Any]:
+    """Run a deterministic retrieval benchmark over library search.
+
+    Phase 2B needs a stable benchmark harness before BM25 tuning, embeddings, or
+    reranking. Cases name relevant document titles or chunk ids; the evaluator
+    reports both title-level and chunk-level metrics so early anonymous suites
+    can start coarse and later become more precise.
+    """
+    k = max(1, min(int(k or 10), 50))
+    evaluated = []
+    title_ranked_lists: list[list[str]] = []
+    title_relevant_sets: list[set[str]] = []
+    chunk_ranked_lists: list[list[str]] = []
+    chunk_relevant_sets: list[set[str]] = []
+
+    for idx, case in enumerate(cases or [], start=1):
+        query = str(case.get("query", "")).strip()
+        filters = case.get("filters", {}) or {}
+        result = search_library(query, filters=filters, limit=k)
+        items = result.get("items", [])
+        ranked_titles = [str(item.get("document_title", "")) for item in items]
+        ranked_chunks = [str(item.get("chunk_id", "")) for item in items]
+        relevant_titles = {str(v) for v in case.get("relevant_titles", []) if str(v).strip()}
+        relevant_chunks = {str(v) for v in case.get("relevant_chunk_ids", []) if str(v).strip()}
+
+        title_recall = recall_at_k(ranked_titles, relevant_titles, k) if relevant_titles else None
+        chunk_recall = recall_at_k(ranked_chunks, relevant_chunks, k) if relevant_chunks else None
+        if relevant_titles:
+            title_ranked_lists.append(ranked_titles)
+            title_relevant_sets.append(relevant_titles)
+        if relevant_chunks:
+            chunk_ranked_lists.append(ranked_chunks)
+            chunk_relevant_sets.append(relevant_chunks)
+
+        evaluated.append({
+            "id": case.get("id") or f"case-{idx}",
+            "query": query,
+            "top_titles": ranked_titles[:k],
+            "top_chunk_ids": ranked_chunks[:k],
+            "relevant_titles": sorted(relevant_titles),
+            "relevant_chunk_ids": sorted(relevant_chunks),
+            "title_recall_at_k": title_recall,
+            "chunk_recall_at_k": chunk_recall,
+            "hit": bool(
+                (relevant_titles and set(ranked_titles[:k]) & relevant_titles) or
+                (relevant_chunks and set(ranked_chunks[:k]) & relevant_chunks)
+            ),
+        })
+
+    title_recall_values = [c["title_recall_at_k"] for c in evaluated if c["title_recall_at_k"] is not None]
+    chunk_recall_values = [c["chunk_recall_at_k"] for c in evaluated if c["chunk_recall_at_k"] is not None]
+    misses = [c for c in evaluated if not c["hit"]]
+    return {
+        "case_count": len(evaluated),
+        "k": k,
+        "title_recall_at_k": (sum(title_recall_values) / len(title_recall_values)) if title_recall_values else 0.0,
+        "title_mrr": mean_reciprocal_rank(title_ranked_lists, title_relevant_sets) if title_ranked_lists else 0.0,
+        "chunk_recall_at_k": (sum(chunk_recall_values) / len(chunk_recall_values)) if chunk_recall_values else 0.0,
+        "chunk_mrr": mean_reciprocal_rank(chunk_ranked_lists, chunk_relevant_sets) if chunk_ranked_lists else 0.0,
+        "miss_count": len(misses),
+        "misses": [{"id": c["id"], "query": c["query"]} for c in misses],
+        "cases": evaluated,
+        "vector": {"enabled": False, "reason": "Phase 2B benchmark harness only; embeddings are not implemented"},
+    }
+
+
 def split_paragraphs(text: str) -> list[str]:
     return [p.strip() for p in re.split(r"\n\s*\n|(?<=。)\s*\n", text or "") if p.strip()]
 
@@ -1393,6 +1459,8 @@ class Handler(SimpleHTTPRequestHandler):
             elif self.path == "/api/library/verify-claim":
                 filters = payload.get("filters", {}) or {}
                 self.json_response(verify_claim(str(payload.get("claim", "")), filters=filters, limit=int(payload.get("limit", 5) or 5)))
+            elif self.path == "/api/library/evaluate-retrieval":
+                self.json_response(evaluate_retrieval_cases(payload.get("cases", []) or [], k=int(payload.get("k", 10) or 10)))
             elif self.path == "/api/export/docx":
                 raw = export_docx(payload.get("title", "材料草稿"), payload.get("body", ""))
                 self.send_response(200)

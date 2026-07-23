@@ -476,6 +476,32 @@ class EvidenceLibraryPhase2ATest(unittest.TestCase):
         mrr = server.mean_reciprocal_rank([["x", "a"], ["b"]], [{"a"}, {"b"}])
         self.assertEqual(mrr, 0.75)
 
+    def test_retrieval_evaluator_reports_hits_and_misses(self):
+        law, _, _ = self._seed()
+        chunk_id = server.list_chunks(law["document_id"])[0]["id"]
+        report = server.evaluate_retrieval_cases([
+            {
+                "id": "exact-title",
+                "query": "Alpha project 30 grants 2026",
+                "filters": {"effective_only": "true"},
+                "relevant_titles": ["Alpha Support Policy"],
+                "relevant_chunk_ids": [chunk_id],
+            },
+            {
+                "id": "miss",
+                "query": "Delta unknown obligation",
+                "filters": {"effective_only": "true"},
+                "relevant_titles": ["Missing Document"],
+            },
+        ], k=5)
+        self.assertEqual(report["case_count"], 2)
+        self.assertEqual(report["miss_count"], 1)
+        self.assertEqual(report["misses"][0]["id"], "miss")
+        self.assertGreater(report["title_recall_at_k"], 0.0)
+        self.assertGreater(report["title_mrr"], 0.0)
+        self.assertGreater(report["chunk_recall_at_k"], 0.0)
+        self.assertFalse(report["vector"]["enabled"])
+
 
 class EvidenceLibraryHTTPTest(unittest.TestCase):
     """End-to-end tests over the real HTTP handler on an ephemeral local port."""
@@ -635,6 +661,26 @@ class EvidenceLibraryHTTPTest(unittest.TestCase):
         })
         self.assertEqual(status, 200)
         self.assertEqual(verify["status"], "supported")
+
+    def test_http_retrieval_evaluation(self):
+        self._post("/api/library/import", {
+            "title": "Benchmark Policy", "format": "txt",
+            "text": "Benchmark policy requires 18 inspections in 2026.",
+            "source_type": "law_regulation", "status": "effective",
+        })
+        status, report = self._post("/api/library/evaluate-retrieval", {
+            "k": 5,
+            "cases": [{
+                "id": "bench-hit",
+                "query": "Benchmark 18 inspections 2026",
+                "filters": {"effective_only": "true"},
+                "relevant_titles": ["Benchmark Policy"],
+            }],
+        })
+        self.assertEqual(status, 200)
+        self.assertEqual(report["case_count"], 1)
+        self.assertEqual(report["miss_count"], 0)
+        self.assertGreater(report["title_recall_at_k"], 0.0)
 
     def test_http_update_unknown_404(self):
         status, res = self._post("/api/library/update", {"document_id": "nope", "status": "有效"})
