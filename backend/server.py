@@ -1224,13 +1224,79 @@ def search_library(query: str, filters: dict[str, str] | None = None, limit: int
     }
 
 
+def map_claim_to_evidence(claim: str, evidence_items: list[dict[str, Any]]) -> dict[str, Any]:
+    """Deterministically map a claim's required markers and terms onto evidence chunks.
+
+    Given retrieved ``evidence_items`` (the ``items`` from ``search_library``), report,
+    per marker, which chunk covers it, which markers no chunk covers, and per chunk
+    which markers/terms it matched. Stdlib only; this is lexical coverage, NOT a
+    semantic entailment or conflict judgement (that stays out of scope in Phase 2B).
+
+    Returns:
+      - ``required_markers``: markers a claim must have supported (numbers, years,
+        policy titles, document numbers) via ``_required_claim_markers``;
+      - ``covered_markers``: {marker: [chunk_id, ...]} listing every chunk that
+        contains the marker, in ranked order (a marker may be spread across
+        several chunks, which matters for building a citation chain);
+      - ``missing_markers``: markers no retrieved chunk contains;
+      - ``supporting_items``: per-chunk detail for chunks matching >=1 marker or term;
+      - ``coverage_ratio``: (markers covered by >=1 chunk)/required, or ``None``
+        when the claim has no markers.
+    """
+    markers = _required_claim_markers(claim)
+    claim_terms = set(tokenize_query(claim))
+
+    covered_markers: dict[str, list[str]] = {}
+    supporting_items: list[dict[str, Any]] = []
+    for item in evidence_items or []:
+        content = item.get("content") or ""
+        chunk_id = item.get("chunk_id")
+        matched_markers = [m for m in markers if m and m in content]
+        # Record every chunk that covers a marker, in ranked order (deduped).
+        for m in matched_markers:
+            bucket = covered_markers.setdefault(m, [])
+            if chunk_id not in bucket:
+                bucket.append(chunk_id)
+        content_terms = set(tokenize_query(content))
+        matched_terms = sorted(claim_terms & content_terms)
+        if matched_markers or matched_terms:
+            supporting_items.append({
+                "chunk_id": chunk_id,
+                "document_id": item.get("document_id"),
+                "document_title": item.get("document_title"),
+                "source_type": item.get("source_type"),
+                "authority_level": item.get("authority_level"),
+                "matched_markers": matched_markers,
+                "matched_terms": matched_terms[:12],
+                "hit_reasons": item.get("hit_reasons", []),
+            })
+
+    missing_markers = [m for m in markers if m not in covered_markers]
+    # coverage_ratio counts markers covered by at least one chunk over required.
+    coverage_ratio = (len(covered_markers) / len(markers)) if markers else None
+    return {
+        "required_markers": markers,
+        "covered_markers": covered_markers,
+        "missing_markers": missing_markers,
+        "supporting_items": supporting_items,
+        "coverage_ratio": coverage_ratio,
+    }
+
+
 def verify_claim(claim: str, filters: dict[str, str] | None = None, limit: int = 5) -> dict[str, Any]:
-    """Conservative lexical claim support check over retrieved chunks."""
+    """Conservative lexical claim support check over retrieved chunks.
+
+    Uses ``map_claim_to_evidence`` to attribute each required marker to a covering
+    chunk and to expose per-chunk supporting detail (``evidence_map``). The status
+    stays conservative: any required marker (number/year/policy title/doc number)
+    not covered by some retrieved chunk means the claim is never ``supported``.
+    """
     result = search_library(claim, filters=filters, limit=limit)
     items = result["items"]
-    markers = _required_claim_markers(claim)
-    combined = "\n".join(item.get("content") or "" for item in items)
-    missing = [m for m in markers if m not in combined]
+    evidence_map = map_claim_to_evidence(claim, items)
+    markers = evidence_map["required_markers"]
+    missing = evidence_map["missing_markers"]
+
     if not items:
         status = "unsupported"
         reasons = ["no_retrieved_evidence"]
@@ -1238,6 +1304,7 @@ def verify_claim(claim: str, filters: dict[str, str] | None = None, limit: int =
         status = "needs_verification"
         reasons = ["required_markers_missing:" + ",".join(missing)]
     else:
+        combined = "\n".join(item.get("content") or "" for item in items)
         claim_tokens = set(tokenize_query(claim))
         evidence_tokens = set(tokenize_query(combined))
         overlap = claim_tokens & evidence_tokens
@@ -1250,12 +1317,26 @@ def verify_claim(claim: str, filters: dict[str, str] | None = None, limit: int =
         else:
             status = "unsupported"
             reasons = ["insufficient_lexical_overlap"]
+
+    # Cite chunks that actually matched a marker first (most defensible), then fall
+    # back to the top retrieved items so a citation list is still returned.
+    marker_chunk_ids = [it["chunk_id"] for it in evidence_map["supporting_items"]
+                        if it["matched_markers"]]
+    cited = list(dict.fromkeys(marker_chunk_ids))
+    if not cited:
+        cited = [item["chunk_id"] for item in items[:limit]]
+    else:
+        for item in items[:limit]:
+            if item["chunk_id"] not in cited:
+                cited.append(item["chunk_id"])
+
     return {
         "claim": claim,
         "status": status,
         "required_markers": markers,
         "missing_markers": missing,
-        "cited_chunk_ids": [item["chunk_id"] for item in items[:limit]],
+        "cited_chunk_ids": cited[:limit],
+        "evidence_map": evidence_map,
         "reasons": reasons,
         "search": result,
     }

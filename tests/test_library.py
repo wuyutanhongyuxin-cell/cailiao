@@ -914,6 +914,122 @@ class RetrievalBM25ParamTest(unittest.TestCase):
         self.assertEqual(res["bm25"]["b"], server.BM25_B)
 
 
+class ClaimEvidenceMapTest(unittest.TestCase):
+    """Phase 2B: claim-to-evidence mapping (deterministic lexical coverage)."""
+
+    def setUp(self):
+        self._tmp = tempfile.NamedTemporaryFile(suffix=".sqlite3", delete=False)
+        self._tmp.close()
+        self._orig_db_path = server.DB_PATH
+        server.DB_PATH = Path(self._tmp.name)
+
+    def tearDown(self):
+        server.DB_PATH = self._orig_db_path
+        Path(self._tmp.name).unlink(missing_ok=True)
+
+    def _seed_two_markers_in_two_chunks(self):
+        # Two paragraphs => two chunks: one carries 30/2026, the other carries 45.
+        return server.import_document({
+            "title": "Alpha Policy", "format": "txt",
+            "text": ("Alpha project shall receive 30 grants in 2026.\n\n"
+                     "Alpha program also allocates 45 review windows."),
+            "source_type": "law_regulation", "status": "effective",
+        })
+
+    def test_fully_covered_markers_map_to_chunks(self):
+        self._seed_two_markers_in_two_chunks()
+        res = server.verify_claim("Alpha project shall receive 30 grants in 2026.",
+                                  filters={"effective_only": "true"})
+        emap = res["evidence_map"]
+        self.assertIn("30", emap["required_markers"])
+        self.assertIn("2026", emap["required_markers"])
+        self.assertEqual(emap["missing_markers"], [])
+        # Every required marker attributed to a non-empty list of chunk ids.
+        for m in ("30", "2026"):
+            self.assertIn(m, emap["covered_markers"])
+            self.assertIsInstance(emap["covered_markers"][m], list)
+            self.assertTrue(emap["covered_markers"][m])
+        self.assertAlmostEqual(emap["coverage_ratio"], 1.0, places=6)
+        self.assertEqual(res["status"], "supported")
+        # cited chunk ids prefer a marker-matching chunk.
+        self.assertTrue(res["cited_chunk_ids"])
+        self.assertIn(res["cited_chunk_ids"][0], emap["covered_markers"]["30"])
+
+    def test_missing_marker_is_not_supported(self):
+        self._seed_two_markers_in_two_chunks()
+        res = server.verify_claim("Alpha project shall receive 31 grants in 2026.",
+                                  filters={"effective_only": "true"})
+        emap = res["evidence_map"]
+        self.assertIn("31", emap["missing_markers"])
+        self.assertNotIn("31", emap["covered_markers"])
+        self.assertLess(emap["coverage_ratio"], 1.0)
+        self.assertIn(res["status"], {"needs_verification", "unsupported"})
+
+    def test_multiple_chunks_each_cover_some_markers(self):
+        self._seed_two_markers_in_two_chunks()
+        res = server.verify_claim("Alpha 30 grants 2026 and 45 windows.",
+                                  filters={"effective_only": "true"})
+        emap = res["evidence_map"]
+        # The 45 marker and the 30/2026 markers live in different chunks; each
+        # covered_markers value is a list of covering chunk ids.
+        chunk_for_30 = emap["covered_markers"].get("30", [])[0]
+        chunk_for_45 = emap["covered_markers"].get("45", [])[0]
+        self.assertTrue(chunk_for_30)
+        self.assertTrue(chunk_for_45)
+        self.assertNotEqual(chunk_for_30, chunk_for_45)
+        # supporting_items expose each chunk's matched markers.
+        by_chunk = {it["chunk_id"]: it for it in emap["supporting_items"]}
+        self.assertIn("30", by_chunk[chunk_for_30]["matched_markers"])
+        self.assertIn("45", by_chunk[chunk_for_45]["matched_markers"])
+
+    def test_marker_in_multiple_chunks_lists_all(self):
+        # The same marker (2025) appears in two separate documents/chunks; the
+        # covered_markers entry must list both chunk ids in ranked order.
+        server.import_document({
+            "title": "Plan A", "format": "txt",
+            "text": "Program A targets 2025 milestones for delta review.",
+            "source_type": "law_regulation", "status": "effective",
+        })
+        server.import_document({
+            "title": "Plan B", "format": "txt",
+            "text": "Program B also cites 2025 delta obligations.",
+            "source_type": "law_regulation", "status": "effective",
+        })
+        res = server.verify_claim("delta 2025 program obligations",
+                                  filters={"effective_only": "true"})
+        emap = res["evidence_map"]
+        ids = emap["covered_markers"].get("2025", [])
+        self.assertGreaterEqual(len(ids), 2)
+        self.assertEqual(len(ids), len(set(ids)))  # deduped
+        # order matches the retrieval ranking of the supporting chunks
+        ranked_chunk_order = [it["chunk_id"] for it in emap["supporting_items"]
+                              if "2025" in it["matched_markers"]]
+        self.assertEqual(ids, ranked_chunk_order)
+
+    def test_pure_text_claim_uses_matched_terms(self):
+        server.import_document({
+            "title": "Policy Note", "format": "txt",
+            "text": "Alpha program improves coordination and reporting.",
+            "source_type": "law_regulation", "status": "effective",
+        })
+        res = server.verify_claim("Alpha program coordination",
+                                  filters={"effective_only": "true"})
+        emap = res["evidence_map"]
+        self.assertEqual(emap["required_markers"], [])
+        self.assertIsNone(emap["coverage_ratio"])
+        self.assertTrue(emap["supporting_items"])
+        self.assertTrue(emap["supporting_items"][0]["matched_terms"])
+        # No numeric/policy markers => never "supported" on lexical terms alone.
+        self.assertNotEqual(res["status"], "supported")
+
+    def test_map_helper_direct_no_items(self):
+        emap = server.map_claim_to_evidence("Alpha 30 grants 2026.", [])
+        self.assertEqual(emap["supporting_items"], [])
+        self.assertEqual(emap["covered_markers"], {})
+        self.assertEqual(set(emap["missing_markers"]), {"30", "2026"})
+        self.assertAlmostEqual(emap["coverage_ratio"], 0.0, places=6)
+
+
 class EvidenceLibraryHTTPTest(unittest.TestCase):
     """End-to-end tests over the real HTTP handler on an ephemeral local port."""
 
@@ -1072,6 +1188,16 @@ class EvidenceLibraryHTTPTest(unittest.TestCase):
         })
         self.assertEqual(status, 200)
         self.assertEqual(verify["status"], "supported")
+        # Phase 2B: the claim-to-evidence map is returned over HTTP.
+        emap = verify["evidence_map"]
+        self.assertIn("45", emap["covered_markers"])
+        self.assertIn("2026", emap["covered_markers"])
+        # covered_markers values survive JSON round-trip as lists of chunk ids.
+        self.assertIsInstance(emap["covered_markers"]["45"], list)
+        self.assertTrue(emap["covered_markers"]["45"])
+        self.assertEqual(emap["missing_markers"], [])
+        self.assertTrue(emap["supporting_items"])
+        self.assertTrue(emap["supporting_items"][0]["matched_markers"])
 
     def test_http_retrieval_evaluation(self):
         self._post("/api/library/import", {

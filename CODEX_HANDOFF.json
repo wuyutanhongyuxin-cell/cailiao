@@ -1,54 +1,52 @@
 {
   "status": "verified_by_codex",
-  "phase": "ROADMAP 阶段 2B：本地质量门禁统一入口 v1 + GitHub Actions CI",
-  "baseline": "GitHub main = 652e890b2691991465cfebb10bf420429189983b（Add retrieval eval CLI gate）；本轮在其上新增统一质量门禁入口、CI workflow 与门禁单元测试，并同步文档。",
+  "phase": "ROADMAP Stage 2B: claim-to-evidence lexical mapping v1",
+  "baseline": "GitHub main = 970d93873fb21c935dea05fa8c51153e04b185f6 (Add quality gates)",
   "changed_files": [
-    "tools/run_quality_gates.py",
-    ".github/workflows/quality-gates.yml",
-    "tests/test_quality_gates.py",
+    "backend/server.py",
+    "tests/test_library.py",
     "README.md",
+    "docs/ARCHITECTURE.md",
     "docs/ROADMAP.md",
     "docs/RETRIEVAL_EVALUATION.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "新增 tools/run_quality_gates.py：本地与 CI 统一入口，按序执行 5 个门禁——py-compile（backend/server.py、tests/test_library.py、tools/evaluate_retrieval.py、tools/run_quality_gates.py）、unittest discover、eval-retrieval（阈值 0.8/1.0/2）、git-diff（不在 git 工作树或 --skip-git-diff 时安全 skipped 而非 failed）、secret-scan。",
-    "secret-scan：遍历工作区（跳过 .git/__pycache__/data 等与二进制后缀），检测机密形状 token（openai/github-pat-classic/github-pat-fine/aws/bearer），命中即脱敏（仅前 4 字 + 长度，绝不回显完整值）；.env* 仅按文件名列出、绝不读取内容；git 跟踪到 .env* 视为失败。",
-    "所有外部命令用 subprocess.run([...], shell=False) 固定 argv 调用，不经 shell；每个门禁报告 gate/status/returncode/duration_sec/summary；全通过 exit 0、任一 failed exit 1；--json 输出机器可读报告；--skip-git-diff 与 --only <gate> 可选。",
-    "新增 .github/workflows/quality-gates.yml：push 与 pull_request 触发，ubuntu-latest，matrix Python 3.11/3.12，checkout + setup-python 后运行 python tools/run_quality_gates.py --json；permissions contents:read，不上传 artifact，不打印 secret。",
-    "新增 tests/test_quality_gates.py：机密形状检测（token 由拼接构造以免污染源码）、脱敏不泄露原值、.env 识别、find_env_files、扫描 .env 内容永不被读取而普通文件命中被标记、排除目录、ALL_GATES 含 eval-retrieval、git-diff --skip 不失败、干净仓库 secret-scan 通过、--json 结构与退出码。",
-    "Codex 复核时修正两个真实问题：.env.example/.env.sample/.env.template 不再当私有 .env 文件误报，而是按普通文本扫描；门禁子进程默认使用 python 命令并允许 PYTHON 环境变量覆盖，避免当前 Windows Python 分发下 sys.executable 指向 python-core 时被拒绝执行。",
-    "同步更新 README（统一门禁用法 + CI 说明 + 目录结构）、ROADMAP（2B 勾选统一入口与 CI）、RETRIEVAL_EVALUATION（eval-retrieval 为统一门禁一环）。"
+    "Added map_claim_to_evidence(claim, evidence_items) as a deterministic lexical attribution helper over search_library items.",
+    "Exposed verify_claim.evidence_map with required_markers, covered_markers, missing_markers, supporting_items, and coverage_ratio.",
+    "covered_markers is now {marker: [chunk_id, ...]}, ordered by retrieval rank and deduped, so a marker covered in multiple chunks is preserved.",
+    "verify_claim keeps the conservative status rule: any missing required marker prevents supported status.",
+    "cited_chunk_ids now prefers chunks that actually matched required markers, then backfills from top retrieved chunks.",
+    "Added ClaimEvidenceMapTest coverage for fully covered markers, missing markers, multi-chunk marker attribution, pure text claims, empty evidence, and HTTP JSON round-trip.",
+    "Updated README and retrieval/architecture/roadmap docs to state that this is lexical coverage, not semantic entailment or conflict detection."
   ],
   "not_implemented": [
-    "50-100 条真实匿名检索评测集尚未建立（内置集为占位合成样本）。",
-    "尚未在真实查询集上用 CLI 扫参正式校准 BM25 k1/b 与阈值。",
-    "真正向量检索、embedding 生成、向量数据库和语义重排尚未实施。",
-    "LLM/NLI 级语义蕴含、冲突证据检测和跨句推理尚未实施。",
-    "机密扫描为启发式形状匹配，非全量熵扫描，也不检查 git 历史提交。"
+    "Semantic entailment and conflict evidence detection are still out of scope for this stage and require later LLM/NLI work.",
+    "A real anonymized 50-100 case retrieval/claim verification evaluation set is still not built.",
+    "Vector retrieval, embeddings, vector storage, and semantic reranking are still not implemented.",
+    "UI-level evidence highlighting and visual citation-chain review are still not implemented."
   ],
   "test_commands": [
     "python -m py_compile backend/server.py tests/test_library.py tools/evaluate_retrieval.py tools/run_quality_gates.py tests/test_quality_gates.py",
     "python -m unittest discover -s tests -v",
-    "python backend/server.py eval-retrieval --suite tests/data/retrieval_eval_suite.json --k 10 --min-title-recall 0.8 --min-chunk-recall 1.0 --max-misses 2",
     "python tools/run_quality_gates.py --json",
-    "git diff --check"
+    "git diff --check",
+    "rg -n --hidden -g '!*.sqlite3' -g '!__pycache__/**' -g '!*.pyc' \"sk-[A-Za-z0-9_-]{20,}|ghp_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,}|BEGIN (RSA|OPENSSH|EC|DSA) PRIVATE KEY\" ."
   ],
-  "test_status": "Codex 已在 Windows 发布仓库复跑通过：python -m py_compile backend/server.py tests/test_library.py tools/evaluate_retrieval.py tools/run_quality_gates.py tests/test_quality_gates.py；python -m unittest discover -s tests -v（82 tests OK）；python backend/server.py eval-retrieval --suite tests/data/retrieval_eval_suite.json --k 10 --min-title-recall 0.8 --min-chunk-recall 1.0 --max-misses 2（exit 0）；python tools/run_quality_gates.py --json（passed=true，5 gates passed）；git diff --check；凭据扫描未发现真实 key 或私钥形态内容。",
+  "test_status": "Codex verified on Windows review repo: py_compile passed; unittest discover ran 88 tests OK; tools/run_quality_gates.py --json returned passed=true with 5 gates passed; git diff --check passed; independent rg credential scan found no secret-shaped tokens.",
   "dependencies": [
-    "无新增外部依赖；仅使用 Python 标准库（argparse/subprocess/re/json/pathlib 等）。",
-    "CI 仅用 actions/checkout 与 actions/setup-python，无 pip 安装、无网络下载依赖。"
+    "No new external dependencies.",
+    "Implementation uses Python standard library only.",
+    "No network, npm, embedding service, or LLM call is required for this feature."
   ],
   "review_notes": [
-    "统一入口是单一事实来源：本地与 CI 调用同一脚本，结果一致；CI 无需 pip 安装（stdlib only）。",
-    "secret-scan 遵守隐私边界：绝不读取 .env* 内容、命中脱敏、非 git 环境安全跳过跟踪检查；测试中的假 token 均由字符串拼接构造，源码本身不含可匹配的机密形状。",
-    "git-diff 在非 git 工作树 skipped 而非 failed，保证本地隔离沙箱也能跑门禁；CI checkout 后为 git 仓库会正常执行。",
-    "退出码语义：0 全通过 / 1 有门禁失败；skipped 不算失败。Codex 接 CI 时应确认与门禁约定一致。"
+    "Claude's first implementation used a single chunk_id per marker; Codex rejected it because the stage required all covering chunks. The返工 version now uses marker -> [chunk_id, ...] and passes the added multi-chunk test.",
+    "The evidence mapping is deterministic and reproducible, but it is lexical attribution only. It must not be represented as proof of semantic entailment.",
+    "Downstream consumers must treat covered_markers values as lists, not scalars."
   ],
   "risks": [
-    "secret-scan 为启发式，可能漏报非常规格式机密或误报长随机串；仅作基础防线，不替代专用扫描器与 git 历史审计。",
-    "unittest 门禁会运行含 HTTP 端口绑定的测试；CI runner 正常，受限环境需允许本地回环端口。",
-    "_SKIP_DIRS 含 data，会跳过 tests/data 下评测集的机密扫描（该集为合成、无机密）；如未来该目录放入需扫描内容需调整。",
-    "workflow 触发所有分支 push；如需收敛可后续限定分支或路径过滤。"
+    "Lexical overlap can still be false-positive when the same number or year appears in unrelated context.",
+    "The order of chunks for a marker follows retrieval rank; it is not a separate authority-first order.",
+    "Any downstream script or UI that already assumed covered_markers[marker] was a scalar must be updated."
   ]
 }

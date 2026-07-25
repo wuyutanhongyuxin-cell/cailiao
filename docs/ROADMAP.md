@@ -99,8 +99,8 @@
 - [ ] 向量检索与可替换 embedding 管线
 - [ ] RRF 融合排序和可插拔重排深化
 - [ ] 地区、机构、时间、文种、有效性过滤的 UI/评测覆盖扩展
-- [ ] 主张到证据的精确映射
-- [ ] 引用蕴含与冲突证据检测
+- [x] 主张到证据的精确映射 v1：`map_claim_to_evidence` 逐标记归因到覆盖分段列表（`covered_markers`: marker → [chunk_id, ...]）、`missing_markers`、逐分段 `supporting_items`（`matched_markers`/`matched_terms`/`hit_reasons`）与 `coverage_ratio`，并入 `verify_claim` 的 `evidence_map`；保守判定不变
+- [ ] 引用蕴含与冲突证据检测（语义级，需 LLM/NLI，超出本阶段词面覆盖范围）
 - [ ] 展示检索过程和命中理由的可审计面板
 
 参考 `zh-policy-rag` 的 MIT 许可实现，复用时保留版权与许可证。

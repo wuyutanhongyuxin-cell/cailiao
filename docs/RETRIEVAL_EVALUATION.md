@@ -108,6 +108,22 @@ CLI 行为：
 
 `eval-retrieval` 也是统一质量门禁 `tools/run_quality_gates.py` 的一个门禁环节；本地与 GitHub Actions CI 通过该统一入口一并运行编译、单测、检索评测、`git diff --check` 与机密/`.env` 扫描。
 
+## 主张到证据映射（`verify_claim.evidence_map`）
+
+阶段 2B 在检索之上补充确定性的主张→证据映射（`map_claim_to_evidence(claim, items)`），并入 `verify_claim` 返回值的 `evidence_map` 字段：
+
+| 字段 | 含义 |
+|---|---|
+| `required_markers` | 主张必须被支撑的标记（文号/年份/数值/《标题》），来自 `_required_claim_markers` |
+| `covered_markers` | `{marker: [chunk_id, ...]}`，按检索排序（去重）列出**覆盖该标记的所有分段**；同一标记可分布在多段，便于构建引用链 |
+| `missing_markers` | 没有任何检索分段包含的标记 |
+| `supporting_items` | 命中 ≥1 标记或词的分段详情：`chunk_id`/`document_id`/`document_title`/`source_type`/`authority_level`/`matched_markers`/`matched_terms`/`hit_reasons` |
+| `coverage_ratio` | 被至少一个分段覆盖的标记数 / 必备标记数；主张无标记时为 `null` |
+
+`verify_claim` 的 `cited_chunk_ids` 优先取真正命中标记的分段，再回退到 Top items。判定保持保守：**任一必备标记未被覆盖则绝不判 `supported`**。
+
+> 这是**词面覆盖**而非语义蕴含：它证明标记/词出现在证据里，不证明证据在语义上支持主张，也不检测冲突证据——语义蕴含与冲突检测需 LLM/NLI，超出本阶段范围。
+
 ## 使用边界
 
 - 该评测器只衡量当前检索结果是否召回标注答案；
