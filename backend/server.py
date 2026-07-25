@@ -4,6 +4,7 @@ import base64
 import hashlib
 import io
 import json
+import math
 import os
 import re
 import sqlite3
@@ -13,6 +14,7 @@ import urllib.request
 import uuid
 import xml.etree.ElementTree as ET
 import zipfile
+from collections import Counter
 from datetime import datetime
 from html import escape
 from html.parser import HTMLParser
@@ -957,6 +959,28 @@ def tokenize_query(text: str) -> list[str]:
     return [t for t in ascii_tokens + cjk_tokens if t.strip()]
 
 
+# BM25/FTS v1 term space: richer than tokenize_query's uni/bi-gram set. For CJK we
+# emit contiguous-run ngrams of length 1..4 so multi-character policy terms (e.g.
+# "现场核查", "专项资金") become weightable units with their own document
+# frequency; ASCII/number tokens are kept whole. Stdlib only, fully deterministic.
+BM25_CJK_NGRAM_MAX = 4
+
+
+def _bm25_terms(text: str) -> list[str]:
+    """Expand text into the BM25 term space (with repetition, for term frequency)."""
+    text = (text or "").lower()
+    terms: list[str] = re.findall(r"[a-z0-9_]+", text)
+    # CJK ngrams within each contiguous run of Han characters.
+    for run in re.findall(r"[一-鿿]+", text):
+        n = len(run)
+        for size in range(1, BM25_CJK_NGRAM_MAX + 1):
+            if size > n:
+                break
+            for i in range(n - size + 1):
+                terms.append(run[i:i + size])
+    return [t for t in terms if t.strip()]
+
+
 def _required_claim_markers(text: str) -> list[str]:
     """Markers that must be present in evidence before a claim can be supported.
 
@@ -1044,8 +1068,27 @@ def _rank_channel(rows: list[dict[str, Any]], score_fn) -> list[dict[str, Any]]:
     return out
 
 
+# BM25 tuning knobs (Okapi BM25). k1 controls term-frequency saturation; b
+# controls document-length normalization. Kept as module constants so a later
+# tuning round or evaluation harness can sweep them without touching call sites.
+BM25_K1 = 1.5
+BM25_B = 0.75
+# Authority contributes only a minuscule tie-breaker so it can order otherwise
+# equal textual matches without ever outranking real lexical support.
+AUTHORITY_TIEBREAK = 0.001
+
+
 def search_library(query: str, filters: dict[str, str] | None = None, limit: int = 10) -> dict[str, Any]:
-    """Deterministic Phase 2A retrieval. No vector model is used."""
+    """Deterministic Phase 2B retrieval (BM25/FTS v1). No vector model is used.
+
+    Three deterministic channels are fused with RRF:
+    - ``lexical_exact``: exact query / required-marker substring hits;
+    - ``fts_or_ngram``: token-overlap recall over the mixed CJK/ASCII tokenizer;
+    - ``bm25_like``: Okapi BM25 over the richer CJK-ngram/ASCII term space, with
+      IDF, term-frequency saturation (k1) and document-length normalization (b).
+
+    Authority level only breaks ties; it never substitutes for textual support.
+    """
     filters = filters or {}
     query = (query or "").strip()
     limit = max(1, min(int(limit or 10), 50))
@@ -1081,9 +1124,55 @@ def search_library(query: str, filters: dict[str, str] | None = None, limit: int
         score += min(float(row.get("authority_level") or 0), 6.0) / 100.0
         return score, ["token_overlap:" + ",".join(sorted(set(matched))[:8])]
 
+    # --- BM25-like channel: precompute corpus statistics over the filtered rows.
+    query_terms = set(_bm25_terms(query))
+    doc_terms: dict[str, "Counter[str]"] = {}
+    doc_len: dict[str, int] = {}
+    doc_freq: dict[str, int] = {}
+    for row in rows:
+        terms = _bm25_terms(_searchable_text(row))
+        counts = Counter(terms)
+        cid = row["chunk_id"]
+        doc_terms[cid] = counts
+        doc_len[cid] = sum(counts.values())
+        for term in counts:
+            if term in query_terms:
+                doc_freq[term] = doc_freq.get(term, 0) + 1
+    n_docs = len(rows)
+    avg_len = (sum(doc_len.values()) / n_docs) if n_docs else 0.0
+    # Robust IDF (BM25): log(1 + (N - df + 0.5)/(df + 0.5)) is always positive.
+    idf = {
+        term: math.log(1.0 + (n_docs - df + 0.5) / (df + 0.5))
+        for term, df in doc_freq.items()
+    }
+
+    def bm25_like(row):
+        if not query_terms or n_docs == 0:
+            return 0.0, ["no_bm25_terms"]
+        cid = row["chunk_id"]
+        counts = doc_terms.get(cid, Counter())
+        dl = doc_len.get(cid, 0)
+        denom_norm = BM25_K1 * (1 - BM25_B + BM25_B * (dl / avg_len if avg_len else 0.0))
+        score = 0.0
+        matched: list[str] = []
+        for term in query_terms:
+            tf = counts.get(term, 0)
+            if not tf:
+                continue
+            term_score = idf.get(term, 0.0) * (tf * (BM25_K1 + 1)) / (tf + denom_norm)
+            if term_score > 0:
+                score += term_score
+                matched.append(term)
+        if score <= 0:
+            return 0.0, ["no_bm25_match"]
+        score += min(float(row.get("authority_level") or 0), 6.0) * AUTHORITY_TIEBREAK
+        top = sorted(matched, key=lambda t: (-idf.get(t, 0.0), t))[:8]
+        return score, ["bm25:" + ",".join(top)]
+
     channels = {
         "lexical_exact": _rank_channel(rows, lexical),
         "fts_or_ngram": _rank_channel(rows, ngram),
+        "bm25_like": _rank_channel(rows, bm25_like),
     }
     fused: dict[str, dict[str, Any]] = {}
     for channel_name, ranked in channels.items():
@@ -1103,7 +1192,9 @@ def search_library(query: str, filters: dict[str, str] | None = None, limit: int
         "query": query,
         "items": results[:limit],
         "channels": {name: len(vals) for name, vals in channels.items()},
-        "vector": {"enabled": False, "reason": "Phase 2A has no embeddings/vector retrieval"},
+        "bm25": {"k1": BM25_K1, "b": BM25_B, "cjk_ngram_max": BM25_CJK_NGRAM_MAX,
+                 "corpus_size": n_docs, "avg_doc_len": avg_len},
+        "vector": {"enabled": False, "reason": "Phase 2B BM25/FTS v1: deterministic lexical/ngram/BM25 only; no embeddings/vector retrieval"},
     }
 
 
@@ -1176,6 +1267,10 @@ def evaluate_retrieval_cases(cases: list[dict[str, Any]], k: int = 10) -> dict[s
     (`missed_titles`, `missed_chunk_ids`) and the rank of the first relevant hit
     (`first_relevant_rank`), and the aggregate `misses` list carries the same
     diagnostics so a quality gate can point at concrete gaps, not just a number.
+
+    For auditability each case also reports `top_reasons`: the Top K results with
+    their fused score, per-channel ranks/scores and hit reasons, so a reviewer can
+    see why a chunk ranked where it did (BM25 terms, token overlap, exact hits).
     """
     k = max(1, min(int(k or 10), 50))
     evaluated = []
@@ -1216,11 +1311,22 @@ def evaluate_retrieval_cases(cases: list[dict[str, Any]], k: int = 10) -> dict[s
                 first_relevant_rank = pos
                 break
 
+        # Explainability: why each Top K chunk ranked where it did.
+        top_reasons = [{
+            "rank": pos,
+            "chunk_id": str(item.get("chunk_id", "")),
+            "document_title": str(item.get("document_title", "")),
+            "fused_score": item.get("fused_score"),
+            "channels": item.get("channels", {}),
+            "hit_reasons": item.get("hit_reasons", []),
+        } for pos, item in enumerate(items[:k], start=1)]
+
         evaluated.append({
             "id": case.get("id") or f"case-{idx}",
             "query": query,
             "top_titles": ranked_titles[:k],
             "top_chunk_ids": ranked_chunks[:k],
+            "top_reasons": top_reasons,
             "relevant_titles": sorted(relevant_titles),
             "relevant_chunk_ids": sorted(relevant_chunks),
             "title_recall_at_k": title_recall,

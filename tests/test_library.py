@@ -503,6 +503,96 @@ class EvidenceLibraryPhase2ATest(unittest.TestCase):
         self.assertFalse(report["vector"]["enabled"])
 
 
+class RetrievalBM25Test(unittest.TestCase):
+    """Phase 2B BM25/FTS v1: BM25-like channel, IDF weighting, tuning, tie-breaking."""
+
+    def setUp(self):
+        self._tmp = tempfile.NamedTemporaryFile(suffix=".sqlite3", delete=False)
+        self._tmp.close()
+        self._orig_db_path = server.DB_PATH
+        server.DB_PATH = Path(self._tmp.name)
+
+    def tearDown(self):
+        server.DB_PATH = self._orig_db_path
+        Path(self._tmp.name).unlink(missing_ok=True)
+
+    def _imp(self, title, text, **kw):
+        payload = {"title": title, "format": "txt", "text": text, "status": "effective"}
+        payload.update(kw)
+        res = server.import_document(payload)
+        self.assertIn(res["status"], {"succeeded", "new_version"}, f"{title} -> {res}")
+        return res
+
+    def _seed_common_and_rare(self):
+        # Three high-authority docs share the common term 通知; one low-authority
+        # doc additionally carries the rare term 光伏.
+        self._imp("甲类通知", "甲类事项发布通知。", source_type="law_regulation")
+        self._imp("乙类通知", "乙类事项发布通知。", source_type="law_regulation")
+        self._imp("丙类通知", "丙类事项发布通知。", source_type="law_regulation")
+        self._imp("光伏专项说明", "光伏专项事项发布通知。", source_type="user_fact")
+
+    # --- term-space expansion ------------------------------------------
+    def test_bm25_terms_cover_word_char_mixed(self):
+        terms = set(server._bm25_terms("Alpha 2026 光伏项目"))
+        self.assertIn("alpha", terms)      # ascii word
+        self.assertIn("2026", terms)       # number token
+        self.assertIn("光", terms)          # cjk unigram
+        self.assertIn("光伏", terms)         # cjk bigram
+        self.assertIn("光伏项目", terms)      # cjk 4-gram (within run)
+        # ngram length is capped; runs longer than the cap keep sliding.
+        self.assertNotIn("光伏项目补", set(server._bm25_terms("光伏项目补助")))
+
+    # --- BM25 channel wired into search --------------------------------
+    def test_bm25_channel_present_for_word_char_mixed_queries(self):
+        self._imp("混合样本", "Alpha 项目 2026 光伏 补助。", source_type="law_regulation")
+        for q in ("2026", "光伏", "alpha", "alpha 2026 光伏"):
+            res = server.search_library(q, filters={"effective_only": "true"}, limit=10)
+            self.assertTrue(res["items"], f"no items for query {q!r}")
+            top = res["items"][0]
+            self.assertEqual(top["document_title"], "混合样本")
+            self.assertIn("bm25_like", top["channels"], f"bm25 channel missing for {q!r}")
+            self.assertTrue(any(r.startswith("bm25:") for r in top["hit_reasons"]))
+        # Tuning knobs are surfaced for a later sweep / harness.
+        meta = res["bm25"]
+        self.assertEqual(meta["k1"], server.BM25_K1)
+        self.assertEqual(meta["b"], server.BM25_B)
+
+    def test_idf_lets_rare_term_outrank_common_term(self):
+        self._seed_common_and_rare()
+        res = server.search_library("光伏 通知", filters={"effective_only": "true"}, limit=10)
+        by_title = {i["document_title"]: i for i in res["items"]}
+        self.assertIn("光伏专项说明", by_title)
+        self.assertIn("甲类通知", by_title)
+        rare = by_title["光伏专项说明"]
+        common = by_title["甲类通知"]
+        # Rare-term doc must score strictly higher on the BM25 channel thanks to IDF.
+        self.assertGreater(rare["channels"]["bm25_like"]["score"],
+                           common["channels"]["bm25_like"]["score"])
+
+    def test_authority_is_tiebreaker_not_override(self):
+        # The rare-term doc is the lowest authority (user_fact) yet wins on text.
+        self._seed_common_and_rare()
+        res = server.search_library("光伏 通知", filters={"effective_only": "true"}, limit=10)
+        top = res["items"][0]
+        self.assertEqual(top["document_title"], "光伏专项说明")
+        self.assertEqual(top["source_type"], "user_fact")
+
+    def test_bm25_respects_effective_only_filter(self):
+        self._imp("现行通知", "现行光伏专项通知。", source_type="law_regulation", status="有效")
+        self._imp("废止通知", "废止光伏专项通知。", source_type="law_regulation", status="已废止")
+        res = server.search_library("光伏 通知", filters={"effective_only": "true"}, limit=10)
+        titles = {i["document_title"] for i in res["items"]}
+        self.assertIn("现行通知", titles)
+        self.assertNotIn("废止通知", titles)
+
+    def test_bm25_respects_min_authority_filter(self):
+        # A strong BM25 text match is still excluded when it fails the authority gate.
+        self._seed_common_and_rare()
+        res = server.search_library("光伏", filters={"effective_only": "true", "min_authority": "4"}, limit=10)
+        titles = {i["document_title"] for i in res["items"]}
+        self.assertNotIn("光伏专项说明", titles)  # user_fact (authority 1) filtered out
+
+
 class RetrievalEvalSuiteTest(unittest.TestCase):
     """Phase 2B: run the anonymized retrieval eval suite through evaluate_retrieval_cases.
 
@@ -616,6 +706,14 @@ class RetrievalEvalSuiteTest(unittest.TestCase):
         self.assertEqual(hit["missed_titles"], [])
         self.assertEqual(hit["missed_chunk_ids"], [])
         self.assertIsNotNone(hit["first_relevant_rank"])
+
+        # Explainability: top_reasons expose fused score, channels and hit reasons,
+        # including the new bm25_like channel.
+        self.assertTrue(hit["top_reasons"])
+        first = hit["top_reasons"][0]
+        self.assertEqual(first["rank"], 1)
+        self.assertIn("bm25_like", first["channels"])
+        self.assertIsNotNone(first["fused_score"])
 
         # Multi-doc recall: both labeled titles retrieved.
         multi = by_id["case-02-multi-doc-recall"]

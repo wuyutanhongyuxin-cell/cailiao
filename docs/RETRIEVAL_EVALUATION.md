@@ -1,6 +1,6 @@
 # 检索评测基座
 
-本文件记录阶段 2B 的第一块可验收能力：在接入 BM25 调优、向量检索、重排或语义核验前，先建立稳定的检索评测运行器。
+本文件记录阶段 2B 的可验收能力：稳定的检索评测运行器，以及在其之上落地的 BM25/FTS v1 确定性检索通道。向量检索、重排与语义核验仍在后续阶段。
 
 ## 当前能力
 
@@ -9,8 +9,33 @@
 - 支持按 `relevant_chunk_ids` 做分段级评测；
 - 输出 `Recall@K`、`MRR`、miss 列表和每个 case 的 Top K 结果；
 - 逐 case 报告 Top K 内漏掉的标注答案（`missed_titles`、`missed_chunk_ids`）与首个命中排名（`first_relevant_rank`），聚合 `misses` 列表同样携带这些诊断字段，便于把质量门禁指向具体缺口；
+- 逐 case 输出 `top_reasons`（Top K 结果的 `fused_score`、各通道 `rank`/`score` 与 `hit_reasons`），可审计每个分段为何排到该位置；
 - HTTP API：`POST /api/library/evaluate-retrieval`；
 - 不调用 embedding、向量库、重排模型或外部服务。
+
+## BM25/FTS v1 检索通道
+
+`search_library` 在阶段 2A 两路通道基础上新增确定性 `bm25_like` 通道，三路以 RRF 融合：
+
+| 通道 | 作用 |
+|---|---|
+| `lexical_exact` | 整串精确命中与必备标记（文号/年份/数值/《标题》）子串命中 |
+| `fts_or_ngram` | 混合中英分词的 token 覆盖召回 |
+| `bm25_like` | 在更丰富的词元空间上做 Okapi BM25 加权 |
+
+BM25 词元空间（`_bm25_terms`，仅标准库、完全确定性）：
+
+- ASCII 词与数字 token 整体保留（如 `alpha`、`2026`）；
+- 中文按连续汉字串切出长度 1-4 的 ngram（如 `现场`、`现场核查`），使多字政策术语成为带独立文档频次的加权单元。
+
+打分为标准 Okapi BM25：`idf(t) · tf·(k1+1) / (tf + k1·(1-b + b·dl/avgdl))`，其中
+
+- `idf(t) = log(1 + (N - df + 0.5)/(df + 0.5))`，恒为正；稀有词（df 小）权重更高；
+- `k1`（默认 `1.5`）控制词频饱和，`b`（默认 `0.75`）控制文档长度归一，均为模块常量 `BM25_K1`/`BM25_B`，便于后续扫参；
+- 权威等级只作极小 tie-breaker（`AUTHORITY_TIEBREAK`），绝不替代词面支撑；
+- 命中项写入 `hit_reasons`（`bm25:<按 idf 排序的命中词>`），检索响应的 `bm25` 字段回报 `k1`/`b`/`cjk_ngram_max`/`corpus_size`/`avg_doc_len`。
+
+过滤（`effective_only`/`source_type`/`min_authority`/`region` 等）在 SQL 层先行生效，BM25 只在过滤后的候选集上打分，因此不会绕过有效性或权威门禁。
 
 ## Case 格式
 
@@ -34,6 +59,7 @@
 | `title_recall_at_k` / `chunk_recall_at_k` | 文档级 / 分段级 Recall@K（无对应标注时为 `null`） |
 | `missed_titles` / `missed_chunk_ids` | Top K 内未命中的标注答案，直接指出缺口 |
 | `first_relevant_rank` | 首个命中的排名（未命中为 `null`） |
+| `top_reasons` | Top K 结果的 `rank`/`chunk_id`/`document_title`/`fused_score`/`channels`/`hit_reasons`，用于审计排序理由 |
 | `hit` | Top K 是否命中任一标注答案 |
 
 聚合层输出 `case_count`、`k`、`title_recall_at_k`、`title_mrr`、`chunk_recall_at_k`、`chunk_mrr`、`miss_count` 与携带诊断字段的 `misses` 列表。
