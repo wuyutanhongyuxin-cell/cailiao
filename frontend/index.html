@@ -161,13 +161,33 @@
               </select>
             </div>
             <div class="block"><label>地区 / 管辖</label><input id="libSearchRegion" placeholder="例如：广东省 / 全国（精确匹配）" /></div>
+            <div class="block"><label>发文机关</label><input id="libSearchOrganization" placeholder="例如：国务院办公厅（精确匹配）" /></div>
+            <div class="block">
+              <label>格式</label>
+              <select id="libSearchFormat">
+                <option value="">不限</option>
+                <option value="txt">TXT</option>
+                <option value="html">HTML</option>
+                <option value="docx">DOCX</option>
+                <option value="xlsx">XLSX</option>
+              </select>
+            </div>
+            <div class="block"><label>发布日期起（含）</label><input id="libSearchDateFrom" placeholder="2025-01-01" /></div>
+            <div class="block"><label>发布日期止（含）</label><input id="libSearchDateTo" placeholder="2026-12-31" /></div>
+            <div class="block">
+              <label>有效性范围</label>
+              <select id="libSearchEffectiveOnly">
+                <option value="true" selected>仅现行有效</option>
+                <option value="false">全部状态</option>
+              </select>
+            </div>
             <div class="block wide tall"><label>主张核验（可选）</label><textarea id="libClaim" placeholder="粘贴一句需要核验的主张；系统只做词面覆盖检查，不做语义蕴含判断。"></textarea></div>
           </div>
           <div class="exportActions">
             <button id="searchBtn" class="primary">检索</button>
             <button id="verifyClaimBtn">核验主张</button>
           </div>
-          <p class="muted">检索与核验均为确定性词面/BM25 方法，仅限现行有效文档；覆盖不等于语义蕴含，命中项仍需人工语义复核。</p>
+          <p class="muted">过滤条件（地区/机关/格式/日期/来源类型/权威/有效性）先约束候选，再做确定性词面/BM25/RRF 排序；词面覆盖不等于语义蕴含，命中项仍需人工语义复核。</p>
           <div id="searchMsg" class="muted"></div>
           <div id="searchResults" class="list"></div>
         </div>

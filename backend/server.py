@@ -1006,13 +1006,13 @@ def _chunk_search_rows(conn: sqlite3.Connection, filters: dict[str, str]) -> lis
         "c.id", "c.document_id", "c.chunk_index", "c.char_start", "c.char_end", "c.status",
         "c.content", "c.location_kind", "c.location_value", "d.title", "d.source_url",
         "d.organization", "d.document_number", "d.publish_date", "d.status", "d.source_type",
-        "d.authority_level", "d.region", "d.version",
+        "d.authority_level", "d.region", "d.version", "d.format",
     ]
     names = [
         "chunk_id", "document_id", "chunk_index", "char_start", "char_end", "chunk_status",
         "content", "location_kind", "location_value", "document_title", "source_url",
         "organization", "document_number", "publish_date", "document_status", "source_type",
-        "authority_level", "region", "version",
+        "authority_level", "region", "version", "format",
     ]
     where = []
     params: list[Any] = []
@@ -1022,6 +1022,13 @@ def _chunk_search_rows(conn: sqlite3.Connection, filters: dict[str, str]) -> lis
     if filters.get("region"):
         where.append("d.region=?")
         params.append(filters["region"])
+    if str(filters.get("organization", "")).strip():
+        where.append("d.organization=?")
+        params.append(filters["organization"].strip())
+    if str(filters.get("format", "")).strip():
+        # Normalize to lowercase without a leading dot, matching import storage.
+        where.append("d.format=?")
+        params.append(filters["format"].strip().lower().lstrip("."))
     if filters.get("status"):
         where.append("c.status=?")
         params.append(filters["status"])
@@ -1758,7 +1765,7 @@ class Handler(SimpleHTTPRequestHandler):
             self.json_response({"items": list_jobs(self._query_param("status"))})
             return
         if self.path.startswith("/api/library/search"):
-            filters = {k: self._query_param(k) for k in ("source_type", "region", "min_authority", "status", "document_status", "effective_only", "date_from", "date_to")}
+            filters = {k: self._query_param(k) for k in ("source_type", "region", "organization", "format", "min_authority", "status", "document_status", "effective_only", "date_from", "date_to")}
             self.json_response(search_library(self._query_param("q"), filters=filters, limit=int(self._query_param("limit") or 10)))
             return
         return super().do_GET()

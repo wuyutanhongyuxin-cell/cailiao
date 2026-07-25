@@ -254,12 +254,35 @@ async function renderJobs() {
 
 
 function searchFilters() {
-  return {
+  const filters = {
     min_authority: $('libSearchAuthority').value.trim(),
     source_type: $('libSearchSourceType').value.trim(),
     region: $('libSearchRegion').value.trim(),
-    effective_only: 'true',
+    organization: $('libSearchOrganization').value.trim(),
+    format: $('libSearchFormat').value.trim(),
+    date_from: $('libSearchDateFrom').value.trim(),
+    date_to: $('libSearchDateTo').value.trim(),
+    effective_only: $('libSearchEffectiveOnly').value,
   };
+  // Drop blank values so the server ignores them conservatively.
+  Object.keys(filters).forEach((k) => { if (!filters[k]) delete filters[k]; });
+  return filters;
+}
+
+const FILTER_LABEL = {
+  min_authority: '最低权威', source_type: '来源类型', region: '地区',
+  organization: '发文机关', format: '格式', date_from: '发布起',
+  date_to: '发布止', effective_only: '有效性',
+};
+
+function activeFilterSummary(filters) {
+  const parts = Object.entries(filters).map(([k, v]) => {
+    const val = k === 'effective_only'
+      ? (v === 'true' ? '仅现行有效' : '全部状态')
+      : (k === 'source_type' ? label(v) : v);
+    return `${FILTER_LABEL[k] || k}=${val}`;
+  });
+  return parts.length ? '生效过滤：' + parts.join('，') : '生效过滤：无（先过滤候选，再 BM25/RRF 排序）';
 }
 
 function channelsHtml(channels) {
@@ -276,7 +299,8 @@ async function renderSearch() {
     $('searchResults').innerHTML = '';
     return;
   }
-  const params = new URLSearchParams({ q: query, limit: '10', ...searchFilters() });
+  const filters = searchFilters();
+  const params = new URLSearchParams({ q: query, limit: '10', ...filters });
   const data = await fetch(`/api/library/search?${params.toString()}`).then((r) => r.json());
   const vector = data.vector || {};
   const bm25 = data.bm25 || {};
@@ -284,7 +308,7 @@ async function renderSearch() {
     ? `　BM25：k1 ${bm25.k1}、b ${bm25.b}、语料 ${bm25.corpus_size ?? '-'} 段`
     : '';
   $('searchMsg').textContent =
-    `命中 ${data.items.length} 段（仅现行有效）　向量检索：${vector.enabled ? '已启用' : '未启用（确定性词面/BM25）'}${bm25Note}`;
+    `命中 ${data.items.length} 段　向量检索：${vector.enabled ? '已启用' : '未启用（确定性词面/BM25）'}${bm25Note}　·　${activeFilterSummary(filters)}`;
   $('searchResults').innerHTML = data.items.map((item) => `
     <div class="item ${escapeHtml(item.chunk_status || '')}">
       <strong>${escapeHtml(item.document_title || '未命名')}　·　${escapeHtml(label(item.source_type))}　·　权威等级 ${item.authority_level ?? 0}</strong>
@@ -309,13 +333,14 @@ async function verifyClaim() {
     $('searchResults').innerHTML = '';
     return;
   }
-  const data = await api('/api/library/verify-claim', { claim, filters: searchFilters(), limit: 5 });
+  const filters = searchFilters();
+  const data = await api('/api/library/verify-claim', { claim, filters, limit: 5 });
   const emap = data.evidence_map || {};
   const ratio = emap.coverage_ratio;
   const ratioText = ratio === null || ratio === undefined ? '无必备标记（不适用）' : `${(ratio * 100).toFixed(0)}%`;
   const statusClass = data.status === 'supported' ? 'warning' : data.status === 'unsupported' ? 'fail' : 'warning';
   $('searchMsg').textContent =
-    `核验结论：${VERIFY_STATUS_LABEL[data.status] || data.status}　·　理由：${escapeHtml((data.reasons || []).join('，'))}`;
+    `核验结论：${VERIFY_STATUS_LABEL[data.status] || data.status}　·　理由：${(data.reasons || []).join('，')}　·　${activeFilterSummary(filters)}`;
 
   const coveredHtml = Object.entries(emap.covered_markers || {}).map(([marker, ids]) =>
     `<div>标记「${escapeHtml(marker)}」→ 分段 ${escapeHtml((ids || []).join('、'))}</div>`

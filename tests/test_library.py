@@ -454,6 +454,54 @@ class EvidenceLibraryPhase2ATest(unittest.TestCase):
         high = server.search_library("Alpha", filters={"min_authority": "4", "effective_only": "true"}, limit=10)
         self.assertTrue(all(i["authority_level"] >= 4 for i in high["items"]))
 
+    def test_search_filters_metadata_v1(self):
+        server.import_document({
+            "title": "Filter Alpha A", "format": "txt",
+            "text": "Shared filter alpha obligation in 2025.",
+            "source_type": "ministry", "status": "effective", "region": "GZ",
+            "organization": "Org A", "publish_date": "2025-01-15",
+        })
+        server.import_document({
+            "title": "Filter Alpha B", "format": "html",
+            "text": "<p>Shared filter alpha obligation in 2026.</p>",
+            "source_type": "law_regulation", "status": "effective", "region": "SZ",
+            "organization": "Org B", "publish_date": "2026-05-20",
+        })
+        server.import_document({
+            "title": "Filter Alpha Old", "format": "txt",
+            "text": "Shared filter obsolete obligation in 2024.",
+            "source_type": "law_regulation", "status": "repealed", "region": "GZ",
+            "organization": "Org A", "publish_date": "2024-01-01",
+        })
+
+        by_org = server.search_library(
+            "Shared filter alpha", filters={"organization": "Org A", "effective_only": "true"}, limit=10)
+        self.assertEqual([i["document_title"] for i in by_org["items"]], ["Filter Alpha A"])
+
+        by_format = server.search_library(
+            "Shared filter alpha", filters={"format": ".HTML", "effective_only": "true"}, limit=10)
+        self.assertEqual([i["document_title"] for i in by_format["items"]], ["Filter Alpha B"])
+
+        by_date = server.search_library(
+            "Shared filter alpha", filters={"date_from": "2026-01-01", "date_to": "2026-12-31",
+                                            "effective_only": "true"}, limit=10)
+        self.assertEqual([i["document_title"] for i in by_date["items"]], ["Filter Alpha B"])
+
+        by_region_and_authority = server.search_library(
+            "Shared filter alpha", filters={"region": "SZ", "min_authority": "6",
+                                            "source_type": "law_regulation",
+                                            "effective_only": "true"}, limit=10)
+        self.assertEqual([i["document_title"] for i in by_region_and_authority["items"]],
+                         ["Filter Alpha B"])
+
+        old_hidden = server.search_library(
+            "obsolete", filters={"effective_only": "true"}, limit=10)
+        self.assertEqual(old_hidden["items"], [])
+        old_visible = server.search_library(
+            "obsolete", filters={"effective_only": "false", "document_status": "已废止"}, limit=10)
+        self.assertEqual([i["document_title"] for i in old_visible["items"]],
+                         ["Filter Alpha Old"])
+
     def test_effective_only_excludes_repealed_chunks(self):
         self._seed()
         res = server.search_library("99 obsolete", filters={"effective_only": "true"}, limit=10)
@@ -502,6 +550,29 @@ class EvidenceLibraryPhase2ATest(unittest.TestCase):
         self.assertGreater(report["title_mrr"], 0.0)
         self.assertGreater(report["chunk_recall_at_k"], 0.0)
         self.assertFalse(report["vector"]["enabled"])
+
+    def test_retrieval_evaluator_honors_metadata_filters(self):
+        server.import_document({
+            "title": "Eval Filter A", "format": "txt",
+            "text": "Filtered evaluation alpha duty for group A.",
+            "source_type": "law_regulation", "status": "effective",
+            "organization": "Eval Org A", "publish_date": "2025-01-01",
+        })
+        server.import_document({
+            "title": "Eval Filter B", "format": "txt",
+            "text": "Filtered evaluation alpha duty for group B.",
+            "source_type": "law_regulation", "status": "effective",
+            "organization": "Eval Org B", "publish_date": "2026-01-01",
+        })
+        report = server.evaluate_retrieval_cases([{
+            "id": "filtered-hit",
+            "query": "Filtered evaluation alpha",
+            "filters": {"organization": "Eval Org B", "date_from": "2026-01-01",
+                        "format": "txt", "effective_only": "true"},
+            "relevant_titles": ["Eval Filter B"],
+        }], k=5)
+        self.assertEqual(report["miss_count"], 0)
+        self.assertEqual(report["cases"][0]["top_titles"][0], "Eval Filter B")
 
 
 class RetrievalBM25Test(unittest.TestCase):
@@ -1198,6 +1269,27 @@ class EvidenceLibraryHTTPTest(unittest.TestCase):
         self.assertEqual(emap["missing_markers"], [])
         self.assertTrue(emap["supporting_items"])
         self.assertTrue(emap["supporting_items"][0]["matched_markers"])
+
+    def test_http_library_search_metadata_filters(self):
+        self._post("/api/library/import", {
+            "title": "HTTP Filter A", "format": "txt",
+            "text": "HTTP filter alpha confirms 11 actions.",
+            "source_type": "ministry", "status": "effective", "region": "GZ",
+            "organization": "HTTP Org A", "publish_date": "2025-01-10",
+        })
+        self._post("/api/library/import", {
+            "title": "HTTP Filter B", "format": "html",
+            "text": "<p>HTTP filter alpha confirms 22 actions.</p>",
+            "source_type": "law_regulation", "status": "effective", "region": "SZ",
+            "organization": "HTTP Org B", "publish_date": "2026-02-20",
+        })
+        url = ("/api/library/search?q=HTTP%20filter%20alpha&effective_only=true"
+               "&organization=HTTP%20Org%20B&format=html&date_from=2026-01-01&date_to=2026-12-31")
+        status, search = self._get(url)
+        self.assertEqual(status, 200)
+        self.assertEqual([i["document_title"] for i in search["items"]], ["HTTP Filter B"])
+        self.assertEqual(search["items"][0]["organization"], "HTTP Org B")
+        self.assertEqual(search["items"][0]["format"], "html")
 
     def test_http_retrieval_evaluation(self):
         self._post("/api/library/import", {

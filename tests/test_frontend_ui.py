@@ -12,8 +12,10 @@ class FrontendSearchUiTest(unittest.TestCase):
 
     REQUIRED_IDS = [
         "libSearchQuery", "libSearchAuthority", "libSearchSourceType",
-        "libSearchRegion", "libClaim", "searchBtn", "verifyClaimBtn",
-        "searchMsg", "searchResults", "libSearch",
+        "libSearchRegion", "libSearchOrganization", "libSearchDateFrom",
+        "libSearchDateTo", "libSearchFormat", "libSearchEffectiveOnly",
+        "libClaim", "searchBtn", "verifyClaimBtn", "searchMsg",
+        "searchResults", "libSearch",
     ]
 
     def test_index_html_has_all_required_ids(self):
@@ -32,6 +34,12 @@ class FrontendSearchUiTest(unittest.TestCase):
         for token in ("fused_score", "hit_reasons", "channels",
                       "vector", "bm25", "location_kind"):
             self.assertIn(token, APP_JS, f"renderSearch does not surface {token}")
+
+    def test_search_filters_include_metadata_v1_controls(self):
+        for token in ("organization", "format", "date_from", "date_to",
+                      "effective_only", "activeFilterSummary", "生效过滤",
+                      "先过滤候选"):
+            self.assertIn(token, APP_JS)
 
     def test_verify_renderer_surfaces_evidence_map(self):
         for token in ("evidence_map", "covered_markers", "missing_markers",

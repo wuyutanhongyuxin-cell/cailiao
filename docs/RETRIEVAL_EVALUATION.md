@@ -35,7 +35,7 @@ BM25 词元空间（`_bm25_terms`，仅标准库、完全确定性）：
 - 权威等级只作极小 tie-breaker（`AUTHORITY_TIEBREAK`），绝不替代词面支撑；
 - 命中项写入 `hit_reasons`（`bm25:<按 idf 排序的命中词>`），检索响应的 `bm25` 字段回报 `k1`/`b`/`cjk_ngram_max`/`corpus_size`/`avg_doc_len`。
 
-过滤（`effective_only`/`source_type`/`min_authority`/`region` 等）在 SQL 层先行生效，BM25 只在过滤后的候选集上打分，因此不会绕过有效性或权威门禁。
+过滤（`effective_only`/`source_type`/`min_authority`/`region`/`organization`/`format`/`date_from`/`date_to`/`document_status`/`status` 等）在 SQL 层先行生效，BM25 只在过滤后的候选集上打分，因此不会绕过有效性、权威、机关、时间或格式门禁。`format` 会归一为小写并去掉前导点；空值和非法 `min_authority` 会被保守忽略。
 
 ## Case 格式
 
@@ -43,7 +43,7 @@ BM25 词元空间（`_bm25_terms`，仅标准库、完全确定性）：
 {
   "id": "case-001",
   "query": "Alpha project 30 grants 2026",
-  "filters": {"effective_only": "true", "min_authority": "4"},
+  "filters": {"effective_only": "true", "min_authority": "4", "organization": "Example Org", "format": "txt", "date_from": "2026-01-01"},
   "relevant_titles": ["Alpha Support Policy"],
   "relevant_chunk_ids": ["chunk-id-optional"]
 }
@@ -126,7 +126,7 @@ CLI 行为：
 
 ## 本地可审计面板
 
-检索的 `top_reasons`（RRF 融合分、各通道 rank/score、命中理由、向量/BM25 元信息）与核验的 `evidence_map`（`required_markers`/`covered_markers`/`missing_markers`/`coverage_ratio`/`supporting_items`）都会在资料库的“检索与核验”标签中渲染出来（`frontend/index.html` 的 `#libSearch` 面板 + `frontend/app.js` 的 `renderSearch`/`verifyClaim`）。面板文案明确声明这是词面覆盖、需人工语义复核，不把覆盖当作语义蕴含。
+检索的 `top_reasons`（RRF 融合分、各通道 rank/score、命中理由、向量/BM25 元信息）与核验的 `evidence_map`（`required_markers`/`covered_markers`/`missing_markers`/`coverage_ratio`/`supporting_items`）都会在资料库的“检索与核验”标签中渲染出来（`frontend/index.html` 的 `#libSearch` 面板 + `frontend/app.js` 的 `renderSearch`/`verifyClaim`）。面板同时暴露来源类型、最低权威、地区、发文机关、格式、发布日期区间和有效性范围，并在结果摘要里显示“生效过滤”，便于审计哪些约束先于排序生效。面板文案明确声明这是词面覆盖、需人工语义复核，不把覆盖当作语义蕴含。
 
 ## 使用边界
 
