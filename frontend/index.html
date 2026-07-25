@@ -127,10 +127,50 @@
         <div class="libTabs">
           <button class="libTab active" data-lib="docs">文档</button>
           <button class="libTab" data-lib="jobs">导入记录</button>
+          <button class="libTab" data-lib="search">检索与核验</button>
         </div>
         <div id="libDocs" class="list"></div>
         <div id="libJobs" class="list" style="display:none"></div>
         <div id="libChunks" class="list"></div>
+
+        <div id="libSearch" class="list" style="display:none">
+          <div class="grid two evidenceForm">
+            <div class="block wide"><label>检索查询</label><input id="libSearchQuery" placeholder="输入政策名、文号、关键词或数值，例如：某某办法 2026 补助 30" /></div>
+            <div class="block">
+              <label>最低权威等级</label>
+              <select id="libSearchAuthority">
+                <option value="">不限</option>
+                <option value="6">法律法规（6）</option>
+                <option value="5">国务院（5）</option>
+                <option value="4">部委（4）</option>
+                <option value="3">地方政府（3）</option>
+                <option value="2">权威媒体（2）</option>
+                <option value="1">用户/内部事实（1）</option>
+              </select>
+            </div>
+            <div class="block">
+              <label>来源类型</label>
+              <select id="libSearchSourceType">
+                <option value="">不限</option>
+                <option value="law_regulation">法律法规</option>
+                <option value="state_council">国务院</option>
+                <option value="ministry">部委</option>
+                <option value="local_government">地方政府</option>
+                <option value="official_media">权威媒体</option>
+                <option value="user_fact">用户/内部事实</option>
+              </select>
+            </div>
+            <div class="block"><label>地区 / 管辖</label><input id="libSearchRegion" placeholder="例如：广东省 / 全国（精确匹配）" /></div>
+            <div class="block wide tall"><label>主张核验（可选）</label><textarea id="libClaim" placeholder="粘贴一句需要核验的主张；系统只做词面覆盖检查，不做语义蕴含判断。"></textarea></div>
+          </div>
+          <div class="exportActions">
+            <button id="searchBtn" class="primary">检索</button>
+            <button id="verifyClaimBtn">核验主张</button>
+          </div>
+          <p class="muted">检索与核验均为确定性词面/BM25 方法，仅限现行有效文档；覆盖不等于语义蕴含，命中项仍需人工语义复核。</p>
+          <div id="searchMsg" class="muted"></div>
+          <div id="searchResults" class="list"></div>
+        </div>
       </section>
 
       <section id="review" class="panel">

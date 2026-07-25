@@ -101,7 +101,7 @@
 - [ ] 地区、机构、时间、文种、有效性过滤的 UI/评测覆盖扩展
 - [x] 主张到证据的精确映射 v1：`map_claim_to_evidence` 逐标记归因到覆盖分段列表（`covered_markers`: marker → [chunk_id, ...]）、`missing_markers`、逐分段 `supporting_items`（`matched_markers`/`matched_terms`/`hit_reasons`）与 `coverage_ratio`，并入 `verify_claim` 的 `evidence_map`；保守判定不变
 - [ ] 引用蕴含与冲突证据检测（语义级，需 LLM/NLI，超出本阶段词面覆盖范围）
-- [ ] 展示检索过程和命中理由的可审计面板
+- [x] 展示检索过程和命中理由的可审计面板 v1：资料库新增“检索与核验”标签，检索结果展示 RRF 融合分、各通道 rank/score、命中理由、向量启用状态与 BM25 参数；主张核验展示 status/理由/必备与缺失标记/覆盖率/`covered_markers`(marker→分段列表)/`supporting_items`/`cited_chunk_ids`，并明确标注“词面覆盖 ≠ 语义蕴含，需人工语义复核”
 
 参考 `zh-policy-rag` 的 MIT 许可实现，复用时保留版权与许可证。
 

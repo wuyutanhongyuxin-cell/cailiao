@@ -124,6 +124,10 @@ CLI 行为：
 
 > 这是**词面覆盖**而非语义蕴含：它证明标记/词出现在证据里，不证明证据在语义上支持主张，也不检测冲突证据——语义蕴含与冲突检测需 LLM/NLI，超出本阶段范围。
 
+## 本地可审计面板
+
+检索的 `top_reasons`（RRF 融合分、各通道 rank/score、命中理由、向量/BM25 元信息）与核验的 `evidence_map`（`required_markers`/`covered_markers`/`missing_markers`/`coverage_ratio`/`supporting_items`）都会在资料库的“检索与核验”标签中渲染出来（`frontend/index.html` 的 `#libSearch` 面板 + `frontend/app.js` 的 `renderSearch`/`verifyClaim`）。面板文案明确声明这是词面覆盖、需人工语义复核，不把覆盖当作语义蕴含。
+
 ## 使用边界
 
 - 该评测器只衡量当前检索结果是否召回标注答案；

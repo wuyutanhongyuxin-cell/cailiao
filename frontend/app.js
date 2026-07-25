@@ -262,29 +262,91 @@ function searchFilters() {
   };
 }
 
-async function renderSearch() {
-  const params = new URLSearchParams({ q: $('libSearchQuery').value.trim(), limit: '10', ...searchFilters() });
-  const data = await fetch(`/api/library/search?${params.toString()}`).then((r) => r.json());
-  $('searchMsg').textContent = `?? ${data.items.length} ???????${data.vector.enabled ? '??' : '???'}`;
-  $('searchResults').innerHTML = data.items.map((item) => `
-    <div class="item ${item.chunk_status}">
-      <strong>${escapeHtml(item.document_title || '')} ? ${label(item.source_type)} ? ${label(item.location_kind)} ${escapeHtml(item.location_value || '')}</strong>
-      <div>RRF ${item.fused_score.toFixed(4)} ? ${escapeHtml((item.hit_reasons || []).join('?'))}</div>
-      <p>${escapeHtml((item.content || '').slice(0, 360))}</p>
-    </div>
-  `).join('') || '<div class="item">??????????</div>';
+function channelsHtml(channels) {
+  if (!channels) return '';
+  return Object.entries(channels).map(([name, info]) =>
+    `${escapeHtml(name)}(rank ${info.rank} / score ${Number(info.score).toFixed(3)})`
+  ).join('，');
 }
 
-async function verifyClaim() {
-  const data = await api('/api/library/verify-claim', { claim: $('libClaim').value.trim(), filters: searchFilters(), limit: 5 });
-  $('searchMsg').textContent = `?????${data.status}????${(data.reasons || []).join('?')}`;
-  $('searchResults').innerHTML = data.search.items.map((item) => `
-    <div class="item ${data.status === 'supported' ? 'pass' : data.status === 'unsupported' ? 'fail' : 'warning'}">
-      <strong>${escapeHtml(item.document_title || '')} ? ${label(item.location_kind)} ${escapeHtml(item.location_value || '')}</strong>
-      <div>${escapeHtml((item.hit_reasons || []).join('?'))}</div>
+async function renderSearch() {
+  const query = $('libSearchQuery').value.trim();
+  if (!query) {
+    $('searchMsg').textContent = '请输入检索查询后再检索。';
+    $('searchResults').innerHTML = '';
+    return;
+  }
+  const params = new URLSearchParams({ q: query, limit: '10', ...searchFilters() });
+  const data = await fetch(`/api/library/search?${params.toString()}`).then((r) => r.json());
+  const vector = data.vector || {};
+  const bm25 = data.bm25 || {};
+  const bm25Note = bm25.k1 !== undefined
+    ? `　BM25：k1 ${bm25.k1}、b ${bm25.b}、语料 ${bm25.corpus_size ?? '-'} 段`
+    : '';
+  $('searchMsg').textContent =
+    `命中 ${data.items.length} 段（仅现行有效）　向量检索：${vector.enabled ? '已启用' : '未启用（确定性词面/BM25）'}${bm25Note}`;
+  $('searchResults').innerHTML = data.items.map((item) => `
+    <div class="item ${escapeHtml(item.chunk_status || '')}">
+      <strong>${escapeHtml(item.document_title || '未命名')}　·　${escapeHtml(label(item.source_type))}　·　权威等级 ${item.authority_level ?? 0}</strong>
+      <div>定位：${escapeHtml(label(item.location_kind))} ${escapeHtml(item.location_value || '')}　·　文号 ${escapeHtml(item.document_number || '—')}${item.region ? '　·　' + escapeHtml(item.region) : ''}</div>
+      <div>RRF 融合分 ${Number(item.fused_score).toFixed(4)}　·　通道：${channelsHtml(item.channels) || '—'}</div>
+      <div>命中理由：${escapeHtml((item.hit_reasons || []).join('，')) || '—'}</div>
       <p>${escapeHtml((item.content || '').slice(0, 360))}</p>
     </div>
-  `).join('') || '<div class="item">????????</div>';
+  `).join('') || '<div class="item">未检索到符合条件的现行有效分段。</div>';
+}
+
+const VERIFY_STATUS_LABEL = {
+  supported: '词面覆盖（仍需语义复核）',
+  needs_verification: '待核实',
+  unsupported: '未获支撑',
+};
+
+async function verifyClaim() {
+  const claim = $('libClaim').value.trim();
+  if (!claim) {
+    $('searchMsg').textContent = '请输入需要核验的主张后再核验。';
+    $('searchResults').innerHTML = '';
+    return;
+  }
+  const data = await api('/api/library/verify-claim', { claim, filters: searchFilters(), limit: 5 });
+  const emap = data.evidence_map || {};
+  const ratio = emap.coverage_ratio;
+  const ratioText = ratio === null || ratio === undefined ? '无必备标记（不适用）' : `${(ratio * 100).toFixed(0)}%`;
+  const statusClass = data.status === 'supported' ? 'warning' : data.status === 'unsupported' ? 'fail' : 'warning';
+  $('searchMsg').textContent =
+    `核验结论：${VERIFY_STATUS_LABEL[data.status] || data.status}　·　理由：${escapeHtml((data.reasons || []).join('，'))}`;
+
+  const coveredHtml = Object.entries(emap.covered_markers || {}).map(([marker, ids]) =>
+    `<div>标记「${escapeHtml(marker)}」→ 分段 ${escapeHtml((ids || []).join('、'))}</div>`
+  ).join('') || '<div>无</div>';
+
+  const supportingHtml = (emap.supporting_items || []).map((it) => `
+    <div class="item">
+      <strong>${escapeHtml(it.document_title || '未命名')}　·　${escapeHtml(label(it.source_type))}　·　权威等级 ${it.authority_level ?? 0}</strong>
+      <div>分段 ${escapeHtml(it.chunk_id || '')}</div>
+      <div>命中标记：${escapeHtml((it.matched_markers || []).join('，')) || '—'}</div>
+      <div>命中词：${escapeHtml((it.matched_terms || []).join('，')) || '—'}</div>
+      <div>命中理由：${escapeHtml((it.hit_reasons || []).join('，')) || '—'}</div>
+    </div>
+  `).join('') || '<div class="item">无支撑分段。</div>';
+
+  $('searchResults').innerHTML = `
+    <div class="item ${statusClass}">
+      <strong>核验结论：${escapeHtml(VERIFY_STATUS_LABEL[data.status] || data.status)}</strong>
+      <div>这是<strong>词面覆盖</strong>检查，不代表语义蕴含；命中项仍需人工语义复核。</div>
+      <div>必备标记：${escapeHtml((data.required_markers || []).join('，')) || '无'}</div>
+      <div>缺失标记：${escapeHtml((data.missing_markers || []).join('，')) || '无'}</div>
+      <div>覆盖率：${ratioText}</div>
+      <div>引用分段（cited_chunk_ids）：${escapeHtml((data.cited_chunk_ids || []).join('、')) || '无'}</div>
+    </div>
+    <div class="item">
+      <strong>标记覆盖（marker → 分段列表）</strong>
+      ${coveredHtml}
+    </div>
+    <strong>支撑分段详情</strong>
+    ${supportingHtml}
+  `;
 }
 
 const importBtn = $('importBtn');

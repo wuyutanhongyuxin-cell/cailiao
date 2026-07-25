@@ -1,52 +1,55 @@
 {
   "status": "verified_by_codex",
-  "phase": "ROADMAP Stage 2B: claim-to-evidence lexical mapping v1",
-  "baseline": "GitHub main = 970d93873fb21c935dea05fa8c51153e04b185f6 (Add quality gates)",
+  "phase": "ROADMAP Stage 2B: auditable library search and claim verification panel v1",
+  "baseline": "GitHub main = 240a14a2a7216ce88a1d3c6d9923e74fdfa26558 (Add claim evidence mapping)",
   "changed_files": [
-    "backend/server.py",
-    "tests/test_library.py",
+    "frontend/index.html",
+    "frontend/app.js",
+    "tests/test_frontend_ui.py",
     "README.md",
-    "docs/ARCHITECTURE.md",
     "docs/ROADMAP.md",
     "docs/RETRIEVAL_EVALUATION.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "Added map_claim_to_evidence(claim, evidence_items) as a deterministic lexical attribution helper over search_library items.",
-    "Exposed verify_claim.evidence_map with required_markers, covered_markers, missing_markers, supporting_items, and coverage_ratio.",
-    "covered_markers is now {marker: [chunk_id, ...]}, ordered by retrieval rank and deduped, so a marker covered in multiple chunks is preserved.",
-    "verify_claim keeps the conservative status rule: any missing required marker prevents supported status.",
-    "cited_chunk_ids now prefers chunks that actually matched required markers, then backfills from top retrieved chunks.",
-    "Added ClaimEvidenceMapTest coverage for fully covered markers, missing markers, multi-chunk marker attribution, pure text claims, empty evidence, and HTTP JSON round-trip.",
-    "Updated README and retrieval/architecture/roadmap docs to state that this is lexical coverage, not semantic entailment or conflict detection."
+    "Added a real Library search/audit tab in frontend/index.html with libSearchQuery, libSearchAuthority, libSearchSourceType, libSearchRegion, libClaim, searchBtn, verifyClaimBtn, searchMsg, and searchResults.",
+    "Fixed the broken frontend wiring where app.js referenced missing search DOM ids and could interrupt Library UI event binding.",
+    "Reworked renderSearch to show result count, vector enabled state, BM25 parameters, fused_score, per-channel rank/score, hit_reasons, document metadata, location, and excerpt.",
+    "Reworked verifyClaim to show status, reasons, required_markers, missing_markers, coverage_ratio, covered_markers as marker -> chunk-id list, supporting_items, matched_markers, matched_terms, hit_reasons, and cited_chunk_ids.",
+    "Added empty query/claim guards so the UI shows a message and does not call the API with blank input.",
+    "Kept all server/user-rendered content escaped through escapeHtml and explicitly labels this as lexical coverage, not semantic entailment.",
+    "Added stdlib-only tests/test_frontend_ui.py with 9 static assertions covering required DOM ids, renderer functions, surfaced audit fields, no mojibake question-mark runs, lexical/semantic wording, empty-input guards, and escaping.",
+    "Updated README, ROADMAP, and RETRIEVAL_EVALUATION docs to record the auditable panel v1."
   ],
   "not_implemented": [
-    "Semantic entailment and conflict evidence detection are still out of scope for this stage and require later LLM/NLI work.",
-    "A real anonymized 50-100 case retrieval/claim verification evaluation set is still not built.",
+    "Semantic entailment and conflict evidence detection remain out of scope for this stage and require later LLM/NLI work.",
     "Vector retrieval, embeddings, vector storage, and semantic reranking are still not implemented.",
-    "UI-level evidence highlighting and visual citation-chain review are still not implemented."
+    "A real anonymized 50-100 case retrieval/claim verification evaluation set is still not built.",
+    "Automated browser interaction is a smoke check only; full visual/accessibility regression coverage is not yet implemented."
   ],
   "test_commands": [
-    "python -m py_compile backend/server.py tests/test_library.py tools/evaluate_retrieval.py tools/run_quality_gates.py tests/test_quality_gates.py",
+    "python -m py_compile backend/server.py tests/test_library.py tests/test_frontend_ui.py tools/evaluate_retrieval.py tools/run_quality_gates.py tests/test_quality_gates.py",
     "python -m unittest discover -s tests -v",
     "python tools/run_quality_gates.py --json",
     "git diff --check",
+    "Chrome DevTools smoke on http://127.0.0.1:8766/: open app, click Library, click Search/Verify tab, trigger empty search and empty claim guards, inspect console/network",
     "rg -n --hidden -g '!*.sqlite3' -g '!__pycache__/**' -g '!*.pyc' \"sk-[A-Za-z0-9_-]{20,}|ghp_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,}|BEGIN (RSA|OPENSSH|EC|DSA) PRIVATE KEY\" ."
   ],
-  "test_status": "Codex verified on Windows review repo: py_compile passed; unittest discover ran 88 tests OK; tools/run_quality_gates.py --json returned passed=true with 5 gates passed; git diff --check passed; independent rg credential scan found no secret-shaped tokens.",
+  "test_status": "Codex verified on Windows review repo: py_compile passed; unittest discover ran 97 tests OK; tools/run_quality_gates.py --json returned passed=true with 5 gates passed; git diff --check passed. Chrome DevTools smoke loaded the app, opened the Library panel, opened the Search/Verify tab, confirmed the required controls were visible, and verified the empty-search and empty-claim guard messages. DevTools showed no JavaScript runtime exception; non-blocking browser notices remained: favicon.ico 404 and existing form label/id accessibility issues. Independent rg credential scan found no secret-shaped tokens.",
   "dependencies": [
     "No new external dependencies.",
-    "Implementation uses Python standard library only.",
-    "No network, npm, embedding service, or LLM call is required for this feature."
+    "Frontend remains native HTML/CSS/JS with no npm, CDN, or external assets.",
+    "New tests use Python standard library only."
   ],
   "review_notes": [
-    "Claude's first implementation used a single chunk_id per marker; Codex rejected it because the stage required all covering chunks. The返工 version now uses marker -> [chunk_id, ...] and passes the added multi-chunk test.",
-    "The evidence mapping is deterministic and reproducible, but it is lexical attribution only. It must not be represented as proof of semantic entailment.",
-    "Downstream consumers must treat covered_markers values as lists, not scalars."
+    "The task intentionally avoids claiming semantic proof. UI copy says lexical coverage is not semantic entailment and still needs human semantic review.",
+    "The prior missing-DOM issue is fixed because index.html now defines every id app.js binds for search/verify.",
+    "The browser environment injected Kaspersky requests during DevTools testing; these were outside the app code and are not repository dependencies.",
+    "Chrome reported form label/id accessibility issues across the broader existing page. They are non-blocking for this feature but should be handled in a later accessibility hardening pass."
   ],
   "risks": [
-    "Lexical overlap can still be false-positive when the same number or year appears in unrelated context.",
-    "The order of chunks for a marker follows retrieval rank; it is not a separate authority-first order.",
-    "Any downstream script or UI that already assumed covered_markers[marker] was a scalar must be updated."
+    "Static frontend tests can prove wiring tokens and fields exist, but they cannot replace full DOM behavior and accessibility regression tests.",
+    "Search rendering depends on the existing backend response shape for channels, bm25, vector, and hit_reasons.",
+    "Lexical overlap can still be false-positive when the same number or year appears in unrelated context."
   ]
 }
