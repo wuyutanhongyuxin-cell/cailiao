@@ -30,6 +30,7 @@
 | 资料库确定性检索 | 阶段 2A：词面精确通道 + 中文字符 ngram/FTS 回退通道；阶段 2B（BM25/FTS v1）：新增确定性 `bm25_like` 通道（1-4 字中文 ngram + ASCII/数字词元、IDF、tf 饱和与文档长度归一，权威仅作 tie-breaker），三路 RRF 融合并输出命中理由；过滤覆盖 v1 支持有效性、权威等级、来源类型、地区、发文机关、发布日期区间、文档状态、分段状态与格式过滤，过滤先约束候选再参与 BM25/RRF 排序 |
 | 保守主张核验 | 阶段 2A：按文号/年份/数值/政策标记和词面覆盖判断证据是否支撑主张；不足时返回“待核实”，不伪造语义证明。阶段 2B：主张到证据精确映射，逐标记归因到覆盖它的分段列表（`covered_markers`: marker → [chunk_id, ...]）、列出漏标记与逐分段命中详情（`supporting_items`）、给出覆盖率，未覆盖必填标记绝不判 `supported` |
 | 检索评测基础 | 阶段 2A：内置 Recall@K 与 MRR 指标 helper；阶段 2B：检索评测运行器输出文档级/分段级 Recall@K、MRR、逐 case miss 诊断与 `top_reasons` 可解释性；可复用 helper（加载/运行评测集、隔离临时库）与命令行质量门禁 `eval-retrieval`（阈值判定、达标 exit 0）；BM25 `k1`/`b` 可经 API/CLI 覆盖与扫参，附 10 条匿名占位评测集固定行为 |
+| 评测集校验工具 | 阶段 2B：`tools/validate_retrieval_suite.py` 校验评测集结构（id 唯一、query 非空、过滤键受支持、至少一个相关性目标、min_authority/format 合法性），错误退出非 0、告警不失败；用于在人工建立真实匿名评测集后、纳入门禁前先行校验（真实 50-100 条评测集仍待建立） |
 | 检索与核验面板 | 阶段 2B：资料库新增“检索与核验”标签，可审计地展示 RRF 融合分、各通道 rank/score、命中理由、向量启用状态、BM25 参数，以及主张核验的必备/缺失标记、覆盖率、`covered_markers`(marker→分段列表)、`supporting_items` 与 `cited_chunk_ids`；界面明确标注“词面覆盖 ≠ 语义蕴含，需人工语义复核” |
 | 确定性审稿 | 检查空泛表述、责任主体、完成时限、可验证结果和无依据主张 |
 | 模型接入 | 支持 OpenAI 兼容的 `/chat/completions` 接口 |

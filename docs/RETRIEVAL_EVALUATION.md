@@ -75,6 +75,23 @@ BM25 词元空间（`_bm25_terms`，仅标准库、完全确定性）：
 
 > 该占位集只用于固定行为，不代表真实检索质量；阶段 2B 仍需人工建立 50-100 条真实匿名查询集替换它。
 
+## 评测集校验器（validator v1）
+
+在一份人工提供的真实匿名评测集成为质量门禁之前，先用校验器核对其结构（仅检查 JSON 形状，不接触语料/数据库、不读入正文内容）：
+
+```bash
+python tools/validate_retrieval_suite.py --suite tests/data/retrieval_eval_suite.json --json
+```
+
+校验规则（`server.validate_retrieval_suite`，仅标准库）：
+
+- 套件层：为对象；`suite`/`name`（若存在）为非空字符串；`cases` 为非空列表；
+- 每个 case：`id` 为非空字符串且唯一；`query` 非空；`filters` 只允许受支持的键（`effective_only`/`source_type`/`min_authority`/`region`/`organization`/`format`/`date_from`/`date_to`/`document_status`/`status`）；至少含一个非空相关性目标（`relevant_titles`/`relevant_chunk_ids`/`relevant_chunk_markers`），且存在时必须是非空字符串列表；`min_authority` 存在时须可解析为整数；`format` 归一为小写去前导点后若非受支持格式则**告警**。
+
+返回 `{passed, errors, warnings, case_count, filter_keys_used, relevance_target_counts}`。**错误使校验失败（CLI 退出非 0），告警不失败（退出 0）**；套件加载失败退出 2。
+
+真实评测集的最低期望：**50-100 条**真实匿名查询（当前内置集为 10 条占位合成样本，会触发“数量不足/占位”告警）。校验通过只代表**结构合规**，不代表已建立真实评测集——真实集仍需人工构建（见 ROADMAP）。
+
 ## 可复用 helper
 
 评测集的加载与运行已抽成可复用函数（`backend/server.py`），测试与 CLI 共用同一套逻辑：

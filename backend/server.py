@@ -1543,6 +1543,116 @@ def build_suite_cases(suite: dict[str, Any]) -> list[dict[str, Any]]:
     return cases
 
 
+# Filter keys a retrieval eval case may legitimately use (mirrors _chunk_search_rows).
+SUPPORTED_FILTER_KEYS = {
+    "effective_only", "source_type", "min_authority", "region", "organization",
+    "format", "date_from", "date_to", "document_status", "status",
+}
+
+
+def validate_retrieval_suite(suite: Any) -> dict[str, Any]:
+    """Validate a retrieval eval suite's shape without touching the DB or corpus.
+
+    Checks suite- and case-level structure so a future human-provided real
+    anonymized suite can be vetted before it becomes a quality gate. Stdlib only;
+    reads no document content into the report. Returns:
+      {passed, errors, warnings, case_count, filter_keys_used, relevance_target_counts}
+    Errors fail validation; warnings do not (e.g. small/placeholder suites).
+    """
+    errors: list[str] = []
+    warnings: list[str] = []
+    filter_keys_used: set[str] = set()
+    relevance_target_counts = {"relevant_titles": 0, "relevant_chunk_ids": 0, "relevant_chunk_markers": 0}
+
+    if not isinstance(suite, dict):
+        return {"passed": False, "errors": [f"suite must be a JSON object, got {type(suite).__name__}"],
+                "warnings": [], "case_count": 0, "filter_keys_used": [],
+                "relevance_target_counts": relevance_target_counts}
+
+    for field in ("suite", "name"):
+        if field in suite and not (isinstance(suite[field], str) and suite[field].strip()):
+            errors.append(f"suite-level '{field}' must be a non-empty string when present")
+
+    cases = suite.get("cases")
+    if not isinstance(cases, list) or not cases:
+        errors.append("suite must contain a non-empty 'cases' list")
+        cases = []
+
+    seen_ids: set[str] = set()
+    for idx, case in enumerate(cases, start=1):
+        where = f"case #{idx}"
+        if not isinstance(case, dict):
+            errors.append(f"{where}: must be an object")
+            continue
+        cid = case.get("id")
+        if not (isinstance(cid, str) and cid.strip()):
+            errors.append(f"{where}: 'id' must be a non-empty string")
+        else:
+            where = f"case '{cid}'"
+            if cid in seen_ids:
+                errors.append(f"{where}: duplicate id")
+            seen_ids.add(cid)
+
+        query = case.get("query")
+        if not (isinstance(query, str) and query.strip()):
+            errors.append(f"{where}: 'query' must be a non-empty string")
+
+        filters = case.get("filters", {})
+        if filters in (None, {}):
+            filters = {}
+        elif not isinstance(filters, dict):
+            errors.append(f"{where}: 'filters' must be an object")
+            filters = {}
+        for key in filters:
+            filter_keys_used.add(key)
+            if key not in SUPPORTED_FILTER_KEYS:
+                errors.append(f"{where}: unsupported filter key '{key}'")
+        if str(filters.get("min_authority", "")).strip():
+            try:
+                int(filters["min_authority"])
+            except (TypeError, ValueError):
+                errors.append(f"{where}: filter 'min_authority' must parse to an integer")
+        if str(filters.get("format", "")).strip():
+            fmt = str(filters["format"]).strip().lower().lstrip(".")
+            if fmt not in SUPPORTED_FORMATS:
+                warnings.append(f"{where}: filter format '{fmt}' is not a supported format {sorted(SUPPORTED_FORMATS)}")
+
+        # Relevance targets: at least one, each a list of non-empty strings when present.
+        has_target = False
+        for tkey in ("relevant_titles", "relevant_chunk_ids", "relevant_chunk_markers"):
+            if tkey not in case:
+                continue
+            val = case[tkey]
+            if not isinstance(val, list):
+                errors.append(f"{where}: '{tkey}' must be a list when present")
+                continue
+            if any(not (isinstance(v, str) and v.strip()) for v in val):
+                errors.append(f"{where}: '{tkey}' must contain only non-empty strings")
+            if val:
+                has_target = True
+                relevance_target_counts[tkey] += 1
+        if not has_target:
+            errors.append(f"{where}: must have at least one non-empty relevance target "
+                          "(relevant_titles / relevant_chunk_ids / relevant_chunk_markers)")
+
+    case_count = len(cases)
+    # Warn (not fail) on small or explicitly-placeholder suites.
+    meta_blob = " ".join(str(suite.get(k, "")) for k in ("suite", "name", "description")).lower()
+    if any(word in meta_blob for word in ("placeholder", "synthetic", "占位", "合成")):
+        warnings.append("suite metadata marks it as placeholder/synthetic; not a real anonymized set")
+    if case_count and case_count < 50:
+        warnings.append(f"case_count {case_count} < 50; a real anonymized suite should have 50-100 cases")
+
+    return {
+        "passed": not errors,
+        "errors": errors,
+        "warnings": warnings,
+        "case_count": case_count,
+        "filter_keys_used": sorted(filter_keys_used),
+        "relevance_target_counts": relevance_target_counts,
+    }
+
+
 def run_retrieval_eval_suite(suite: dict[str, Any], k: int | None = None,
                              db_path: str | Path | None = None,
                              bm25_params: dict[str, Any] | None = None) -> dict[str, Any]:

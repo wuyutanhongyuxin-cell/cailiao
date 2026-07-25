@@ -95,6 +95,7 @@
 - [x] 统一质量门禁入口 `tools/run_quality_gates.py`（字节编译/单测/检索评测/`git diff --check`/机密与 `.env` 扫描；`--json`/`--skip-git-diff`；达标 exit 0）
 - [x] GitHub Actions CI（`.github/workflows/quality-gates.yml`，push/PR，Ubuntu + Python 3.11/3.12，调用统一入口，不打印 secret、不上传 artifact）
 - [ ] 人工建立 50-100 条真实匿名查询集，替换内置占位集
+- [x] 评测集结构校验工具 v1：`tools/validate_retrieval_suite.py` + `server.validate_retrieval_suite`（校验 id 唯一/query/受支持过滤键/相关性目标/min_authority/format；错误退出非 0、告警不失败；数量不足或占位元数据给告警）——仅为真实集就绪后纳入门禁前的校验工具，不代表真实集已建立
 - [ ] 在真实查询集上用 CLI 扫参校准 BM25 k1/b 与阈值
 - [ ] 向量检索与可替换 embedding 管线
 - [ ] RRF 融合排序和可插拔重排深化

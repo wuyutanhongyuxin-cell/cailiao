@@ -1,59 +1,54 @@
 {
   "status": "verified_by_codex",
-  "phase": "ROADMAP Stage 2B: metadata filter UI and eval coverage v1",
-  "baseline": "GitHub main = fdb231888714df93b1d82288779b6be5823c2e2e (Add auditable library search panel)",
+  "phase": "ROADMAP Stage 2B: retrieval eval suite validator/template v1",
+  "baseline": "GitHub main = 6c2ec752c8465a0a839905c21ed6463a417989ac (Add metadata filter coverage)",
   "changed_files": [
     "backend/server.py",
-    "frontend/index.html",
-    "frontend/app.js",
-    "tests/test_library.py",
-    "tests/test_frontend_ui.py",
+    "tools/validate_retrieval_suite.py",
+    "tests/test_suite_validator.py",
     "README.md",
     "docs/ROADMAP.md",
     "docs/RETRIEVAL_EVALUATION.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "Extended search_library/_chunk_search_rows with organization exact-match filtering and normalized format filtering.",
-    "Extended GET /api/library/search to pass through organization and format query parameters, while preserving source_type, region, min_authority, status, document_status, effective_only, date_from, and date_to.",
-    "Extended the Library Search/Verify panel with organization, format, date_from, date_to, and effective_only controls.",
-    "Updated searchFilters() to drop blank filters, include the new metadata filters, and let effective_only be true or false from the UI.",
-    "Added activeFilterSummary() so renderSearch and verifyClaim display the active candidate constraints before BM25/RRF ranking.",
-    "Added backend tests for organization, format, date range, region, authority, source_type, document_status, and effective_only behavior.",
-    "Added retrieval-eval test proving case-level organization/date/format filters are honored.",
-    "Added HTTP test proving /api/library/search accepts organization/date/format filters and excludes non-matching documents.",
-    "Extended frontend static tests for the new filter control ids and active filter summary wiring.",
-    "Updated README, ROADMAP, and RETRIEVAL_EVALUATION docs with the supported filter set and filter-before-ranking semantics."
+    "Added SUPPORTED_FILTER_KEYS and server.validate_retrieval_suite(suite) for DB-free, corpus-free eval suite shape validation.",
+    "Validator checks suite object shape, optional suite/name strings, non-empty cases, unique non-empty case ids, non-empty queries, supported filter keys, integer min_authority, normalized format values, and at least one non-empty relevance target list among relevant_titles/relevant_chunk_ids/relevant_chunk_markers.",
+    "Validator returns passed, errors, warnings, case_count, filter_keys_used, and relevance_target_counts. Structural errors fail validation; warnings do not.",
+    "Validator warns when case_count is below 50 or suite metadata marks the data as placeholder/synthetic. Unknown formats warn against SUPPORTED_FORMATS rather than failing.",
+    "Added tools/validate_retrieval_suite.py with --suite and --json. Exit 0 means no errors, exit 1 means validation errors, and exit 2 means the suite could not be loaded.",
+    "Added tests/test_suite_validator.py covering valid shape, duplicate ids, missing query, unsupported filters, missing/empty relevance targets, min_authority parsing, format warnings, small/placeholder warnings, marker-only targets, shipped placeholder suite behavior, and CLI exit behavior.",
+    "Updated README, ROADMAP, and docs/RETRIEVAL_EVALUATION.md to document the validator while keeping the real 50-100 anonymized eval suite marked as not yet built."
+  ],
+  "codex_adjustments": [
+    "Changed the invalid-suite CLI test to use tempfile.TemporaryDirectory instead of writing a scratch JSON file under tests/data, so tests remain reliable in restricted or read-only fixture directories.",
+    "Replaced Claude's mojibake CODEX_HANDOFF.json content with ASCII JSON and recorded actual Codex verification results."
   ],
   "not_implemented": [
-    "The real anonymized 50-100 case retrieval/claim verification suite is still not built because no real anonymized task data was provided.",
-    "BM25 thresholds are not recalibrated on real data.",
-    "Vector retrieval, embeddings, reranking, semantic entailment, and conflict detection remain pending.",
-    "Full browser/accessibility regression tests for all form labels remain pending."
+    "A real 50-100 case anonymized retrieval/claim-verification suite is still not built; the shipped 10-case suite remains synthetic placeholder data.",
+    "The validator checks structure only. It does not prove relevance labels are semantically correct, does not verify anonymization quality, and does not resolve markers against a corpus or DB.",
+    "Vector retrieval, embeddings, reranking, semantic entailment, and conflict detection remain pending."
   ],
   "test_commands": [
-    "python -m py_compile backend/server.py tests/test_library.py tests/test_frontend_ui.py tools/evaluate_retrieval.py tools/run_quality_gates.py tests/test_quality_gates.py",
+    "python -m py_compile backend/server.py tests/test_library.py tests/test_frontend_ui.py tools/evaluate_retrieval.py tools/run_quality_gates.py tests/test_quality_gates.py tools/validate_retrieval_suite.py tests/test_suite_validator.py",
     "python -m unittest discover -s tests -v",
+    "python tools/validate_retrieval_suite.py --suite tests/data/retrieval_eval_suite.json --json",
     "python tools/run_quality_gates.py --json",
     "git diff --check",
-    "Chrome DevTools smoke on http://127.0.0.1:8766/: open app, click Library, click Search/Verify tab, confirm new metadata filter controls, enter query/organization, verify active filter summary",
-    "rg -n --hidden -g '!*.sqlite3' -g '!__pycache__/**' -g '!*.pyc' \"sk-[A-Za-z0-9_-]{20,}|ghp_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,}|BEGIN (RSA|OPENSSH|EC|DSA) PRIVATE KEY\" ."
+    "rg -n --hidden -g '!*.sqlite3' -g '!__pycache__/**' -g '!*.pyc' -g '!.pycache-run/**' \"sk-[A-Za-z0-9_-]{20,}|ghp_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,}|BEGIN (RSA|OPENSSH|EC|DSA) PRIVATE KEY\" ."
   ],
-  "test_status": "Codex verified on Windows review repo: py_compile passed; unittest discover ran 101 tests OK; tools/run_quality_gates.py --json returned passed=true with 5 gates passed; git diff --check passed. The initial Codex-added eval filter test failed once because duplicate document content triggered SHA256 dedupe; Codex fixed the fixture so both documents are unique while matching the same query, then reran the failing test and full gates successfully. Chrome DevTools smoke confirmed the Library Search/Verify tab exposes the new metadata filter controls and that a query plus organization filter renders the active filter summary. DevTools showed no JavaScript runtime exception; existing form label/id accessibility issues remain non-blocking follow-up work.",
+  "test_status": "Codex verified on Windows review repo: py_compile passed using an isolated PYTHONPYCACHEPREFIX; unittest discover ran 118 tests OK; validate_retrieval_suite on tests/data/retrieval_eval_suite.json returned passed=true with expected placeholder and case_count<50 warnings; run_quality_gates.py --json returned passed=true with 5 gates passed; git diff --check passed; secret scan found no matches.",
   "dependencies": [
     "No new external dependencies.",
-    "Backend and tests remain Python standard library only.",
-    "Frontend remains native HTML/CSS/JS with no npm, CDN, or external assets."
+    "Validator CLI and helper remain Python standard library only."
   ],
   "review_notes": [
-    "Claude completed the initial backend/frontend filter implementation but stalled before tests/docs/report. Codex took over to add the missing test coverage, docs, and final handoff.",
-    "Filters are applied in SQL before lexical/ngram/BM25 scoring, so ranking cannot resurrect excluded candidates.",
-    "effective_only=false means the effective-only constraints are omitted; callers can combine this with document_status/status for explicit historical or prohibited evidence audits.",
-    "format is normalized with lowercase and leading-dot removal to match stored import format values."
+    "The validator is intentionally an early structural gate for a future human-built suite, not a quality claim about the existing placeholder suite.",
+    "Warnings are used for small/placeholder data to keep the existing placeholder regression suite runnable while preventing readers from mistaking it for a real benchmark.",
+    "SUPPORTED_FILTER_KEYS mirrors the current retrieval filter contract; SUPPORTED_FORMATS is reused from import/search normalization."
   ],
   "risks": [
-    "organization and region are exact-match filters; aliases, whitespace variants, and administrative synonyms are not resolved.",
-    "date filtering is string-based ISO date comparison and expects YYYY-MM-DD-like publish_date values.",
-    "format covers stored import format, not legal document genre taxonomy; full document-type taxonomy remains future work."
+    "Unknown format values are warnings rather than hard failures. This preserves forward compatibility but means downstream docs must keep saying validator pass is only structural.",
+    "Real eval-suite construction remains the major Stage 2B gap."
   ]
 }
