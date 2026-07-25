@@ -1,51 +1,54 @@
 {
   "status": "verified_by_codex",
-  "phase": "ROADMAP 阶段 2B：检索评测 CLI 质量门禁 + BM25 参数化/扫参 v1",
-  "baseline": "GitHub main = c9a4cc74d453a135d3768660465a4f97c1e7246e（Add deterministic BM25 retrieval channel）；本轮在其上抽出可复用评测 helper、新增 eval-retrieval CLI 与 BM25 k1/b 参数化/扫参，并补测试与文档。",
+  "phase": "ROADMAP 阶段 2B：本地质量门禁统一入口 v1 + GitHub Actions CI",
+  "baseline": "GitHub main = 652e890b2691991465cfebb10bf420429189983b（Add retrieval eval CLI gate）；本轮在其上新增统一质量门禁入口、CI workflow 与门禁单元测试，并同步文档。",
   "changed_files": [
-    "backend/server.py",
-    "tools/evaluate_retrieval.py",
-    "tests/test_library.py",
-    "docs/RETRIEVAL_EVALUATION.md",
-    "docs/ROADMAP.md",
+    "tools/run_quality_gates.py",
+    ".github/workflows/quality-gates.yml",
+    "tests/test_quality_gates.py",
     "README.md",
+    "docs/ROADMAP.md",
+    "docs/RETRIEVAL_EVALUATION.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "抽出可复用 helper：load_retrieval_eval_suite(path) 读取并校验 suite；build_suite_cases(suite) 把 relevant_chunk_markers 解析为 relevant_chunk_ids（无法解析抛 ValueError）；run_retrieval_eval_suite(suite,k,db_path,bm25_params) 将 corpus 导入隔离临时 SQLite、解析 marker、运行 evaluate_retrieval_cases，返回带 suite 名的 JSON 报告，结束后恢复调用方 DB_PATH 并删除自建临时库（不污染主库）。",
-    "BM25 参数化：新增 _resolve_bm25_params；search_library 与 evaluate_retrieval_cases 接受 bm25_params={k1,b} 覆盖，非法值回退默认；search 响应与评测报告的 bm25 字段回报实际 k1/b；默认（不传）行为与上一轮完全一致。",
-    "新增 eval-retrieval CLI（backend/server.py 子命令 + tools/evaluate_retrieval.py 薄封装）：--suite/--k/--output，阈值 --min-title-recall(0.8)/--min-chunk-recall(1.0)/--max-misses(2)，BM25 --bm25-k1/--bm25-b/--sweep-bm25；报告 JSON 到 stdout（可落盘），gate.passed/failures/thresholds 说明判定；达标 exit 0、阈值不达标 exit 1（JSON 仍完整）、加载/marker 失败 exit 2。__main__ 仅在首参为 eval-retrieval 时进入 CLI，否则照常启动 HTTP 服务。",
-    "新增测试 RetrievalEvalHarnessTest（loader、端到端 + DB 隔离、显式 db_path、marker 解析失败抛错、CLI 通过 exit0+JSON、--output 落盘、阈值失败 exit1 仍出 JSON、缺失套件 exit2、--sweep-bm25 输出网格与 best）与 RetrievalBM25ParamTest（默认参数回报、k1 覆盖改变打分、非法参数回退）。",
-    "同步更新 README、ROADMAP、RETRIEVAL_EVALUATION：记录 helper、CLI 用法与退出码、BM25 参数化/扫参与目录结构。"
+    "新增 tools/run_quality_gates.py：本地与 CI 统一入口，按序执行 5 个门禁——py-compile（backend/server.py、tests/test_library.py、tools/evaluate_retrieval.py、tools/run_quality_gates.py）、unittest discover、eval-retrieval（阈值 0.8/1.0/2）、git-diff（不在 git 工作树或 --skip-git-diff 时安全 skipped 而非 failed）、secret-scan。",
+    "secret-scan：遍历工作区（跳过 .git/__pycache__/data 等与二进制后缀），检测机密形状 token（openai/github-pat-classic/github-pat-fine/aws/bearer），命中即脱敏（仅前 4 字 + 长度，绝不回显完整值）；.env* 仅按文件名列出、绝不读取内容；git 跟踪到 .env* 视为失败。",
+    "所有外部命令用 subprocess.run([...], shell=False) 固定 argv 调用，不经 shell；每个门禁报告 gate/status/returncode/duration_sec/summary；全通过 exit 0、任一 failed exit 1；--json 输出机器可读报告；--skip-git-diff 与 --only <gate> 可选。",
+    "新增 .github/workflows/quality-gates.yml：push 与 pull_request 触发，ubuntu-latest，matrix Python 3.11/3.12，checkout + setup-python 后运行 python tools/run_quality_gates.py --json；permissions contents:read，不上传 artifact，不打印 secret。",
+    "新增 tests/test_quality_gates.py：机密形状检测（token 由拼接构造以免污染源码）、脱敏不泄露原值、.env 识别、find_env_files、扫描 .env 内容永不被读取而普通文件命中被标记、排除目录、ALL_GATES 含 eval-retrieval、git-diff --skip 不失败、干净仓库 secret-scan 通过、--json 结构与退出码。",
+    "Codex 复核时修正两个真实问题：.env.example/.env.sample/.env.template 不再当私有 .env 文件误报，而是按普通文本扫描；门禁子进程默认使用 python 命令并允许 PYTHON 环境变量覆盖，避免当前 Windows Python 分发下 sys.executable 指向 python-core 时被拒绝执行。",
+    "同步更新 README（统一门禁用法 + CI 说明 + 目录结构）、ROADMAP（2B 勾选统一入口与 CI）、RETRIEVAL_EVALUATION（eval-retrieval 为统一门禁一环）。"
   ],
   "not_implemented": [
     "50-100 条真实匿名检索评测集尚未建立（内置集为占位合成样本）。",
-    "尚未在真实查询集上用 CLI 扫参正式校准 BM25 k1/b 与阈值（扫参能力已具备，默认仍为文献值）。",
+    "尚未在真实查询集上用 CLI 扫参正式校准 BM25 k1/b 与阈值。",
     "真正向量检索、embedding 生成、向量数据库和语义重排尚未实施。",
     "LLM/NLI 级语义蕴含、冲突证据检测和跨句推理尚未实施。",
-    "主张到证据的精确段内高亮和引用链报告尚未实施。"
+    "机密扫描为启发式形状匹配，非全量熵扫描，也不检查 git 历史提交。"
   ],
   "test_commands": [
-    "python -m py_compile backend/server.py tests/test_library.py",
+    "python -m py_compile backend/server.py tests/test_library.py tools/evaluate_retrieval.py tools/run_quality_gates.py tests/test_quality_gates.py",
     "python -m unittest discover -s tests -v",
     "python backend/server.py eval-retrieval --suite tests/data/retrieval_eval_suite.json --k 10 --min-title-recall 0.8 --min-chunk-recall 1.0 --max-misses 2",
+    "python tools/run_quality_gates.py --json",
     "git diff --check"
   ],
-  "test_status": "Codex 已在 Windows 发布仓库复跑通过：python -m py_compile backend/server.py tests/test_library.py tools/evaluate_retrieval.py；python -m unittest discover -s tests -v（71 tests OK）；python backend/server.py eval-retrieval --suite tests/data/retrieval_eval_suite.json --k 10 --min-title-recall 0.8 --min-chunk-recall 1.0 --max-misses 2（exit 0）；python tools/evaluate_retrieval.py --suite tests/data/retrieval_eval_suite.json --k 10 --min-title-recall 0.8 --min-chunk-recall 1.0 --max-misses 2（exit 0）；git diff --check；凭据扫描未发现真实 key 或私钥形态内容。",
+  "test_status": "Codex 已在 Windows 发布仓库复跑通过：python -m py_compile backend/server.py tests/test_library.py tools/evaluate_retrieval.py tools/run_quality_gates.py tests/test_quality_gates.py；python -m unittest discover -s tests -v（82 tests OK）；python backend/server.py eval-retrieval --suite tests/data/retrieval_eval_suite.json --k 10 --min-title-recall 0.8 --min-chunk-recall 1.0 --max-misses 2（exit 0）；python tools/run_quality_gates.py --json（passed=true，5 gates passed）；git diff --check；凭据扫描未发现真实 key 或私钥形态内容。",
   "dependencies": [
-    "无新增外部依赖；仍仅使用 Python 标准库（本轮新增 import sys、tempfile、argparse[函数内]）。",
-    "无网络、无 npm、无 embedding 服务调用。"
+    "无新增外部依赖；仅使用 Python 标准库（argparse/subprocess/re/json/pathlib 等）。",
+    "CI 仅用 actions/checkout 与 actions/setup-python，无 pip 安装、无网络下载依赖。"
   ],
   "review_notes": [
-    "CLI 与测试共用 load/run helper，单一事实来源；run_retrieval_eval_suite 保存/恢复模块级 DB_PATH 并清理自建临时库，不污染主库或发布数据。",
-    "BM25 参数化仅新增可选覆盖入口，缺省路径与上一轮一致；扫参网格小而确定（4×3），best 以 title recall→chunk recall→更少 miss 选取。",
-    "eval-retrieval 阈值默认对齐内置占位集回归目标（0.8/1.0/2）；真实套件可传更严阈值作为发布门槛。",
-    "占位集的两条 miss 为结构性（库中不存在标题、被 effective_only 过滤的已废止件），任何 k1/b 都无法召回，故扫参不改变 miss_count/recall，仅影响排序内的融合分。"
+    "统一入口是单一事实来源：本地与 CI 调用同一脚本，结果一致；CI 无需 pip 安装（stdlib only）。",
+    "secret-scan 遵守隐私边界：绝不读取 .env* 内容、命中脱敏、非 git 环境安全跳过跟踪检查；测试中的假 token 均由字符串拼接构造，源码本身不含可匹配的机密形状。",
+    "git-diff 在非 git 工作树 skipped 而非 failed，保证本地隔离沙箱也能跑门禁；CI checkout 后为 git 仓库会正常执行。",
+    "退出码语义：0 全通过 / 1 有门禁失败；skipped 不算失败。Codex 接 CI 时应确认与门禁约定一致。"
   ],
   "risks": [
-    "eval-retrieval 退出码语义（0 达标/1 阈值不达标/2 加载或 marker 失败）需 Codex 在 CI 接入时确认与其门禁约定一致。",
-    "--sweep-bm25 每组配置各导入一次语料（小语料无碍，大真实集上会偏慢，后续可加缓存/复用库）。",
-    "k1/b 仍为文献默认值，未在真实查询集上校准；占位集指标只反映固定回归行为。",
-    "评测器与 CLI 依赖现有 search_library；未来引入向量或重排时须保持报告字段（top_reasons、bm25、gate）与退出码兼容。"
+    "secret-scan 为启发式，可能漏报非常规格式机密或误报长随机串；仅作基础防线，不替代专用扫描器与 git 历史审计。",
+    "unittest 门禁会运行含 HTTP 端口绑定的测试；CI runner 正常，受限环境需允许本地回环端口。",
+    "_SKIP_DIRS 含 data，会跳过 tests/data 下评测集的机密扫描（该集为合成、无机密）；如未来该目录放入需扫描内容需调整。",
+    "workflow 触发所有分支 push；如需收敛可后续限定分支或路径过滤。"
   ]
 }

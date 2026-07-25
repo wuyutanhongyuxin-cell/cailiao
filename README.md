@@ -84,7 +84,10 @@ cailiao/
 ├─ tests/test_rules.py        # 核心门禁回归测试
 ├─ tests/test_library.py      # 资料库单元与 HTTP API 测试
 ├─ tests/data/retrieval_eval_suite.json # 匿名占位检索评测集
+├─ tests/test_quality_gates.py # 质量门禁运行器单元测试
 ├─ tools/evaluate_retrieval.py # 检索评测命令行质量门禁封装
+├─ tools/run_quality_gates.py # 本地与 CI 统一质量门禁入口
+├─ .github/workflows/quality-gates.yml # push/PR 质量门禁 CI
 ├─ docs/ARCHITECTURE.md       # 架构和边界
 ├─ docs/ROADMAP.md            # 路线图与验收标准
 ├─ docs/RETRIEVAL_EVALUATION.md # 检索评测运行器说明
@@ -150,6 +153,15 @@ python backend\server.py eval-retrieval --suite tests\data\retrieval_eval_suite.
 ```
 
 达标退出码为 0，未达标为非 0；报告 JSON 打印到 stdout，可用 `--output` 落盘。
+
+统一质量门禁（本地与 CI 共用同一入口）：
+
+```powershell
+python tools\run_quality_gates.py          # 人类可读
+python tools\run_quality_gates.py --json   # 机器可读（CI 使用）
+```
+
+按序执行：字节编译 → 单元测试 → 检索评测门禁 → `git diff --check`（不在 git 工作树时安全跳过）→ 机密/`.env` 扫描（仅按文件名报告 `.env*`，绝不读取其内容）。任一门禁失败则退出码非 0。`--skip-git-diff` 可跳过 diff 检查。GitHub Actions（`.github/workflows/quality-gates.yml`）在 push/PR 时于 Ubuntu + Python 3.11/3.12 上调用同一入口。
 
 健康检查：`GET http://127.0.0.1:8765/api/health`
 

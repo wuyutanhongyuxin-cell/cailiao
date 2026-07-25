@@ -106,6 +106,8 @@ CLI 行为：
 - 全部达标 exit `0`；任一阈值不达标 exit `1`（JSON 仍完整输出）；套件加载/marker 解析失败 exit `2`；
 - BM25 调参：`--bm25-k1`、`--bm25-b` 覆盖单次运行；`--sweep-bm25` 在内置小网格（k1∈{0.9,1.2,1.5,1.8}×b∈{0.5,0.75,1.0}）上扫参，输出每组结果与 `best`（默认参数不受影响）。
 
+`eval-retrieval` 也是统一质量门禁 `tools/run_quality_gates.py` 的一个门禁环节；本地与 GitHub Actions CI 通过该统一入口一并运行编译、单测、检索评测、`git diff --check` 与机密/`.env` 扫描。
+
 ## 使用边界
 
 - 该评测器只衡量当前检索结果是否召回标注答案；
