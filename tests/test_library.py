@@ -503,6 +503,142 @@ class EvidenceLibraryPhase2ATest(unittest.TestCase):
         self.assertFalse(report["vector"]["enabled"])
 
 
+class RetrievalEvalSuiteTest(unittest.TestCase):
+    """Phase 2B: run the anonymized retrieval eval suite through evaluate_retrieval_cases.
+
+    The suite (tests/data/retrieval_eval_suite.json) ships an anonymized synthetic
+    corpus plus 10 labeled cases (8 hits + 2 intentional misses). Chunk-level
+    relevance is stored as marker substrings and resolved to real chunk ids at run
+    time, so the suite stays stable and reusable across runs and future rerankers.
+    """
+
+    SUITE_PATH = Path(__file__).resolve().parent / "data" / "retrieval_eval_suite.json"
+
+    def setUp(self):
+        self._tmp = tempfile.NamedTemporaryFile(suffix=".sqlite3", delete=False)
+        self._tmp.close()
+        self._orig_db_path = server.DB_PATH
+        server.DB_PATH = Path(self._tmp.name)
+        with self.SUITE_PATH.open("r", encoding="utf-8") as f:
+            self.suite = json.load(f)
+        self._seed_corpus()
+
+    def tearDown(self):
+        server.DB_PATH = self._orig_db_path
+        Path(self._tmp.name).unlink(missing_ok=True)
+
+    def _seed_corpus(self):
+        for doc in self.suite["corpus"]:
+            res = server.import_document({
+                "title": doc["title"],
+                "format": doc.get("format", "txt"),
+                "text": doc["text"],
+                "status": doc.get("status", "有效"),
+                "source_type": doc.get("source_type", ""),
+                "region": doc.get("region", ""),
+                "document_number": doc.get("document_number", ""),
+            })
+            self.assertIn(res["status"], {"succeeded", "new_version"},
+                          f"corpus doc failed to import: {doc['title']} -> {res}")
+
+    def _all_chunks(self):
+        chunks = []
+        for d in server.list_documents():
+            chunks.extend(server.list_chunks(d["id"]))
+        return chunks
+
+    def _resolve_marker(self, marker, chunks):
+        """Map a marker substring to the id of the first chunk that contains it."""
+        norm = server._norm_line(marker)
+        for c in chunks:
+            if norm in server._norm_line(c["content"]):
+                return c["id"]
+        return None
+
+    def _build_cases(self):
+        chunks = self._all_chunks()
+        cases = []
+        for case in self.suite["cases"]:
+            chunk_ids = []
+            for marker in case.get("relevant_chunk_markers", []):
+                cid = self._resolve_marker(marker, chunks)
+                self.assertIsNotNone(
+                    cid, f"marker did not resolve to any chunk: {marker!r} in {case['id']}")
+                chunk_ids.append(cid)
+            cases.append({
+                "id": case["id"],
+                "query": case["query"],
+                "filters": case.get("filters", {}),
+                "relevant_titles": case.get("relevant_titles", []),
+                "relevant_chunk_ids": chunk_ids,
+            })
+        return cases
+
+    def test_suite_has_expected_shape(self):
+        # Guard the fixture itself: 8-12 cases, at least 2 intentional misses.
+        self.assertGreaterEqual(len(self.suite["cases"]), 8)
+        self.assertLessEqual(len(self.suite["cases"]), 12)
+        expected_misses = [c for c in self.suite["cases"] if c.get("expect_hit") is False]
+        self.assertGreaterEqual(len(expected_misses), 2)
+
+    def test_markers_resolve_uniquely_enough(self):
+        # Every declared marker must resolve to a concrete chunk (no silent drift).
+        chunks = self._all_chunks()
+        for case in self.suite["cases"]:
+            for marker in case.get("relevant_chunk_markers", []):
+                self.assertIsNotNone(self._resolve_marker(marker, chunks),
+                                     f"unresolved marker {marker!r} in {case['id']}")
+
+    def test_suite_metrics_and_miss_reporting(self):
+        cases = self._build_cases()
+        report = server.evaluate_retrieval_cases(cases, k=self.suite.get("k", 10))
+
+        self.assertEqual(report["case_count"], 10)
+        self.assertEqual(report["miss_count"], 2)
+        self.assertFalse(report["vector"]["enabled"])
+
+        miss_ids = {m["id"] for m in report["misses"]}
+        self.assertEqual(miss_ids, {"case-07-miss-unknown-category",
+                                    "case-09-miss-repealed-filtered"})
+
+        # 8 hits / 10 titled cases => title recall exactly 0.8; every hit's marker
+        # chunk is retrieved => chunk recall 1.0 over the cases that declare chunks.
+        self.assertAlmostEqual(report["title_recall_at_k"], 0.8, places=6)
+        self.assertAlmostEqual(report["chunk_recall_at_k"], 1.0, places=6)
+        self.assertGreater(report["title_mrr"], 0.5)
+        self.assertGreater(report["chunk_mrr"], 0.5)
+
+        by_id = {c["id"]: c for c in report["cases"]}
+
+        # A hit case reports no missed titles and a concrete first_relevant_rank.
+        hit = by_id["case-01-exact-title-and-number"]
+        self.assertTrue(hit["hit"])
+        self.assertEqual(hit["missed_titles"], [])
+        self.assertEqual(hit["missed_chunk_ids"], [])
+        self.assertIsNotNone(hit["first_relevant_rank"])
+
+        # Multi-doc recall: both labeled titles retrieved.
+        multi = by_id["case-02-multi-doc-recall"]
+        self.assertTrue(multi["hit"])
+        self.assertEqual(multi["missed_titles"], [])
+        self.assertAlmostEqual(multi["title_recall_at_k"], 1.0, places=6)
+
+        # Miss cases name the missed title and have no first_relevant_rank.
+        unknown = by_id["case-07-miss-unknown-category"]
+        self.assertFalse(unknown["hit"])
+        self.assertIn("庚类专项债券管理办法", unknown["missed_titles"])
+        self.assertIsNone(unknown["first_relevant_rank"])
+
+        repealed = by_id["case-09-miss-repealed-filtered"]
+        self.assertFalse(repealed["hit"])
+        self.assertIn("甲类项目旧办法", repealed["missed_titles"])
+
+        # Aggregate misses carry the diagnostics, not just ids.
+        agg = {m["id"]: m for m in report["misses"]}
+        self.assertIn("庚类专项债券管理办法",
+                      agg["case-07-miss-unknown-category"]["missed_titles"])
+
+
 class EvidenceLibraryHTTPTest(unittest.TestCase):
     """End-to-end tests over the real HTTP handler on an ephemeral local port."""
 
@@ -681,6 +817,38 @@ class EvidenceLibraryHTTPTest(unittest.TestCase):
         self.assertEqual(report["case_count"], 1)
         self.assertEqual(report["miss_count"], 0)
         self.assertGreater(report["title_recall_at_k"], 0.0)
+
+    def test_http_retrieval_evaluation_reports_misses(self):
+        self._post("/api/library/import", {
+            "title": "Benchmark Policy", "format": "txt",
+            "text": "Benchmark policy requires 18 inspections in 2026.",
+            "source_type": "law_regulation", "status": "effective",
+        })
+        status, report = self._post("/api/library/evaluate-retrieval", {
+            "k": 5,
+            "cases": [
+                {
+                    "id": "bench-hit",
+                    "query": "Benchmark 18 inspections 2026",
+                    "filters": {"effective_only": "true"},
+                    "relevant_titles": ["Benchmark Policy"],
+                },
+                {
+                    "id": "bench-miss",
+                    "query": "Nonexistent obligation elsewhere",
+                    "filters": {"effective_only": "true"},
+                    "relevant_titles": ["Absent Document"],
+                },
+            ],
+        })
+        self.assertEqual(status, 200)
+        self.assertEqual(report["case_count"], 2)
+        self.assertEqual(report["miss_count"], 1)
+        self.assertEqual(report["misses"][0]["id"], "bench-miss")
+        self.assertIn("Absent Document", report["misses"][0]["missed_titles"])
+        by_id = {c["id"]: c for c in report["cases"]}
+        self.assertEqual(by_id["bench-hit"]["missed_titles"], [])
+        self.assertIsNotNone(by_id["bench-hit"]["first_relevant_rank"])
 
     def test_http_update_unknown_404(self):
         status, res = self._post("/api/library/update", {"document_id": "nope", "status": "有效"})

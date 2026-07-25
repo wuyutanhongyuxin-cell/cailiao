@@ -1,46 +1,50 @@
 {
-  "status": "verified_by_codex",
-  "phase": "ROADMAP 阶段 2B：检索评测基座",
-  "baseline": "GitHub main 阶段 2A 完成 764cf4c；本轮在此基础上启动阶段 2B 的评测运行器",
-  "changed_files": [
-    "backend/server.py",
-    "tests/test_library.py",
-    "README.md",
-    "docs/ROADMAP.md",
-    "docs/RETRIEVAL_EVALUATION.md",
-    "CODEX_HANDOFF.json"
-  ],
-  "implemented": [
-    "新增 evaluate_retrieval_cases：对查询集运行 search_library，输出文档级与分段级 Recall@K、MRR、miss 列表和逐 case Top K 结果。",
-    "新增 POST /api/library/evaluate-retrieval，支持从外部质量门禁调用检索评测。",
-    "新增单元测试与 HTTP 测试覆盖检索评测命中、漏召回、文档级指标、分段级指标和向量未启用状态。",
-    "新增 docs/RETRIEVAL_EVALUATION.md，定义 case 格式、能力边界和后续复用方式。",
-    "README 与 ROADMAP 已同步标记阶段 2B 评测基座启动。"
-  ],
-  "not_implemented": [
-    "50-100 条真实匿名检索评测集尚未建立。",
-    "中文 BM25/FTS 参数调优尚未实施。",
-    "真正向量检索、embedding 生成、向量数据库和语义重排尚未实施。",
-    "LLM/NLI 级语义蕴含、冲突证据检测和跨句推理尚未实施。",
-    "主张到证据的精确段内高亮和引用链报告尚未实施。"
-  ],
-  "test_commands": [
-    "python -m unittest discover -s tests -v",
-    "python -m py_compile backend/server.py tests/test_library.py",
-    "git diff --check"
-  ],
-  "dependencies": [
-    "无新增外部依赖；仍仅使用 Python 标准库。",
-    "无网络、无 npm、无 embedding 服务调用。"
-  ],
-  "review_notes": [
-    "本轮只建立阶段 2B 的评测基座，不声称完成语义检索或引用蕴含。",
-    "后续 BM25、向量、重排和引用验证变更应复用 evaluate_retrieval_cases 的输出作为质量门禁。",
-    "真实匿名评测集仍是阶段 2B 的下一优先事项。"
-  ],
-  "risks": [
-    "当前评测数据仍是回归测试中的小样本，不能代表真实材料检索质量。",
-    "文档级 relevant_titles 标注较粗，后续需要逐步迁移到 relevant_chunk_ids。",
-    "评测器依赖现有 search_library；若未来引入向量或重排，必须保持指标口径兼容。"
-  ]
+    "status":  "verified_by_codex",
+    "phase":  "ROADMAP 阶段 2B：检索评测基座 + 匿名占位评测集与逐 case miss 诊断",
+    "baseline":  "GitHub main 阶段 2B 评测基座（origin/main 与 origin/agent/retrieval-evaluation = 86ca6b0）；本轮在其上补充匿名占位评测集、逐 case miss 诊断字段与配套测试。",
+    "changed_files":  [
+                          "backend/server.py",
+                          "tests/test_library.py",
+                          "tests/data/retrieval_eval_suite.json",
+                          "README.md",
+                          "docs/ROADMAP.md",
+                          "docs/RETRIEVAL_EVALUATION.md",
+                          "CODEX_HANDOFF.json"
+                      ],
+    "implemented":  [
+                        "evaluate_retrieval_cases 逐 case 新增 missed_titles、missed_chunk_ids、first_relevant_rank 诊断字段；聚合 misses 列表同步携带 missed_titles/missed_chunk_ids，向后兼容原有 id/query。",
+                        "新增 tests/data/retrieval_eval_suite.json：匿名合成语料 + 10 条 case（8 命中 + 2 有意 miss），覆盖精确命中、多文档召回、来源类型/权威等级/地区过滤、分段级金额命中、公文套话，以及库中不存在类别与被 effective_only 过滤的已废止旧办法两类 miss；分段相关性以标记子串记录、运行时解析为 chunk_id。",
+                        "新增 RetrievalEvalSuiteTest：加载评测集、导入语料、解析标记为 chunk_id、运行评测，断言 case_count=10、miss_count=2、文档级 Recall@K=0.8、分段级 Recall@K=1.0、title_mrr\u003e0.5 与 miss 报告字段。",
+                        "新增 test_http_retrieval_evaluation_reports_misses：HTTP 层验证 miss 报告与逐 case missed_titles/first_relevant_rank。",
+                        "同步更新 README、ROADMAP、RETRIEVAL_EVALUATION：记录 miss 诊断、占位评测集与字段说明，并明确 50-100 条真实匿名评测集仍未建立。"
+                    ],
+    "not_implemented":  [
+                            "50-100 条真实匿名检索评测集尚未建立（内置集为占位合成样本）。",
+                            "中文 BM25/FTS 参数调优尚未实施。",
+                            "真正向量检索、embedding 生成、向量数据库和语义重排尚未实施。",
+                            "LLM/NLI 级语义蕴含、冲突证据检测和跨句推理尚未实施。",
+                            "主张到证据的精确段内高亮和引用链报告尚未实施。"
+                        ],
+    "test_commands":  [
+                          "python -m unittest discover -s tests -v",
+                          "python -m py_compile backend/server.py tests/test_library.py",
+                          "git diff --check"
+                      ],
+    "test_status":  "Codex 已在 Windows 发布仓库复跑通过：python -m unittest discover -s tests -v（52 tests OK）；python -m py_compile backend/server.py tests/test_library.py；git diff --check；凭据扫描仅命中 README 示例和 MATERIAL_LLM_API_KEY 环境变量名，未发现真实 key。",
+    "dependencies":  [
+                         "无新增外部依赖；仍仅使用 Python 标准库。",
+                         "无网络、无 npm、无 embedding 服务调用。"
+                     ],
+    "review_notes":  [
+                         "本轮只补充阶段 2B 的评测集与 miss 诊断，不声称完成语义检索、重排或引用蕴含。",
+                         "占位评测集为合成脱敏内容，仅用于固定评测运行器行为，不代表真实检索质量。",
+                         "后续 BM25、向量、重排和引用验证变更应复用 evaluate_retrieval_cases 的输出（含 miss 诊断）作为质量门禁。",
+                         "真实匿名评测集（50-100 条）仍是阶段 2B 的下一优先事项。"
+                     ],
+    "risks":  [
+                  "评测集为占位合成样本，指标（Recall@K=0.8 等）只反映固定回归行为，不能代表真实材料检索质量。",
+                  "分段相关性以标记子串在运行时解析为 chunk_id；若语料文本改动导致标记不再唯一或缺失，测试会在解析阶段失败以暴露漂移。",
+                  "文档级 relevant_titles 标注较粗，后续需要逐步迁移到 relevant_chunk_ids。",
+                  "评测器依赖现有 search_library；若未来引入向量或重排，必须保持指标口径与 miss 诊断字段兼容。"
+              ]
 }

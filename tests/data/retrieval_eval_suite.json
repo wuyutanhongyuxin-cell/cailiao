@@ -1,0 +1,166 @@
+{
+  "suite": "anonymized-retrieval-eval-v1",
+  "description": "阶段 2B 匿名检索评测集（占位样本）。全部文档为合成、脱敏内容，不含任何真实政策原文、机构、人名或联系方式。类别以甲/乙/丙等占位符表示。相关性以文档标题（relevant_titles）与分段标记子串（relevant_chunk_markers）标注；分段标记在评测运行时解析为实际 chunk_id，因此评测集本身保持稳定、可复用。",
+  "k": 10,
+  "notes": [
+    "两个 case 为有意 miss：case-07 查询库中不存在的类别，case-09 查询已废止（被 effective_only 过滤）的旧办法。它们用于验证 miss 报告与过滤边界，而非表示检索缺陷。",
+    "本样本用于固定评测运行器行为；阶段 2B 仍需人工建立 50-100 条真实匿名查询集替换本占位集。"
+  ],
+  "corpus": [
+    {
+      "key": "A",
+      "title": "甲类项目补助管理办法",
+      "format": "txt",
+      "source_type": "法律法规",
+      "status": "有效",
+      "region": "穗",
+      "document_number": "占位A-2026-1",
+      "text": "第一条 为规范甲类项目补助管理，明确申报、审核与拨付流程，制定本办法。\n\n第二条 甲类项目补助资金30笔在2026年度内按季度拨付，单笔补助不高于核定标准。"
+    },
+    {
+      "key": "B",
+      "title": "甲类项目受理窗口公告",
+      "format": "txt",
+      "source_type": "地方政府",
+      "status": "有效",
+      "region": "穗",
+      "text": "本单位就甲类项目补助申报设置20个受理窗口，集中受理材料并出具回执。"
+    },
+    {
+      "key": "C",
+      "title": "甲类项目旧办法",
+      "format": "txt",
+      "source_type": "法律法规",
+      "status": "已废止",
+      "region": "穗",
+      "text": "原甲类项目旧办法安排补助99笔，现已过期废止，不再作为申报依据。"
+    },
+    {
+      "key": "D",
+      "title": "乙类项目实施细则",
+      "format": "txt",
+      "source_type": "部委",
+      "status": "有效",
+      "region": "穗",
+      "text": "乙类项目每年度组织12次现场核查，核查结论作为下一批次资金安排依据。"
+    },
+    {
+      "key": "E",
+      "title": "丙类专项资金台账",
+      "format": "txt",
+      "source_type": "用户事实",
+      "status": "有效",
+      "region": "穗",
+      "text": "丙类专项资金用于设备采购支出45万元，形成资产台账并登记入册。"
+    },
+    {
+      "key": "F",
+      "title": "丁类项目现场检查报告",
+      "format": "txt",
+      "source_type": "地方政府",
+      "status": "有效",
+      "region": "海",
+      "text": "对丁类项目开展现场检查18项，逐项记录问题并要求限期整改。"
+    },
+    {
+      "key": "G",
+      "title": "戊类工作部署通知",
+      "format": "txt",
+      "source_type": "地方政府",
+      "status": "有效",
+      "region": "穗",
+      "text": "各责任单位要加强组织领导、形成工作合力，按月上报进展台账并确保按期完成。"
+    },
+    {
+      "key": "H",
+      "title": "己类年度额度安排说明",
+      "format": "txt",
+      "source_type": "部委",
+      "status": "有效",
+      "region": "穗",
+      "text": "己类事项2027年度额度安排若干，具体标准由主管部门另行明确。"
+    }
+  ],
+  "cases": [
+    {
+      "id": "case-01-exact-title-and-number",
+      "query": "甲类项目 2026 补助 30 笔",
+      "filters": {"effective_only": "true"},
+      "relevant_titles": ["甲类项目补助管理办法"],
+      "relevant_chunk_markers": ["甲类项目补助资金30笔"],
+      "expect_hit": true
+    },
+    {
+      "id": "case-02-multi-doc-recall",
+      "query": "甲类项目 补助 窗口",
+      "filters": {"effective_only": "true"},
+      "relevant_titles": ["甲类项目补助管理办法", "甲类项目受理窗口公告"],
+      "relevant_chunk_markers": ["为规范甲类项目补助管理", "20个受理窗口"],
+      "expect_hit": true
+    },
+    {
+      "id": "case-03-filter-source-type-law",
+      "query": "甲类项目 补助管理",
+      "filters": {"effective_only": "true", "source_type": "law_regulation"},
+      "relevant_titles": ["甲类项目补助管理办法"],
+      "relevant_chunk_markers": ["为规范甲类项目补助管理"],
+      "expect_hit": true
+    },
+    {
+      "id": "case-04-filter-min-authority",
+      "query": "现场核查 12 次",
+      "filters": {"effective_only": "true", "min_authority": "4"},
+      "relevant_titles": ["乙类项目实施细则"],
+      "relevant_chunk_markers": ["12次现场核查"],
+      "expect_hit": true
+    },
+    {
+      "id": "case-05-filter-region",
+      "query": "现场检查 18 项",
+      "filters": {"effective_only": "true", "region": "海"},
+      "relevant_titles": ["丁类项目现场检查报告"],
+      "relevant_chunk_markers": ["现场检查18项"],
+      "expect_hit": true
+    },
+    {
+      "id": "case-06-chunk-level-amount",
+      "query": "丙类专项资金 45 设备采购",
+      "filters": {"effective_only": "true"},
+      "relevant_titles": ["丙类专项资金台账"],
+      "relevant_chunk_markers": ["设备采购支出45万元"],
+      "expect_hit": true
+    },
+    {
+      "id": "case-07-miss-unknown-category",
+      "query": "庚类专项债券 2027 额度",
+      "filters": {"effective_only": "true"},
+      "relevant_titles": ["庚类专项债券管理办法"],
+      "relevant_chunk_markers": [],
+      "expect_hit": false
+    },
+    {
+      "id": "case-08-boilerplate-phrase",
+      "query": "加强组织领导 形成工作合力",
+      "filters": {"effective_only": "true"},
+      "relevant_titles": ["戊类工作部署通知"],
+      "relevant_chunk_markers": ["加强组织领导"],
+      "expect_hit": true
+    },
+    {
+      "id": "case-09-miss-repealed-filtered",
+      "query": "甲类项目 补助 99 笔",
+      "filters": {"effective_only": "true"},
+      "relevant_titles": ["甲类项目旧办法"],
+      "relevant_chunk_markers": [],
+      "expect_hit": false
+    },
+    {
+      "id": "case-10-combined-filters",
+      "query": "己类 2027 额度安排",
+      "filters": {"effective_only": "true", "source_type": "ministry", "min_authority": "4"},
+      "relevant_titles": ["己类年度额度安排说明"],
+      "relevant_chunk_markers": ["2027年度额度安排若干"],
+      "expect_hit": true
+    }
+  ]
+}

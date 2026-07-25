@@ -1171,6 +1171,11 @@ def evaluate_retrieval_cases(cases: list[dict[str, Any]], k: int = 10) -> dict[s
     reranking. Cases name relevant document titles or chunk ids; the evaluator
     reports both title-level and chunk-level metrics so early anonymous suites
     can start coarse and later become more precise.
+
+    Each case additionally reports which labeled answers were missed within Top K
+    (`missed_titles`, `missed_chunk_ids`) and the rank of the first relevant hit
+    (`first_relevant_rank`), and the aggregate `misses` list carries the same
+    diagnostics so a quality gate can point at concrete gaps, not just a number.
     """
     k = max(1, min(int(k or 10), 50))
     evaluated = []
@@ -1198,6 +1203,19 @@ def evaluate_retrieval_cases(cases: list[dict[str, Any]], k: int = 10) -> dict[s
             chunk_ranked_lists.append(ranked_chunks)
             chunk_relevant_sets.append(relevant_chunks)
 
+        # Per-case diagnostics: which labeled answers were retrieved within Top K
+        # and which were missed, so an anonymous suite can point at concrete gaps
+        # instead of only reporting an aggregate number.
+        top_title_set = set(ranked_titles[:k])
+        top_chunk_set = set(ranked_chunks[:k])
+        missed_titles = sorted(relevant_titles - top_title_set)
+        missed_chunk_ids = sorted(relevant_chunks - top_chunk_set)
+        first_relevant_rank = None
+        for pos, (t, c) in enumerate(zip(ranked_titles, ranked_chunks), start=1):
+            if (relevant_titles and t in relevant_titles) or (relevant_chunks and c in relevant_chunks):
+                first_relevant_rank = pos
+                break
+
         evaluated.append({
             "id": case.get("id") or f"case-{idx}",
             "query": query,
@@ -1207,9 +1225,12 @@ def evaluate_retrieval_cases(cases: list[dict[str, Any]], k: int = 10) -> dict[s
             "relevant_chunk_ids": sorted(relevant_chunks),
             "title_recall_at_k": title_recall,
             "chunk_recall_at_k": chunk_recall,
+            "missed_titles": missed_titles,
+            "missed_chunk_ids": missed_chunk_ids,
+            "first_relevant_rank": first_relevant_rank,
             "hit": bool(
-                (relevant_titles and set(ranked_titles[:k]) & relevant_titles) or
-                (relevant_chunks and set(ranked_chunks[:k]) & relevant_chunks)
+                (relevant_titles and top_title_set & relevant_titles) or
+                (relevant_chunks and top_chunk_set & relevant_chunks)
             ),
         })
 
@@ -1224,7 +1245,12 @@ def evaluate_retrieval_cases(cases: list[dict[str, Any]], k: int = 10) -> dict[s
         "chunk_recall_at_k": (sum(chunk_recall_values) / len(chunk_recall_values)) if chunk_recall_values else 0.0,
         "chunk_mrr": mean_reciprocal_rank(chunk_ranked_lists, chunk_relevant_sets) if chunk_ranked_lists else 0.0,
         "miss_count": len(misses),
-        "misses": [{"id": c["id"], "query": c["query"]} for c in misses],
+        "misses": [{
+            "id": c["id"],
+            "query": c["query"],
+            "missed_titles": c["missed_titles"],
+            "missed_chunk_ids": c["missed_chunk_ids"],
+        } for c in misses],
         "cases": evaluated,
         "vector": {"enabled": False, "reason": "Phase 2B benchmark harness only; embeddings are not implemented"},
     }
