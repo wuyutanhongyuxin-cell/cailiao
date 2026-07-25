@@ -29,7 +29,7 @@
 | 资料库格式扩展 | 阶段 1B：XLSX 基础导入（按行分段、含表名/行号定位），分段定位信息与更丰富来源快照（文件名、MIME、字节数、正文快照） |
 | 资料库确定性检索 | 阶段 2A：词面精确通道 + 中文字符 ngram/FTS 回退通道；阶段 2B（BM25/FTS v1）：新增确定性 `bm25_like` 通道（1-4 字中文 ngram + ASCII/数字词元、IDF、tf 饱和与文档长度归一，权威仅作 tie-breaker），三路 RRF 融合并输出命中理由，支持有效性、权威等级、来源类型与地区过滤 |
 | 保守主张核验 | 阶段 2A：按文号/年份/数值/政策标记和词面覆盖判断证据是否支撑主张；不足时返回“待核实”，不伪造语义证明 |
-| 检索评测基础 | 阶段 2A：内置 Recall@K 与 MRR 指标 helper；阶段 2B：检索评测运行器可对查询集输出文档级/分段级 Recall@K、MRR、逐 case miss 诊断（漏召回标题/分段、首个命中排名）与 `top_reasons` 排序可解释性，并附带 10 条匿名占位评测集固定行为 |
+| 检索评测基础 | 阶段 2A：内置 Recall@K 与 MRR 指标 helper；阶段 2B：检索评测运行器输出文档级/分段级 Recall@K、MRR、逐 case miss 诊断与 `top_reasons` 可解释性；可复用 helper（加载/运行评测集、隔离临时库）与命令行质量门禁 `eval-retrieval`（阈值判定、达标 exit 0）；BM25 `k1`/`b` 可经 API/CLI 覆盖与扫参，附 10 条匿名占位评测集固定行为 |
 | 确定性审稿 | 检查空泛表述、责任主体、完成时限、可验证结果和无依据主张 |
 | 模型接入 | 支持 OpenAI 兼容的 `/chat/completions` 接口 |
 | 无 Key 模式 | 不调用模型，仍可输出严格提示词、缺项报告和审稿结果 |
@@ -83,6 +83,8 @@ cailiao/
 ├─ rules/material_rules.json # 文种和硬审规则
 ├─ tests/test_rules.py        # 核心门禁回归测试
 ├─ tests/test_library.py      # 资料库单元与 HTTP API 测试
+├─ tests/data/retrieval_eval_suite.json # 匿名占位检索评测集
+├─ tools/evaluate_retrieval.py # 检索评测命令行质量门禁封装
 ├─ docs/ARCHITECTURE.md       # 架构和边界
 ├─ docs/ROADMAP.md            # 路线图与验收标准
 ├─ docs/RETRIEVAL_EVALUATION.md # 检索评测运行器说明
@@ -140,6 +142,14 @@ cailiao/
 python -m unittest discover -s tests -v
 python backend\server.py
 ```
+
+检索评测质量门禁（确定性，可用于 CI）：
+
+```powershell
+python backend\server.py eval-retrieval --suite tests\data\retrieval_eval_suite.json --k 10 --min-title-recall 0.8 --min-chunk-recall 1.0 --max-misses 2
+```
+
+达标退出码为 0，未达标为非 0；报告 JSON 打印到 stdout，可用 `--output` 落盘。
 
 健康检查：`GET http://127.0.0.1:8765/api/health`
 

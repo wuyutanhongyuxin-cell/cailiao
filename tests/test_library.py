@@ -15,6 +15,7 @@ spec = importlib.util.spec_from_file_location("server", SERVER)
 server = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(server)
 
+import contextlib
 import io
 import zipfile
 
@@ -735,6 +736,182 @@ class RetrievalEvalSuiteTest(unittest.TestCase):
         agg = {m["id"]: m for m in report["misses"]}
         self.assertIn("庚类专项债券管理办法",
                       agg["case-07-miss-unknown-category"]["missed_titles"])
+
+
+class RetrievalEvalHarnessTest(unittest.TestCase):
+    """Phase 2B: reusable loader/runner helpers and the eval-retrieval CLI gate."""
+
+    SUITE_PATH = Path(__file__).resolve().parent / "data" / "retrieval_eval_suite.json"
+
+    def setUp(self):
+        # A distinct temp DB as the "main" DB; the runner must not pollute it.
+        self._tmp = tempfile.NamedTemporaryFile(suffix=".sqlite3", delete=False)
+        self._tmp.close()
+        self._orig_db_path = server.DB_PATH
+        server.DB_PATH = Path(self._tmp.name)
+
+    def tearDown(self):
+        server.DB_PATH = self._orig_db_path
+        Path(self._tmp.name).unlink(missing_ok=True)
+
+    # --- loader --------------------------------------------------------
+    def test_loader_reads_fixture(self):
+        suite = server.load_retrieval_eval_suite(self.SUITE_PATH)
+        self.assertIsInstance(suite, dict)
+        self.assertEqual(len(suite["cases"]), 10)
+        self.assertTrue(suite["corpus"])
+
+    def test_loader_rejects_non_object(self):
+        bad = Path(self._tmp.name + ".json")
+        bad.write_text("[1, 2, 3]", encoding="utf-8")
+        try:
+            with self.assertRaises(ValueError):
+                server.load_retrieval_eval_suite(bad)
+        finally:
+            bad.unlink(missing_ok=True)
+
+    # --- runner (end-to-end) + DB isolation ----------------------------
+    def test_run_suite_end_to_end_and_isolates_db(self):
+        suite = server.load_retrieval_eval_suite(self.SUITE_PATH)
+        report = server.run_retrieval_eval_suite(suite)
+        self.assertEqual(report["case_count"], 10)
+        self.assertEqual(report["miss_count"], 2)
+        self.assertAlmostEqual(report["title_recall_at_k"], 0.8, places=6)
+        self.assertAlmostEqual(report["chunk_recall_at_k"], 1.0, places=6)
+        self.assertEqual(report["suite"], suite.get("suite"))
+        self.assertIn("bm25", report)
+        # DB_PATH restored and the "main" DB was never written to.
+        self.assertEqual(server.DB_PATH, Path(self._tmp.name))
+        self.assertEqual(server.list_documents(), [])
+
+    def test_run_suite_honors_explicit_db_path(self):
+        suite = server.load_retrieval_eval_suite(self.SUITE_PATH)
+        tmp = tempfile.NamedTemporaryFile(suffix=".sqlite3", delete=False)
+        tmp.close()
+        try:
+            report = server.run_retrieval_eval_suite(suite, db_path=tmp.name)
+            self.assertEqual(report["case_count"], 10)
+            # Corpus persisted into the explicit DB (not removed by the runner).
+            self.assertTrue(Path(tmp.name).exists())
+        finally:
+            Path(tmp.name).unlink(missing_ok=True)
+
+    def test_marker_that_does_not_resolve_raises(self):
+        suite = {
+            "suite": "bad", "k": 5,
+            "corpus": [{"title": "有正文", "text": "真实存在的正文。", "status": "有效"}],
+            "cases": [{
+                "id": "bad-marker", "query": "正文",
+                "filters": {"effective_only": "true"},
+                "relevant_titles": ["有正文"],
+                "relevant_chunk_markers": ["这段标记不存在于任何分段"],
+            }],
+        }
+        with self.assertRaises(ValueError):
+            server.run_retrieval_eval_suite(suite)
+
+    # --- CLI -----------------------------------------------------------
+    def _run_cli(self, argv):
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            code = server.eval_retrieval_cli(argv)
+        return code, buf.getvalue()
+
+    def test_cli_pass_emits_json_and_exit_zero(self):
+        code, out = self._run_cli([
+            "--suite", str(self.SUITE_PATH), "--k", "10",
+            "--min-title-recall", "0.8", "--min-chunk-recall", "1.0", "--max-misses", "2",
+        ])
+        self.assertEqual(code, 0)
+        report = json.loads(out)
+        self.assertTrue(report["gate"]["passed"])
+        self.assertEqual(report["case_count"], 10)
+        self.assertEqual(report["mode"], "single")
+
+    def test_cli_output_file_written(self):
+        out_path = Path(self._tmp.name + ".report.json")
+        try:
+            code, _ = self._run_cli([
+                "--suite", str(self.SUITE_PATH), "--output", str(out_path),
+            ])
+            self.assertEqual(code, 0)
+            self.assertTrue(out_path.exists())
+            saved = json.loads(out_path.read_text(encoding="utf-8"))
+            self.assertEqual(saved["case_count"], 10)
+        finally:
+            out_path.unlink(missing_ok=True)
+
+    def test_cli_threshold_failure_exits_nonzero_but_still_json(self):
+        # The suite legitimately has 2 misses; max-misses 0 must fail the gate.
+        code, out = self._run_cli([
+            "--suite", str(self.SUITE_PATH), "--max-misses", "0",
+        ])
+        self.assertEqual(code, 1)
+        report = json.loads(out)
+        self.assertFalse(report["gate"]["passed"])
+        self.assertTrue(report["gate"]["failures"])
+        self.assertEqual(report["case_count"], 10)  # JSON still complete
+
+    def test_cli_missing_suite_exits_two(self):
+        code, out = self._run_cli(["--suite", str(self._tmp.name) + ".nope.json"])
+        self.assertEqual(code, 2)
+        self.assertIn("error", json.loads(out))
+
+    def test_cli_sweep_reports_grid_and_best(self):
+        code, out = self._run_cli([
+            "--suite", str(self.SUITE_PATH), "--sweep-bm25", "--max-misses", "2",
+        ])
+        report = json.loads(out)
+        self.assertEqual(report["mode"], "sweep")
+        self.assertTrue(report["results"])
+        self.assertIn("best", report)
+        # Best config should still meet the regression targets on this suite.
+        self.assertEqual(code, 0)
+        self.assertAlmostEqual(report["best"]["title_recall_at_k"], 0.8, places=6)
+
+
+class RetrievalBM25ParamTest(unittest.TestCase):
+    """Phase 2B: BM25 k1/b are overridable and actually change scoring."""
+
+    def setUp(self):
+        self._tmp = tempfile.NamedTemporaryFile(suffix=".sqlite3", delete=False)
+        self._tmp.close()
+        self._orig_db_path = server.DB_PATH
+        server.DB_PATH = Path(self._tmp.name)
+
+    def tearDown(self):
+        server.DB_PATH = self._orig_db_path
+        Path(self._tmp.name).unlink(missing_ok=True)
+
+    def test_default_params_reported(self):
+        server.import_document({"title": "样本", "format": "txt",
+                                "text": "光伏光伏光伏专项通知。", "status": "effective",
+                                "source_type": "law_regulation"})
+        res = server.search_library("光伏", filters={"effective_only": "true"}, limit=5)
+        self.assertEqual(res["bm25"]["k1"], server.BM25_K1)
+        self.assertEqual(res["bm25"]["b"], server.BM25_B)
+
+    def test_k1_override_changes_bm25_score(self):
+        # tf>1 is required for k1 to matter, so repeat the rare term.
+        server.import_document({"title": "样本", "format": "txt",
+                                "text": "光伏光伏光伏专项通知。", "status": "effective",
+                                "source_type": "law_regulation"})
+        default = server.search_library("光伏", filters={"effective_only": "true"}, limit=5)
+        tuned = server.search_library("光伏", filters={"effective_only": "true"}, limit=5,
+                                      bm25_params={"k1": 0.3})
+        self.assertEqual(tuned["bm25"]["k1"], 0.3)
+        d_score = default["items"][0]["channels"]["bm25_like"]["score"]
+        t_score = tuned["items"][0]["channels"]["bm25_like"]["score"]
+        self.assertNotAlmostEqual(d_score, t_score, places=6)
+
+    def test_invalid_params_fall_back_to_defaults(self):
+        server.import_document({"title": "样本", "format": "txt",
+                                "text": "光伏专项通知。", "status": "effective",
+                                "source_type": "law_regulation"})
+        res = server.search_library("光伏", filters={"effective_only": "true"}, limit=5,
+                                    bm25_params={"k1": "not-a-number", "b": 5.0})
+        self.assertEqual(res["bm25"]["k1"], server.BM25_K1)
+        self.assertEqual(res["bm25"]["b"], server.BM25_B)
 
 
 class EvidenceLibraryHTTPTest(unittest.TestCase):

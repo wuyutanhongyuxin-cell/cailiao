@@ -8,6 +8,8 @@ import math
 import os
 import re
 import sqlite3
+import sys
+import tempfile
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -1078,7 +1080,27 @@ BM25_B = 0.75
 AUTHORITY_TIEBREAK = 0.001
 
 
-def search_library(query: str, filters: dict[str, str] | None = None, limit: int = 10) -> dict[str, Any]:
+def _resolve_bm25_params(bm25_params: dict[str, Any] | None) -> tuple[float, float]:
+    """Return (k1, b) from an optional override dict, falling back to module defaults."""
+    params = bm25_params or {}
+    try:
+        k1 = float(params.get("k1", BM25_K1))
+    except (TypeError, ValueError):
+        k1 = BM25_K1
+    try:
+        b = float(params.get("b", BM25_B))
+    except (TypeError, ValueError):
+        b = BM25_B
+    # Guard against nonsensical values that would break the BM25 denominator.
+    if k1 < 0:
+        k1 = BM25_K1
+    if not 0.0 <= b <= 1.0:
+        b = BM25_B
+    return k1, b
+
+
+def search_library(query: str, filters: dict[str, str] | None = None, limit: int = 10,
+                   bm25_params: dict[str, Any] | None = None) -> dict[str, Any]:
     """Deterministic Phase 2B retrieval (BM25/FTS v1). No vector model is used.
 
     Three deterministic channels are fused with RRF:
@@ -1087,11 +1109,15 @@ def search_library(query: str, filters: dict[str, str] | None = None, limit: int
     - ``bm25_like``: Okapi BM25 over the richer CJK-ngram/ASCII term space, with
       IDF, term-frequency saturation (k1) and document-length normalization (b).
 
+    ``bm25_params`` optionally overrides {"k1", "b"} for a tuning sweep; when omitted
+    the module defaults (BM25_K1/BM25_B) are used and behavior is unchanged.
+
     Authority level only breaks ties; it never substitutes for textual support.
     """
     filters = filters or {}
     query = (query or "").strip()
     limit = max(1, min(int(limit or 10), 50))
+    k1, b = _resolve_bm25_params(bm25_params)
     tokens = tokenize_query(query)
     conn = db()
     try:
@@ -1152,14 +1178,14 @@ def search_library(query: str, filters: dict[str, str] | None = None, limit: int
         cid = row["chunk_id"]
         counts = doc_terms.get(cid, Counter())
         dl = doc_len.get(cid, 0)
-        denom_norm = BM25_K1 * (1 - BM25_B + BM25_B * (dl / avg_len if avg_len else 0.0))
+        denom_norm = k1 * (1 - b + b * (dl / avg_len if avg_len else 0.0))
         score = 0.0
         matched: list[str] = []
         for term in query_terms:
             tf = counts.get(term, 0)
             if not tf:
                 continue
-            term_score = idf.get(term, 0.0) * (tf * (BM25_K1 + 1)) / (tf + denom_norm)
+            term_score = idf.get(term, 0.0) * (tf * (k1 + 1)) / (tf + denom_norm)
             if term_score > 0:
                 score += term_score
                 matched.append(term)
@@ -1192,7 +1218,7 @@ def search_library(query: str, filters: dict[str, str] | None = None, limit: int
         "query": query,
         "items": results[:limit],
         "channels": {name: len(vals) for name, vals in channels.items()},
-        "bm25": {"k1": BM25_K1, "b": BM25_B, "cjk_ngram_max": BM25_CJK_NGRAM_MAX,
+        "bm25": {"k1": k1, "b": b, "cjk_ngram_max": BM25_CJK_NGRAM_MAX,
                  "corpus_size": n_docs, "avg_doc_len": avg_len},
         "vector": {"enabled": False, "reason": "Phase 2B BM25/FTS v1: deterministic lexical/ngram/BM25 only; no embeddings/vector retrieval"},
     }
@@ -1255,7 +1281,8 @@ def mean_reciprocal_rank(ranked_lists: list[list[str]], relevant_sets: list[set[
     return total / len(ranked_lists)
 
 
-def evaluate_retrieval_cases(cases: list[dict[str, Any]], k: int = 10) -> dict[str, Any]:
+def evaluate_retrieval_cases(cases: list[dict[str, Any]], k: int = 10,
+                             bm25_params: dict[str, Any] | None = None) -> dict[str, Any]:
     """Run a deterministic retrieval benchmark over library search.
 
     Phase 2B needs a stable benchmark harness before BM25 tuning, embeddings, or
@@ -1282,7 +1309,7 @@ def evaluate_retrieval_cases(cases: list[dict[str, Any]], k: int = 10) -> dict[s
     for idx, case in enumerate(cases or [], start=1):
         query = str(case.get("query", "")).strip()
         filters = case.get("filters", {}) or {}
-        result = search_library(query, filters=filters, limit=k)
+        result = search_library(query, filters=filters, limit=k, bm25_params=bm25_params)
         items = result.get("items", [])
         ranked_titles = [str(item.get("document_title", "")) for item in items]
         ranked_chunks = [str(item.get("chunk_id", "")) for item in items]
@@ -1358,8 +1385,107 @@ def evaluate_retrieval_cases(cases: list[dict[str, Any]], k: int = 10) -> dict[s
             "missed_chunk_ids": c["missed_chunk_ids"],
         } for c in misses],
         "cases": evaluated,
+        "bm25": {"k1": _resolve_bm25_params(bm25_params)[0],
+                 "b": _resolve_bm25_params(bm25_params)[1],
+                 "cjk_ngram_max": BM25_CJK_NGRAM_MAX},
         "vector": {"enabled": False, "reason": "Phase 2B benchmark harness only; embeddings are not implemented"},
     }
+
+
+# --- Phase 2B: reusable eval-suite loader/runner (shared by tests and CLI) ----
+
+def load_retrieval_eval_suite(path: str | Path) -> dict[str, Any]:
+    """Load a retrieval eval suite JSON (with `corpus` and `cases`) into a dict."""
+    p = Path(path)
+    with p.open("r", encoding="utf-8") as f:
+        suite = json.load(f)
+    if not isinstance(suite, dict):
+        raise ValueError(f"eval suite must be a JSON object, got {type(suite).__name__}")
+    if not isinstance(suite.get("cases"), list):
+        raise ValueError("eval suite is missing a 'cases' list")
+    return suite
+
+
+def _import_suite_corpus(suite: dict[str, Any]) -> None:
+    """Import every corpus document of a suite into the current DB_PATH."""
+    for doc in suite.get("corpus", []) or []:
+        res = import_document({
+            "title": doc.get("title", ""),
+            "format": doc.get("format", "txt"),
+            "text": doc.get("text", ""),
+            "status": doc.get("status", "有效"),
+            "source_type": doc.get("source_type", ""),
+            "region": doc.get("region", ""),
+            "document_number": doc.get("document_number", ""),
+        })
+        if res.get("status") not in ("succeeded", "new_version"):
+            raise ValueError(f"corpus doc failed to import: {doc.get('title')!r} -> {res}")
+
+
+def build_suite_cases(suite: dict[str, Any]) -> list[dict[str, Any]]:
+    """Resolve a suite's `relevant_chunk_markers` into concrete `relevant_chunk_ids`.
+
+    Assumes the suite corpus is already imported into the current DB_PATH. Raises
+    ValueError if any declared marker does not resolve to a chunk (drift guard).
+    """
+    all_chunks: list[dict[str, Any]] = []
+    for d in list_documents():
+        all_chunks.extend(list_chunks(d["id"]))
+
+    def resolve(marker: str, case_id: str) -> str:
+        norm = _norm_line(marker)
+        for c in all_chunks:
+            if norm and norm in _norm_line(c["content"]):
+                return c["id"]
+        raise ValueError(f"marker did not resolve to any chunk: {marker!r} in case {case_id}")
+
+    cases: list[dict[str, Any]] = []
+    for idx, case in enumerate(suite.get("cases", []) or [], start=1):
+        case_id = case.get("id") or f"case-{idx}"
+        chunk_ids = [resolve(m, case_id) for m in case.get("relevant_chunk_markers", []) or []]
+        # Explicit relevant_chunk_ids (already concrete) are kept as-is too.
+        chunk_ids += [str(v) for v in case.get("relevant_chunk_ids", []) or [] if str(v).strip()]
+        cases.append({
+            "id": case_id,
+            "query": case.get("query", ""),
+            "filters": case.get("filters", {}) or {},
+            "relevant_titles": case.get("relevant_titles", []) or [],
+            "relevant_chunk_ids": chunk_ids,
+        })
+    return cases
+
+
+def run_retrieval_eval_suite(suite: dict[str, Any], k: int | None = None,
+                             db_path: str | Path | None = None,
+                             bm25_params: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Run a full eval suite end-to-end and return a JSON-serializable report.
+
+    Imports ``suite.corpus`` into an isolated SQLite DB (a throwaway temp file when
+    ``db_path`` is not given), resolves chunk markers, runs ``evaluate_retrieval_cases``
+    and augments the report with the suite name. Never mutates the caller's DB_PATH
+    beyond the call, and removes any temp DB it created.
+    """
+    global DB_PATH
+    if k is None:
+        k = int(suite.get("k", 10) or 10)
+    original_db_path = DB_PATH
+    created_tmp: str | None = None
+    if db_path is None:
+        tmp = tempfile.NamedTemporaryFile(suffix=".sqlite3", delete=False)
+        tmp.close()
+        db_path = tmp.name
+        created_tmp = tmp.name
+    DB_PATH = Path(db_path)
+    try:
+        _import_suite_corpus(suite)
+        cases = build_suite_cases(suite)
+        report = evaluate_retrieval_cases(cases, k=k, bm25_params=bm25_params)
+        report["suite"] = suite.get("suite")
+        return report
+    finally:
+        DB_PATH = original_db_path
+        if created_tmp:
+            Path(created_tmp).unlink(missing_ok=True)
 
 
 def split_paragraphs(text: str) -> list[str]:
@@ -1607,9 +1733,139 @@ class Handler(SimpleHTTPRequestHandler):
             self.json_response({"error": str(exc)}, 500)
 
 
+# --- Phase 2B: eval-retrieval CLI (deterministic quality gate) ----------------
+
+# Default acceptance thresholds match the anonymized placeholder suite's fixed
+# regression targets. A real suite can pass stricter/looser values on the CLI.
+EVAL_DEFAULT_MIN_TITLE_RECALL = 0.8
+EVAL_DEFAULT_MIN_CHUNK_RECALL = 1.0
+EVAL_DEFAULT_MAX_MISSES = 2
+
+# BM25 sweep grid (used only with --sweep-bm25); kept small and deterministic.
+BM25_SWEEP_K1 = [0.9, 1.2, 1.5, 1.8]
+BM25_SWEEP_B = [0.5, 0.75, 1.0]
+
+
+def _eval_summary(report: dict[str, Any]) -> dict[str, Any]:
+    """Compact metric summary of a full eval report."""
+    return {
+        "suite": report.get("suite"),
+        "k": report.get("k"),
+        "case_count": report.get("case_count"),
+        "miss_count": report.get("miss_count"),
+        "title_recall_at_k": report.get("title_recall_at_k"),
+        "title_mrr": report.get("title_mrr"),
+        "chunk_recall_at_k": report.get("chunk_recall_at_k"),
+        "chunk_mrr": report.get("chunk_mrr"),
+        "bm25": report.get("bm25"),
+    }
+
+
+def _eval_passes(report: dict[str, Any], min_title: float, min_chunk: float,
+                 max_misses: int) -> tuple[bool, list[str]]:
+    """Check a report against thresholds; return (passed, list-of-failure-reasons)."""
+    failures = []
+    tr = report.get("title_recall_at_k", 0.0)
+    cr = report.get("chunk_recall_at_k", 0.0)
+    mc = report.get("miss_count", 0)
+    if tr < min_title:
+        failures.append(f"title_recall_at_k {tr:.4f} < min {min_title}")
+    if cr < min_chunk:
+        failures.append(f"chunk_recall_at_k {cr:.4f} < min {min_chunk}")
+    if mc > max_misses:
+        failures.append(f"miss_count {mc} > max {max_misses}")
+    return (not failures), failures
+
+
+def eval_retrieval_cli(argv: list[str]) -> int:
+    """Run the eval suite as a quality gate. Returns a process exit code.
+
+    Prints the report JSON to stdout (and optionally to --output). Exit code is 0
+    only when the report meets all thresholds; otherwise non-zero (the JSON is
+    still emitted so CI can inspect it).
+    """
+    import argparse
+
+    parser = argparse.ArgumentParser(
+        prog="eval-retrieval",
+        description="Run the anonymized retrieval eval suite as a deterministic quality gate.")
+    parser.add_argument("--suite", required=True, help="path to the eval suite JSON")
+    parser.add_argument("--k", type=int, default=None, help="Top K (default: suite.k or 10)")
+    parser.add_argument("--output", default=None, help="also write the JSON report to this path")
+    parser.add_argument("--min-title-recall", type=float, default=EVAL_DEFAULT_MIN_TITLE_RECALL)
+    parser.add_argument("--min-chunk-recall", type=float, default=EVAL_DEFAULT_MIN_CHUNK_RECALL)
+    parser.add_argument("--max-misses", type=int, default=EVAL_DEFAULT_MAX_MISSES)
+    parser.add_argument("--bm25-k1", type=float, default=None, help="override BM25 k1")
+    parser.add_argument("--bm25-b", type=float, default=None, help="override BM25 b")
+    parser.add_argument("--sweep-bm25", action="store_true",
+                        help="sweep a small BM25 k1/b grid and report each plus the best")
+    args = parser.parse_args(argv)
+
+    try:
+        suite = load_retrieval_eval_suite(args.suite)
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        payload = {"error": f"failed to load suite: {exc}", "suite_path": args.suite}
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return 2
+
+    bm25_params = None
+    if args.bm25_k1 is not None or args.bm25_b is not None:
+        bm25_params = {}
+        if args.bm25_k1 is not None:
+            bm25_params["k1"] = args.bm25_k1
+        if args.bm25_b is not None:
+            bm25_params["b"] = args.bm25_b
+
+    try:
+        if args.sweep_bm25:
+            sweep = []
+            for k1 in BM25_SWEEP_K1:
+                for b in BM25_SWEEP_B:
+                    rep = run_retrieval_eval_suite(suite, k=args.k, bm25_params={"k1": k1, "b": b})
+                    passed, failures = _eval_passes(rep, args.min_title_recall,
+                                                    args.min_chunk_recall, args.max_misses)
+                    entry = _eval_summary(rep)
+                    entry["passed"] = passed
+                    sweep.append(entry)
+            # Best: highest title recall, then chunk recall, then fewest misses.
+            best = max(sweep, key=lambda e: (e["title_recall_at_k"], e["chunk_recall_at_k"],
+                                             -e["miss_count"]))
+            report = {"mode": "sweep", "suite": suite.get("suite"),
+                      "grid": {"k1": BM25_SWEEP_K1, "b": BM25_SWEEP_B},
+                      "results": sweep, "best": best}
+            passed = best["passed"]
+            failures = [] if passed else ["no BM25 (k1,b) in the swept grid met all thresholds"]
+        else:
+            report = run_retrieval_eval_suite(suite, k=args.k, bm25_params=bm25_params)
+            passed, failures = _eval_passes(report, args.min_title_recall,
+                                            args.min_chunk_recall, args.max_misses)
+            report["mode"] = "single"
+        report["gate"] = {
+            "passed": passed,
+            "failures": failures,
+            "thresholds": {
+                "min_title_recall": args.min_title_recall,
+                "min_chunk_recall": args.min_chunk_recall,
+                "max_misses": args.max_misses,
+            },
+        }
+    except (ValueError, KeyError) as exc:
+        payload = {"error": f"eval run failed: {exc}", "suite": suite.get("suite")}
+        print(json.dumps(payload, ensure_ascii=False, indent=2))
+        return 2
+
+    text = json.dumps(report, ensure_ascii=False, indent=2)
+    print(text)
+    if args.output:
+        Path(args.output).write_text(text + "\n", encoding="utf-8")
+    return 0 if passed else 1
+
+
 if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "eval-retrieval":
+        sys.exit(eval_retrieval_cli(sys.argv[2:]))
     db().close()
     port = int(os.getenv("MATERIAL_PORT", "8765"))
-    server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    httpd = ThreadingHTTPServer(("127.0.0.1", port), Handler)
     print(f"Serving http://127.0.0.1:{port}", flush=True)
-    server.serve_forever()
+    httpd.serve_forever()

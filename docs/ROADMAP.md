@@ -89,8 +89,11 @@
 - [x] 内置匿名占位评测集（10 条 case，含 2 条有意 miss）固定评测运行器行为
 - [x] 中文 BM25/FTS 调优 v1：新增确定性 `bm25_like` 通道（1-4 字中文 ngram + ASCII/数字词元、IDF、tf 饱和 k1、长度归一 b，权威仅作 tie-breaker），RRF 融合并输出 `hit_reasons`
 - [x] 评测可解释性：逐 case 输出 `top_reasons`（融合分/各通道命中/命中理由）
+- [x] 评测集可复用 helper：`load_retrieval_eval_suite` / `build_suite_cases` / `run_retrieval_eval_suite`（隔离临时库、marker→chunk_id、不污染主库）
+- [x] 评测命令行质量门禁：`python backend/server.py eval-retrieval`（及 `tools/evaluate_retrieval.py`），JSON 输出 + `--output`、阈值 `--min-title-recall`/`--min-chunk-recall`/`--max-misses`、达标 exit 0/不达标非 0
+- [x] BM25 参数化：`k1`/`b` 可经 `bm25_params` 或 CLI（`--bm25-k1`/`--bm25-b`/`--sweep-bm25`）覆盖与扫参，默认行为不变
 - [ ] 人工建立 50-100 条真实匿名查询集，替换内置占位集
-- [ ] 更大真实查询集上的 BM25/FTS 扫参与阈值校准
+- [ ] 在真实查询集上用 CLI 扫参校准 BM25 k1/b 与阈值
 - [ ] 向量检索与可替换 embedding 管线
 - [ ] RRF 融合排序和可插拔重排深化
 - [ ] 地区、机构、时间、文种、有效性过滤的 UI/评测覆盖扩展
