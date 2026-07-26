@@ -2369,6 +2369,98 @@ def evidence_text(items: list[dict[str, str]]) -> str:
     return "\n".join(" ".join(str(v) for v in item.values()) for item in items)
 
 
+def _payload_evidence_search_items(evidence: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Adapt payload evidence into search-like items without mutating the payload."""
+    items: list[dict[str, Any]] = []
+    for idx, raw in enumerate(evidence or [], start=1):
+        body = str(raw.get("body") or raw.get("content") or raw.get("text") or "")
+        title = str(raw.get("title") or "")
+        source = str(raw.get("source") or "")
+        url = str(raw.get("url") or "")
+        chunk_id = f"payload-evidence-{idx}"
+        items.append({
+            "chunk_id": chunk_id,
+            "document_id": f"payload-document-{idx}",
+            "title": title,
+            "source": source,
+            "url": url,
+            "body": body,
+            "content": " ".join(part for part in (title, source, url, body) if part),
+            "hit_reasons": [],
+        })
+    return items
+
+
+def build_structured_writing_plan(payload: dict[str, Any], analysis: dict[str, Any]) -> dict[str, Any]:
+    """Deterministically link outline sections, draft paragraphs, claims, and evidence.
+
+    This is an additive audit surface for later targeted rewrite/review work. It
+    does not query the library database, call models, change status/issues, or
+    perform semantic entailment.
+    """
+    genre_key = payload.get("genre", "work_plan")
+    genre_rule = analysis.get("genre") or RULES["genres"].get(genre_key, RULES["genres"]["work_plan"])
+    sections = list(genre_rule.get("required_sections") or [])
+    paragraphs = split_paragraphs(str(payload.get("draft", "") or ""))
+    evidence_items = _payload_evidence_search_items(payload.get("evidence", []) or [])
+
+    outline: list[dict[str, Any]] = []
+    for section in sections:
+        indexes = [idx for idx, paragraph in enumerate(paragraphs, start=1) if section in paragraph]
+        outline.append({"section": section, "present": bool(indexes), "paragraph_indexes": indexes})
+
+    paragraph_entries: list[dict[str, Any]] = []
+    for idx, paragraph in enumerate(paragraphs, start=1):
+        assigned_section = next((section for section in sections if section in paragraph), None)
+        evidence_map = map_claim_to_evidence(paragraph, evidence_items)
+        required_markers = list(evidence_map.get("required_markers") or [])
+        missing_markers = list(evidence_map.get("missing_markers") or [])
+        linked_chunk_ids = sorted({
+            str(item.get("chunk_id"))
+            for item in evidence_map.get("supporting_items", [])
+            if item.get("chunk_id")
+        })
+
+        warnings: list[str] = []
+        if not required_markers:
+            status = "no_claim_markers"
+        elif missing_markers:
+            status = "needs_verification"
+            warnings.append("missing_required_markers")
+        else:
+            status = "supported"
+
+        paragraph_entries.append({
+            "index": idx,
+            "text": paragraph,
+            "section": assigned_section,
+            "required_markers": required_markers,
+            "evidence_map": evidence_map,
+            "status": status,
+            "linked_chunk_ids": linked_chunk_ids,
+            "warnings": warnings,
+        })
+
+    claim_paragraph_count = sum(1 for p in paragraph_entries if p["required_markers"])
+    supported_paragraph_count = sum(1 for p in paragraph_entries if p["status"] == "supported")
+    needs_verification_count = sum(1 for p in paragraph_entries if p["status"] == "needs_verification")
+    missing_section_count = sum(1 for entry in outline if not entry["present"])
+
+    return {
+        "method": "structured_writing_plan_v1",
+        "genre": genre_key,
+        "outline": outline,
+        "paragraphs": paragraph_entries,
+        "summary": {
+            "paragraph_count": len(paragraph_entries),
+            "claim_paragraph_count": claim_paragraph_count,
+            "supported_paragraph_count": supported_paragraph_count,
+            "needs_verification_count": needs_verification_count,
+            "missing_section_count": missing_section_count,
+        },
+    }
+
+
 # --- Stage 3: deterministic writing workflow state (v1) ----------------------
 #
 # An additive, deterministic surface over analyze_payload. It never changes the
@@ -2495,6 +2587,7 @@ def analyze_payload(payload: dict[str, Any]) -> dict[str, Any]:
     score = max(0, 100 - sum(25 if i["level"] == "blocker" else 14 if i["level"] == "fail" else 6 for i in issues))
     status = "blocked" if any(i["level"] == "blocker" for i in issues) else "fail" if any(i["level"] == "fail" for i in issues) else "pass"
     analysis = {"status": status, "score": score, "issues": issues, "missing": missing, "genre": genre_rule}
+    analysis["structured_writing_plan"] = build_structured_writing_plan(payload, analysis)
     # Additive Stage 3 deterministic workflow state (does not change status/issues).
     analysis["writing_state"] = build_writing_state(payload, analysis)
     return analysis

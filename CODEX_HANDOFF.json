@@ -1,65 +1,66 @@
 {
   "status": "verified_by_codex",
-  "task_id": "cailiao-stage3-writing-state-machine-v1",
-  "phase": "ROADMAP Stage 3: deterministic writing workflow state machine v1 (additive)",
-  "baseline": "Isolated repo clean sync baseline (local commit Sync-cdbf8be). No push, no credentials, no external calls.",
+  "task_id": "cailiao-stage3-structured-writing-plan-v1",
+  "phase": "ROADMAP Stage 3: deterministic outline/paragraph/claim/evidence linkage v1",
+  "baseline": "Release repo main 6689a53. WSL isolated repo was clean and task file was written, but Claude Code did not consume the task or produce a new diff/report after UIA and direct TTY sends.",
   "context": [
-    "Claude implemented the Stage 3 deterministic writing-state machine in the isolated WSL Claude Code workspace at /home/kiro/kiro-work/work/cailiao-task. It is an additive surface over analyze_payload and /api/generate; existing status/issues/score semantics are unchanged.",
-    "Claude could not run tests in its tool environment. Codex applied the diff to the Windows release repo, fixed gate coverage, and ran the required verification before commit/push.",
-    "No git commit or push was performed by Claude; no GitHub interaction occurred.",
-    "NOTE: the task spec's Chinese state labels arrived as mojibake (????). The five state codes and rules were unambiguous in English, and ROADMAP line 119 gives the canonical labels; Claude used those: materials_insufficient/资料不足, ready_to_draft/可起草, needs_revision/待修, ready_for_review/待审, ready_to_export/可导出."
+    "Codex first attempted the normal two-CLI workflow: wrote CODEX_TO_CLAUDE_LATEST.md for Claude Code, sent the short read-and-execute command via UIA, then retried via the verified Claude TTY /dev/pts/0.",
+    "After polling, the WSL report still showed the previous task_id cailiao-stage3-writing-state-machine-v1 and the isolated repo had no diff, so Codex took over this small Stage 3 slice to avoid stalling.",
+    "No Claude commit or push occurred. This handoff describes the Codex-implemented release repo diff."
   ],
-  "summary": "Added build_writing_state(payload, analysis) and included a JSON-serializable writing_state in every analyze_payload(...) return and in every /api/generate response (blocked / prompt_only / llm / error). Five deterministic states with stable codes + Chinese labels, plus can_generate/can_export/blockers/failures/warnings/required_actions/method=deterministic_writing_state_v1. Approval flags (review_approved/approved) can never override a blocker or fail. Existing keys and status/issues behavior are preserved; no LLM, no DOCX formatting, no review-rule changes.",
+  "summary": "Added a deterministic structured_writing_plan surface to analyze_payload. It links required outline sections, draft paragraphs, claim markers, and request-local evidence items using existing lexical helpers. The feature is additive: existing status/issues/score/writing_state behavior is unchanged. It does not query the library database, call external services, perform semantic entailment, or format DOCX.",
   "changed_files": [
     "backend/server.py",
-    "tests/test_writing_state.py",
+    "tests/test_structured_writing_plan.py",
     "tools/run_quality_gates.py",
     "README.md",
     "docs/ROADMAP.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "backend/server.py: added WRITING_STATE_LABEL map and build_writing_state(payload, analysis) -> {state, label, can_generate, can_export, draft_present, approved, blockers, failures, warnings, required_actions, method}.",
-    "State precedence (guarantees approval cannot mask a blocker/fail): blockers -> materials_insufficient (can_generate/export False); elif failures -> needs_revision; elif no draft -> ready_to_draft; elif approved -> ready_to_export (can_export True); else ready_for_review. Note fail issues only arise when a draft is present, so needs_revision implies a draft.",
-    "blockers/failures/warnings are derived from analysis issues by issue['level'] (blocker/fail/warning). approved = truthy payload['review_approved'] or payload['approved'] (never inferred).",
-    "required_actions is deterministic per state: fill missing fields/facts (insufficient), fix fail issues (needs_revision), generate_draft (ready_to_draft), human_review (ready_for_review), export_docx (ready_to_export).",
-    "analyze_payload now builds the analysis dict then attaches analysis['writing_state'] = build_writing_state(payload, analysis) before returning. All prior keys (status, score, issues, missing, genre) are unchanged.",
-    "/api/generate: blocked response adds top-level writing_state (also present nested in analysis); non-blocked path sets result['writing_state'] = result['analysis']['writing_state'] after the (re)analysis, so prompt_only/llm/error responses all carry it.",
-    "Added tests/test_writing_state.py: all five states, review_approved/approved cannot override blockers or failures, analyze_payload always includes writing_state, JSON-serializable, and an HTTP test that /api/generate blocked response includes writing_state (blocked path does not call the LLM, so no network).",
-    "Codex added tests/test_writing_state.py to the py-compile file list in tools/run_quality_gates.py."
+    "backend/server.py: added _payload_evidence_search_items(evidence), adapting payload evidence into stable local search-like items payload-evidence-N/payload-document-N without mutating the payload.",
+    "backend/server.py: added build_structured_writing_plan(payload, analysis), returning method=structured_writing_plan_v1, genre, outline, paragraphs, and summary.",
+    "Outline entries include section, present, and paragraph_indexes based on exact section-text matching in draft paragraphs.",
+    "Paragraph entries include 1-based index, text, deterministic section assignment, required_markers, evidence_map, status, linked_chunk_ids, and warnings.",
+    "Paragraph status is no_claim_markers when no required markers exist, supported when every required marker is covered by request-local evidence, and needs_verification when required markers are missing.",
+    "analyze_payload now attaches analysis['structured_writing_plan'] before writing_state. Existing analysis keys and writing_state semantics are preserved.",
+    "tools/run_quality_gates.py py-compile gate now includes tests/test_structured_writing_plan.py.",
+    "README.md and docs/ROADMAP.md document the v1 boundary: request-local evidence only, no DB query, no model call, no NLI/semantic entailment."
   ],
   "not_implemented": [
-    "No LLM calls, no DOCX formatting, no semantic review, and no change to review-rule semantics (status/issues/score logic untouched).",
-    "No paragraph-level structured linkage, locked-paragraph diff/rollback, or targeted single-paragraph rewrite (later Stage 3 items).",
-    "No frontend UI change (writing_state is returned by the API; rendering was not requested by this task)."
+    "No semantic entailment/NLI and no claim truth judgment beyond existing lexical marker coverage.",
+    "No library database retrieval; only payload['evidence'] is used.",
+    "No LLM calls, no DOCX formatting, no locked paragraph diff/rollback, and no targeted rewrite implementation.",
+    "No frontend rendering for structured_writing_plan in this slice."
   ],
   "test_files": [
-    "tests/test_writing_state.py (new)"
+    "tests/test_structured_writing_plan.py (new)"
   ],
   "required_test_commands_for_codex": [
+    "python -m unittest tests.test_structured_writing_plan -v",
     "python -m unittest discover -s tests -v",
-    "python -m unittest tests.test_writing_state -v",
     "python tools/validate_retrieval_suite.py --suite tests/data/retrieval_eval_suite.json --json",
     "python tools/run_quality_gates.py --json",
     "python -m json.tool CODEX_HANDOFF.json",
     "git diff --check"
   ],
   "test_status": [
-    "python -m unittest tests.test_writing_state -v: 10 tests OK.",
-    "python -m unittest discover -s tests -v: 168 tests OK.",
+    "python -m unittest tests.test_structured_writing_plan -v: 7 tests OK.",
+    "python -m unittest discover -s tests -v: 175 tests OK.",
     "python tools/validate_retrieval_suite.py --suite tests/data/retrieval_eval_suite.json --json: passed=true, with expected placeholder/<50-case warnings.",
     "python tools/run_quality_gates.py --json: passed=true, 5 gates passed.",
     "python -m json.tool CODEX_HANDOFF.json: passed.",
     "git diff --check: passed."
   ],
   "risks": [
-    "writing_state is deterministic workflow state only; it must not be read as semantic review or a guarantee of document quality. Docs state this boundary.",
-    "The ready_for_review test depends on CLEAN_DRAFT producing no fail issue; it was constructed to satisfy sentence_has_action_guard (owner 由 / time 年底 / result 完成/建立/形成) and to contain no 《》/percentage/4-digit-year/quantity pattern. If RULES change materially, revisit that fixture.",
-    "The Chinese labels were chosen from ROADMAP line 119 because the spec labels were mojibake; if Codex intended different label strings, adjust WRITING_STATE_LABEL and the test label assertions accordingly.",
-    "run_quality_gates.py py-compile gate now includes tests/test_writing_state.py; unittest discovery also covers it."
+    "structured_writing_plan is deterministic linkage metadata only; it must not be treated as semantic support, legal/policy correctness, or final review.",
+    "Section assignment is exact text matching against required section labels. This is intentionally conservative and may miss paraphrased headings.",
+    "Payload evidence item conversion is local and stable, but it is not a substitute for trusted library retrieval or persistent chunk IDs.",
+    "Claude Code channel did not consume this task during the initial send/retry; orchestration scripts should be revisited before assuming the next loop can rely on Claude execution."
   ],
   "credentials": [
     "No credentials or .env files were read, created, or modified.",
-    "No git commit or push was performed; no network access was used."
+    "No external network calls were used for implementation or tests.",
+    "No commit or push has been performed at the time this handoff file was written."
   ]
 }

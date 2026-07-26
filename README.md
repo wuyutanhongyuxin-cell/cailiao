@@ -36,6 +36,7 @@
 | 检索与核验面板 | 阶段 2B：资料库新增“检索与核验”标签，可审计地展示 RRF 融合分、各通道 rank/score、命中理由、向量启用状态、BM25 参数，以及主张核验的必备/缺失标记、覆盖率、`covered_markers`(marker→分段列表)、`supporting_items` 与 `cited_chunk_ids`；并以稠密审计块展示 `insufficiency`（证据不足/拒绝理由：`summary`/`blocking`/`missing_markers`/`conflict_count`/`overlap`/`details`/`method`）；界面明确标注“词面覆盖 ≠ 语义蕴含，需人工语义复核”，`insufficiency` 亦标注为确定性词面审计、非 NLI/真伪判断 |
 | 确定性审稿 | 检查空泛表述、责任主体、完成时限、可验证结果和无依据主张 |
 | 写作状态机 | 阶段 3 v1：确定性附加层 `build_writing_state`，在每次 `analyze_payload` 与 `/api/generate` 响应中给出 `writing_state`——五态 `materials_insufficient/资料不足`、`ready_to_draft/可起草`、`needs_revision/待修`、`ready_for_review/待审`、`ready_to_export/可导出`，附 `can_generate`/`can_export`/`blockers`/`failures`/`warnings`/`required_actions`；`review_approved`/`approved` 不能覆盖 blocker/fail。这是确定性工作流状态，非语义复核、非正式排版 |
+| 结构化写作计划 | 阶段 3 v1：确定性附加层 `build_structured_writing_plan`，在每次 `analyze_payload` 中给出 `structured_writing_plan`，把文种必备章节、草稿段落、段落标记和请求内证据项做机器可读关联；仅使用 `payload["evidence"]`，不查询资料库、不调用模型、不做语义蕴含 |
 | 模型接入 | 支持 OpenAI 兼容的 `/chat/completions` 接口 |
 | 无 Key 模式 | 不调用模型，仍可输出严格提示词、缺项报告和审稿结果 |
 | 本地存储 | 草稿保存在浏览器本地；后端使用本地 SQLite |
