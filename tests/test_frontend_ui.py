@@ -47,6 +47,27 @@ class FrontendSearchUiTest(unittest.TestCase):
                       "matched_markers", "matched_terms", "cited_chunk_ids"):
             self.assertIn(token, APP_JS, f"verifyClaim does not surface {token}")
 
+    def test_verify_renderer_surfaces_insufficiency(self):
+        # The audit panel must surface verify_claim.insufficiency and its fields.
+        for token in ("insufficiency", "has_insufficiency", "blocking",
+                      "conflict_count", "overlap", "renderInsufficiency",
+                      "INSUFFICIENCY_SUMMARY_LABEL"):
+            self.assertIn(token, APP_JS, f"verifyClaim does not surface {token}")
+        # Stable summary codes are referenced (as label-map keys).
+        for code in ("no_retrieved_evidence", "required_markers_missing",
+                     "conflict_candidates_found", "weak_lexical_overlap"):
+            self.assertIn(code, APP_JS, f"insufficiency summary code {code} missing")
+
+    def test_insufficiency_is_deterministic_lexical_not_semantic(self):
+        # The insufficiency block must be framed as deterministic lexical audit,
+        # never as semantic entailment / NLI / truth judgement.
+        self.assertIn("确定性词面审计", APP_JS)
+        self.assertIn("NLI", APP_JS)
+
+    def test_insufficiency_backward_compatible_guard(self):
+        # renderInsufficiency must no-op when the field is absent (older responses).
+        self.assertIn("if (!ins) return ''", APP_JS)
+
     def test_no_mojibake_question_mark_runs(self):
         # The old renderers had runs like '???' from mis-decoded Chinese; ensure
         # none remain in the displayed strings.

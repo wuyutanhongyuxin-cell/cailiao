@@ -234,6 +234,8 @@ CLI 行为：
 
 检索的 `top_reasons`（RRF 融合分、各通道 rank/score、命中理由、向量/BM25 元信息）与核验的 `evidence_map`（`required_markers`/`covered_markers`/`missing_markers`/`coverage_ratio`/`supporting_items`）都会在资料库的“检索与核验”标签中渲染出来（`frontend/index.html` 的 `#libSearch` 面板 + `frontend/app.js` 的 `renderSearch`/`verifyClaim`）。面板同时暴露来源类型、最低权威、地区、发文机关、格式、发布日期区间和有效性范围，并在结果摘要里显示“生效过滤”，便于审计哪些约束先于排序生效。面板文案明确声明这是词面覆盖、需人工语义复核，不把覆盖当作语义蕴含。
 
+核验结果还会渲染 `insufficiency`（证据不足 / 拒绝理由）审计块（`frontend/app.js` 的 `renderInsufficiency`）：以稠密、可扫读的行展示 `summary` 摘要标签、`blocking` 阻断状态、`missing_markers` 缺失标记、`conflict_count` 冲突候选数、`overlap` 词面重合计数/比率、`details` 明细（`code`+消息）与 `method` 方法串。当响应不含 `insufficiency`（旧版本）时该块自动省略，保持向后兼容；`status=supported` 且无不足时以 `summary=none` 紧凑显示、不用告警措辞。面板明确标注这是**确定性词面审计元数据，不是语义蕴含 / NLI / 真伪判断**。
+
 ## 使用边界
 
 - 该评测器只衡量当前检索结果是否召回标注答案；

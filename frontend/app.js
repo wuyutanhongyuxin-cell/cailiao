@@ -326,6 +326,16 @@ const VERIFY_STATUS_LABEL = {
   unsupported: '未获支撑',
 };
 
+// Labels for verify_claim.insufficiency.summary. Audit wording only: this is a
+// deterministic lexical check, NOT semantic entailment / NLI / truth judgement.
+const INSUFFICIENCY_SUMMARY_LABEL = {
+  no_retrieved_evidence: '无检索证据',
+  required_markers_missing: '必备标记缺失',
+  conflict_candidates_found: '发现冲突候选（词面）',
+  weak_lexical_overlap: '词面重合过弱',
+  none: '无不足（词面审计）',
+};
+
 async function verifyClaim() {
   const claim = $('libClaim').value.trim();
   if (!claim) {
@@ -356,6 +366,11 @@ async function verifyClaim() {
     </div>
   `).join('') || '<div class="item">无支撑分段。</div>';
 
+  // Evidence-insufficiency audit block. Backward compatible: if an older response
+  // omits `insufficiency`, this stays empty and nothing else changes. Dense audit
+  // rows only; deliberately no semantic/NLI wording.
+  const insufficiencyHtml = renderInsufficiency(data.insufficiency);
+
   $('searchResults').innerHTML = `
     <div class="item ${statusClass}">
       <strong>核验结论：${escapeHtml(VERIFY_STATUS_LABEL[data.status] || data.status)}</strong>
@@ -365,6 +380,7 @@ async function verifyClaim() {
       <div>覆盖率：${ratioText}</div>
       <div>引用分段（cited_chunk_ids）：${escapeHtml((data.cited_chunk_ids || []).join('、')) || '无'}</div>
     </div>
+    ${insufficiencyHtml}
     <div class="item">
       <strong>标记覆盖（marker → 分段列表）</strong>
       ${coveredHtml}
@@ -372,6 +388,39 @@ async function verifyClaim() {
     <strong>支撑分段详情</strong>
     ${supportingHtml}
   `;
+}
+
+// Render verify_claim.insufficiency as a dense audit row. Returns '' when the
+// field is absent (older responses) so existing rendering stays backward
+// compatible. This is deterministic lexical audit metadata only -- it never
+// asserts semantic entailment, NLI, contradiction, or truth.
+function renderInsufficiency(ins) {
+  if (!ins) return '';
+  const ov = ins.overlap || {};
+  const pct = (v) => (v === null || v === undefined ? '—' : `${(v * 100).toFixed(0)}%`);
+  const detailsHtml = (ins.details || []).map((d) => {
+    const extra = [];
+    if (d.markers && d.markers.length) extra.push(`标记：${escapeHtml(d.markers.join('，'))}`);
+    if (d.conflict_count) extra.push(`冲突数：${d.conflict_count}`);
+    if (d.conflict_types && d.conflict_types.length) extra.push(`类型：${escapeHtml(d.conflict_types.join('，'))}`);
+    return `<div>· <code>${escapeHtml(d.code || '')}</code>　${escapeHtml(d.message || '')}` +
+           `${extra.length ? '　（' + extra.join('；') + '）' : ''}</div>`;
+  }).join('') || '<div>无</div>';
+  // Blocking (must not be treated as supported) gets the conservative 'warning'
+  // class; a clean 'none' result stays a plain, non-alarming row.
+  const insClass = ins.blocking ? 'warning' : '';
+  return `
+    <div class="item ${insClass}">
+      <strong>证据不足审计（insufficiency，词面确定性，非语义/NLI）</strong>
+      <div>结论摘要（summary）：${escapeHtml(INSUFFICIENCY_SUMMARY_LABEL[ins.summary] || ins.summary || '—')}　·　${ins.has_insufficiency ? '存在不足' : '无不足'}</div>
+      <div>阻断状态（blocking）：${ins.blocking ? '是（不得视为已支撑）' : '否'}</div>
+      <div>缺失标记（missing_markers）：${escapeHtml((ins.missing_markers || []).join('，')) || '无'}</div>
+      <div>冲突候选数（conflict_count）：${ins.conflict_count ?? 0}</div>
+      <div>词面重合（overlap）：命中 ${ov.overlap_token_count ?? '—'} / 主张 ${ov.claim_token_count ?? '—'} 词元　·　重合率 ${pct(ov.overlap_ratio)}　·　标记覆盖率 ${pct(ov.coverage_ratio)}</div>
+      <div>明细（details）：</div>
+      ${detailsHtml}
+      <div class="muted">方法：${escapeHtml(ins.method || '')}（确定性词面审计，不是语义蕴含/NLI/真伪判断）</div>
+    </div>`;
 }
 
 const importBtn = $('importBtn');

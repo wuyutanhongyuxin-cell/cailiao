@@ -1,61 +1,58 @@
 {
   "status": "verified_by_codex",
-  "task_id": "cailiao-stage2b-claim-insufficiency-v1",
-  "phase": "ROADMAP Stage 2B: deterministic evidence-insufficiency / refusal detail v1",
-  "baseline": "Isolated repo clean sync baseline (local commit Sync-6543b7b). No push, no credentials, no external calls.",
+  "task_id": "cailiao-stage2b-frontend-insufficiency-panel-v1",
+  "phase": "ROADMAP Stage 2B: surface verify_claim.insufficiency in the local audit UI",
+  "baseline": "Isolated repo clean sync baseline (local commit Sync-d73345d). No push, no credentials, no external calls.",
   "context": [
-    "Claude implemented the deterministic evidence-insufficiency / refusal detail in the isolated WSL Claude Code workspace at /home/kiro/kiro-work/work/cailiao-task, on top of the merged verify_claim/evidence_map/conflict_evidence work.",
-    "Claude could not run tests in its tool environment. Codex applied the diff to the Windows release repo, fixed delivery metadata and gate coverage, and ran the required verification before commit/push.",
+    "Claude implemented the frontend audit-panel rendering of verify_claim.insufficiency in the isolated WSL Claude Code workspace at /home/kiro/kiro-work/work/cailiao-task. Backend semantics are unchanged.",
+    "Claude could not run tests in its tool environment. Codex applied the diff to the Windows release repo and ran the required verification before commit/push.",
     "No git commit or push was performed by Claude; no GitHub interaction occurred."
   ],
-  "summary": "Added build_evidence_insufficiency(...) and wired an always-present, JSON-serializable, deterministic `insufficiency` object into every verify_claim(...) response. It explains why a claim is not safely supported using only the conservative lexical signals verify_claim already computed (no semantic entailment / NLI / model use). All existing verify_claim keys and status/reasons behavior are unchanged (backward compatible); the object is additive.",
+  "summary": "Surfaced verify_claim.insufficiency in the existing library search/verify audit UI (frontend/app.js verifyClaim). Added a new renderInsufficiency(ins) helper + INSUFFICIENCY_SUMMARY_LABEL map; the verify template now injects a dense, scannable audit block showing summary label, blocking state, missing_markers, conflict_count, lexical overlap counts/ratio, a details list (code + message), and the method string. Backward compatible: when insufficiency is absent (older responses) the helper returns '' and existing status/reasons/evidence_map rendering is untouched. All values escaped via the existing escapeHtml. No backend change. Wording is deterministic-lexical audit only (explicitly not semantic entailment / NLI / truth).",
   "changed_files": [
-    "backend/server.py",
-    "tests/test_claim_insufficiency.py",
-    "tools/run_quality_gates.py",
+    "frontend/app.js",
+    "tests/test_frontend_ui.py",
     "README.md",
-    "docs/ROADMAP.md",
     "docs/RETRIEVAL_EVALUATION.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "build_evidence_insufficiency(status, items, evidence_map, conflict_evidence, claim_tokens, overlap, downgraded_by_conflict): returns {has_insufficiency, summary, blocking, missing_markers, conflict_count, overlap, details, method=deterministic_lexical_insufficiency_v1}. Deterministic and stdlib-only.",
-    "summary is a single stable label chosen by priority: no_retrieved_evidence > required_markers_missing > conflict_candidates_found > weak_lexical_overlap > none.",
-    "blocking = (status != 'supported'); has_insufficiency = (summary != 'none').",
-    "details is a list of machine-readable reason objects (each with a 'code'), not prose-only strings: no_retrieved_evidence, required_markers_missing (+markers), conflict_candidates_found (+conflict_count, conflict_types, downgraded_from_supported), weak_lexical_overlap (explicitly framed as lexical, not semantic).",
-    "verify_claim now computes the claim/evidence token overlap once (used by both the existing status logic and the insufficiency audit), tracks downgraded_by_conflict when a supported result is downgraded due to conflict candidates, and includes the `insufficiency` object in its return dict. All prior keys (claim, status, required_markers, missing_markers, cited_chunk_ids, evidence_map, conflict_evidence, reasons, search) are unchanged and still present.",
-    "HTTP POST /api/library/verify-claim naturally includes `insufficiency` via verify_claim (no handler change needed).",
-    "Added tests/test_claim_insufficiency.py: no-evidence, missing-marker (top-level + detail), conflict downgrade (conflict_count + blocking + downgraded_from_supported), supported/no-insufficiency, weak-lexical-overlap (lexical-not-semantic), helper determinism, and two HTTP tests (supported response includes insufficiency; no-evidence response is blocking).",
-    "Docs: README.md capability row + known-limitations bullet; docs/ROADMAP.md Stage 2B status/checklist; docs/RETRIEVAL_EVALUATION.md new section '证据不足 / 拒绝理由（verify_claim.insufficiency）' + a 使用边界 bullet, all stating this is deterministic lexical audit metadata, NOT semantic entailment / NLI.",
-    "Codex added tests/test_claim_insufficiency.py to the py-compile file list in tools/run_quality_gates.py."
+    "frontend/app.js: added INSUFFICIENCY_SUMMARY_LABEL (no_retrieved_evidence / required_markers_missing / conflict_candidates_found / weak_lexical_overlap / none -> honest Chinese audit labels).",
+    "frontend/app.js: added renderInsufficiency(ins) -> returns '' when ins is falsy (backward compatible), else a single dense `<div class=\"item ...\">` audit row. Uses escapeHtml for all dynamic content; 'warning' class only when blocking, plain row when not blocking / summary none (no alarming wording).",
+    "frontend/app.js: verifyClaim() now computes insufficiencyHtml = renderInsufficiency(data.insufficiency) and injects it into the #searchResults template right after the status conclusion item and before the marker-coverage block. Existing status/reasons/evidence_map/covered_markers/supporting_items/cited_chunk_ids rendering is unchanged.",
+    "Audit row shows: summary label + has_insufficiency; blocking state; missing_markers; conflict_count; overlap (overlap_token_count / claim_token_count, overlap_ratio %, coverage_ratio %); details list (code + message, plus markers/conflict_count/conflict_types when present); method string with an explicit 'not semantic entailment / NLI / truth' note.",
+    "tests/test_frontend_ui.py: added test_verify_renderer_surfaces_insufficiency (asserts APP_JS references insufficiency, has_insufficiency, blocking, conflict_count, overlap, renderInsufficiency, INSUFFICIENCY_SUMMARY_LABEL, and the four summary codes), test_insufficiency_is_deterministic_lexical_not_semantic (asserts '确定性词面审计' and 'NLI' wording), and test_insufficiency_backward_compatible_guard (asserts the `if (!ins) return ''` no-op guard).",
+    "Docs: README.md '检索与核验面板' capability row + docs/RETRIEVAL_EVALUATION.md '本地可审计面板' section now state the panel renders insufficiency as deterministic lexical audit metadata, not semantic entailment / NLI."
   ],
   "not_implemented": [
-    "No semantic entailment, NLI, true-contradiction proof, or claim truth judgement.",
-    "No real model use, no external services, no credentials/.env handling, no network access.",
-    "No change to the conservative status thresholds or refusal behavior beyond adding the additive insufficiency object.",
-    "No frontend UI changes (the field is returned over HTTP; panel rendering was not required by the task)."
+    "No backend change (verify_claim / build_evidence_insufficiency untouched).",
+    "No semantic/NLI/truth language in the UI; the block is deterministic lexical audit metadata only.",
+    "No card-inside-card or marketing layout; a single dense audit `item` row reusing existing styles.",
+    "No new HTML container in index.html (the block is injected into the existing #searchResults template)."
   ],
   "test_files": [
-    "tests/test_claim_insufficiency.py (new)"
+    "tests/test_frontend_ui.py (updated: 3 new test methods)"
   ],
   "required_test_commands_for_codex": [
     "python -m unittest discover -s tests -v",
+    "python -m unittest tests.test_frontend_ui -v",
     "python tools/validate_retrieval_suite.py --suite tests/data/retrieval_eval_suite.json --json",
     "python tools/run_quality_gates.py --json",
     "python -m json.tool CODEX_HANDOFF.json",
     "git diff --check"
   ],
   "test_status": [
-    "python -m unittest discover -s tests -v: 155 tests OK.",
+    "python -m unittest tests.test_frontend_ui -v: 13 tests OK.",
+    "python -m unittest discover -s tests -v: 158 tests OK.",
     "python tools/validate_retrieval_suite.py --suite tests/data/retrieval_eval_suite.json --json: passed=true, with expected placeholder/<50-case warnings.",
     "python tools/run_quality_gates.py --json: passed=true, 5 gates passed.",
     "python -m json.tool CODEX_HANDOFF.json: passed.",
     "git diff --check: passed."
   ],
   "risks": [
-    "insufficiency is deterministic lexical audit metadata only; it must not be presented as semantic entailment, NLI, or a truth judgement. Docs and the detail messages state this explicitly.",
-    "blocking == (status != 'supported') and has_insufficiency == (summary != 'none') are equivalent to the existing status in this v1; they are surfaced as explicit fields for callers/UIs and future extension.",
-    "run_quality_gates.py py-compile gate now includes tests/test_claim_insufficiency.py; unittest discovery also covers it."
+    "insufficiency is deterministic lexical audit metadata; the UI must not be read as semantic entailment / NLI / truth. The block header, method note, and docs state this explicitly.",
+    "renderInsufficiency injects HTML via innerHTML like the rest of verifyClaim; all dynamic values are wrapped in escapeHtml, matching the existing XSS-safety convention.",
+    "The frontend has no automated JS execution in the suite (static string tests only), so runtime DOM behavior is validated by review, not by a browser test — consistent with the existing test approach."
   ],
   "credentials": [
     "No credentials or .env files were read, created, or modified.",

@@ -33,7 +33,7 @@
 | 保守主张核验 | 阶段 2A：按文号/年份/数值/政策标记和词面覆盖判断证据是否支撑主张；不足时返回“待核实”，不伪造语义证明。阶段 2B：主张到证据精确映射，逐标记归因到覆盖它的分段列表（`covered_markers`: marker → [chunk_id, ...]）、列出漏标记与逐分段命中详情（`supporting_items`）、给出覆盖率，未覆盖必填标记绝不判 `supported`；并新增确定性冲突证据候选 v1（`conflict_evidence`），对同上下文不同数量或标记附近明确否定进行保守提示，命中时降级为“待核实”；再新增确定性证据不足/拒绝理由 v1（`insufficiency`），用机器可读的稳定结构（`summary`/`blocking`/`missing_markers`/`conflict_count`/`overlap`/`details`）说明主张为何不能安全支撑 |
 | 检索评测基础 | 阶段 2A：内置 Recall@K 与 MRR 指标 helper；阶段 2B：检索评测运行器输出文档级/分段级 Recall@K、MRR、逐 case miss 诊断与 `top_reasons` 可解释性；可复用 helper（加载/运行评测集、隔离临时库）与命令行质量门禁 `eval-retrieval`（阈值判定、达标 exit 0）；BM25 `k1`/`b` 可经 API/CLI 覆盖与扫参，附 10 条匿名占位评测集固定行为 |
 | 评测集校验工具 | 阶段 2B：`tools/validate_retrieval_suite.py` 校验评测集结构（id 唯一、query 非空、过滤键受支持、至少一个相关性目标、min_authority/format 合法性），错误退出非 0、告警不失败；用于在人工建立真实匿名评测集后、纳入门禁前先行校验（真实 50-100 条评测集仍待建立） |
-| 检索与核验面板 | 阶段 2B：资料库新增“检索与核验”标签，可审计地展示 RRF 融合分、各通道 rank/score、命中理由、向量启用状态、BM25 参数，以及主张核验的必备/缺失标记、覆盖率、`covered_markers`(marker→分段列表)、`supporting_items` 与 `cited_chunk_ids`；界面明确标注“词面覆盖 ≠ 语义蕴含，需人工语义复核” |
+| 检索与核验面板 | 阶段 2B：资料库新增“检索与核验”标签，可审计地展示 RRF 融合分、各通道 rank/score、命中理由、向量启用状态、BM25 参数，以及主张核验的必备/缺失标记、覆盖率、`covered_markers`(marker→分段列表)、`supporting_items` 与 `cited_chunk_ids`；并以稠密审计块展示 `insufficiency`（证据不足/拒绝理由：`summary`/`blocking`/`missing_markers`/`conflict_count`/`overlap`/`details`/`method`）；界面明确标注“词面覆盖 ≠ 语义蕴含，需人工语义复核”，`insufficiency` 亦标注为确定性词面审计、非 NLI/真伪判断 |
 | 确定性审稿 | 检查空泛表述、责任主体、完成时限、可验证结果和无依据主张 |
 | 模型接入 | 支持 OpenAI 兼容的 `/chat/completions` 接口 |
 | 无 Key 模式 | 不调用模型，仍可输出严格提示词、缺项报告和审稿结果 |
