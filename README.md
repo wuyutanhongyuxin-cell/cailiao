@@ -35,6 +35,7 @@
 | 评测集校验工具 | 阶段 2B：`tools/validate_retrieval_suite.py` 校验评测集结构（id 唯一、query 非空、过滤键受支持、至少一个相关性目标、min_authority/format 合法性），错误退出非 0、告警不失败；用于在人工建立真实匿名评测集后、纳入门禁前先行校验（真实 50-100 条评测集仍待建立） |
 | 检索与核验面板 | 阶段 2B：资料库新增“检索与核验”标签，可审计地展示 RRF 融合分、各通道 rank/score、命中理由、向量启用状态、BM25 参数，以及主张核验的必备/缺失标记、覆盖率、`covered_markers`(marker→分段列表)、`supporting_items` 与 `cited_chunk_ids`；并以稠密审计块展示 `insufficiency`（证据不足/拒绝理由：`summary`/`blocking`/`missing_markers`/`conflict_count`/`overlap`/`details`/`method`）；界面明确标注“词面覆盖 ≠ 语义蕴含，需人工语义复核”，`insufficiency` 亦标注为确定性词面审计、非 NLI/真伪判断 |
 | 确定性审稿 | 检查空泛表述、责任主体、完成时限、可验证结果和无依据主张 |
+| 写作状态机 | 阶段 3 v1：确定性附加层 `build_writing_state`，在每次 `analyze_payload` 与 `/api/generate` 响应中给出 `writing_state`——五态 `materials_insufficient/资料不足`、`ready_to_draft/可起草`、`needs_revision/待修`、`ready_for_review/待审`、`ready_to_export/可导出`，附 `can_generate`/`can_export`/`blockers`/`failures`/`warnings`/`required_actions`；`review_approved`/`approved` 不能覆盖 blocker/fail。这是确定性工作流状态，非语义复核、非正式排版 |
 | 模型接入 | 支持 OpenAI 兼容的 `/chat/completions` 接口 |
 | 无 Key 模式 | 不调用模型，仍可输出严格提示词、缺项报告和审稿结果 |
 | 本地存储 | 草稿保存在浏览器本地；后端使用本地 SQLite |
@@ -117,8 +118,8 @@ cailiao/
 
 ## 项目状态
 
-- 当前阶段：`MVP + 阶段 1 完成 + 阶段 2A 完成 + 阶段 2B 检索评测基座已启动`
-- 当前重点：阶段 2B 混合检索与引用验证深化（真实匿名查询集、中文 BM25/FTS 调优、向量检索、重排、引用蕴含与冲突检测）、阶段 3 逐段修复闭环
+- 当前阶段：`MVP + 阶段 1 完成 + 阶段 2A 完成 + 阶段 2B 检索评测基座已启动 + 阶段 3 写作状态机 v1`
+- 当前重点：阶段 2B 混合检索与引用验证深化（真实匿名查询集、中文 BM25/FTS 调优、向量检索、重排、引用蕴含与冲突检测）、阶段 3 逐段修复闭环（状态机 v1 已落地，结构化关联/定点重写待续）
 - [完整路线图](docs/ROADMAP.md)
 - [架构与实施方案](docs/ARCHITECTURE.md)
 

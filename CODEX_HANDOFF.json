@@ -1,58 +1,62 @@
 {
   "status": "verified_by_codex",
-  "task_id": "cailiao-stage2b-frontend-insufficiency-panel-v1",
-  "phase": "ROADMAP Stage 2B: surface verify_claim.insufficiency in the local audit UI",
-  "baseline": "Isolated repo clean sync baseline (local commit Sync-d73345d). No push, no credentials, no external calls.",
+  "task_id": "cailiao-stage3-writing-state-machine-v1",
+  "phase": "ROADMAP Stage 3: deterministic writing workflow state machine v1 (additive)",
+  "baseline": "Isolated repo clean sync baseline (local commit Sync-cdbf8be). No push, no credentials, no external calls.",
   "context": [
-    "Claude implemented the frontend audit-panel rendering of verify_claim.insufficiency in the isolated WSL Claude Code workspace at /home/kiro/kiro-work/work/cailiao-task. Backend semantics are unchanged.",
-    "Claude could not run tests in its tool environment. Codex applied the diff to the Windows release repo and ran the required verification before commit/push.",
-    "No git commit or push was performed by Claude; no GitHub interaction occurred."
+    "Claude implemented the Stage 3 deterministic writing-state machine in the isolated WSL Claude Code workspace at /home/kiro/kiro-work/work/cailiao-task. It is an additive surface over analyze_payload and /api/generate; existing status/issues/score semantics are unchanged.",
+    "Claude could not run tests in its tool environment. Codex applied the diff to the Windows release repo, fixed gate coverage, and ran the required verification before commit/push.",
+    "No git commit or push was performed by Claude; no GitHub interaction occurred.",
+    "NOTE: the task spec's Chinese state labels arrived as mojibake (????). The five state codes and rules were unambiguous in English, and ROADMAP line 119 gives the canonical labels; Claude used those: materials_insufficient/资料不足, ready_to_draft/可起草, needs_revision/待修, ready_for_review/待审, ready_to_export/可导出."
   ],
-  "summary": "Surfaced verify_claim.insufficiency in the existing library search/verify audit UI (frontend/app.js verifyClaim). Added a new renderInsufficiency(ins) helper + INSUFFICIENCY_SUMMARY_LABEL map; the verify template now injects a dense, scannable audit block showing summary label, blocking state, missing_markers, conflict_count, lexical overlap counts/ratio, a details list (code + message), and the method string. Backward compatible: when insufficiency is absent (older responses) the helper returns '' and existing status/reasons/evidence_map rendering is untouched. All values escaped via the existing escapeHtml. No backend change. Wording is deterministic-lexical audit only (explicitly not semantic entailment / NLI / truth).",
+  "summary": "Added build_writing_state(payload, analysis) and included a JSON-serializable writing_state in every analyze_payload(...) return and in every /api/generate response (blocked / prompt_only / llm / error). Five deterministic states with stable codes + Chinese labels, plus can_generate/can_export/blockers/failures/warnings/required_actions/method=deterministic_writing_state_v1. Approval flags (review_approved/approved) can never override a blocker or fail. Existing keys and status/issues behavior are preserved; no LLM, no DOCX formatting, no review-rule changes.",
   "changed_files": [
-    "frontend/app.js",
-    "tests/test_frontend_ui.py",
+    "backend/server.py",
+    "tests/test_writing_state.py",
+    "tools/run_quality_gates.py",
     "README.md",
-    "docs/RETRIEVAL_EVALUATION.md",
+    "docs/ROADMAP.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "frontend/app.js: added INSUFFICIENCY_SUMMARY_LABEL (no_retrieved_evidence / required_markers_missing / conflict_candidates_found / weak_lexical_overlap / none -> honest Chinese audit labels).",
-    "frontend/app.js: added renderInsufficiency(ins) -> returns '' when ins is falsy (backward compatible), else a single dense `<div class=\"item ...\">` audit row. Uses escapeHtml for all dynamic content; 'warning' class only when blocking, plain row when not blocking / summary none (no alarming wording).",
-    "frontend/app.js: verifyClaim() now computes insufficiencyHtml = renderInsufficiency(data.insufficiency) and injects it into the #searchResults template right after the status conclusion item and before the marker-coverage block. Existing status/reasons/evidence_map/covered_markers/supporting_items/cited_chunk_ids rendering is unchanged.",
-    "Audit row shows: summary label + has_insufficiency; blocking state; missing_markers; conflict_count; overlap (overlap_token_count / claim_token_count, overlap_ratio %, coverage_ratio %); details list (code + message, plus markers/conflict_count/conflict_types when present); method string with an explicit 'not semantic entailment / NLI / truth' note.",
-    "tests/test_frontend_ui.py: added test_verify_renderer_surfaces_insufficiency (asserts APP_JS references insufficiency, has_insufficiency, blocking, conflict_count, overlap, renderInsufficiency, INSUFFICIENCY_SUMMARY_LABEL, and the four summary codes), test_insufficiency_is_deterministic_lexical_not_semantic (asserts '确定性词面审计' and 'NLI' wording), and test_insufficiency_backward_compatible_guard (asserts the `if (!ins) return ''` no-op guard).",
-    "Docs: README.md '检索与核验面板' capability row + docs/RETRIEVAL_EVALUATION.md '本地可审计面板' section now state the panel renders insufficiency as deterministic lexical audit metadata, not semantic entailment / NLI."
+    "backend/server.py: added WRITING_STATE_LABEL map and build_writing_state(payload, analysis) -> {state, label, can_generate, can_export, draft_present, approved, blockers, failures, warnings, required_actions, method}.",
+    "State precedence (guarantees approval cannot mask a blocker/fail): blockers -> materials_insufficient (can_generate/export False); elif failures -> needs_revision; elif no draft -> ready_to_draft; elif approved -> ready_to_export (can_export True); else ready_for_review. Note fail issues only arise when a draft is present, so needs_revision implies a draft.",
+    "blockers/failures/warnings are derived from analysis issues by issue['level'] (blocker/fail/warning). approved = truthy payload['review_approved'] or payload['approved'] (never inferred).",
+    "required_actions is deterministic per state: fill missing fields/facts (insufficient), fix fail issues (needs_revision), generate_draft (ready_to_draft), human_review (ready_for_review), export_docx (ready_to_export).",
+    "analyze_payload now builds the analysis dict then attaches analysis['writing_state'] = build_writing_state(payload, analysis) before returning. All prior keys (status, score, issues, missing, genre) are unchanged.",
+    "/api/generate: blocked response adds top-level writing_state (also present nested in analysis); non-blocked path sets result['writing_state'] = result['analysis']['writing_state'] after the (re)analysis, so prompt_only/llm/error responses all carry it.",
+    "Added tests/test_writing_state.py: all five states, review_approved/approved cannot override blockers or failures, analyze_payload always includes writing_state, JSON-serializable, and an HTTP test that /api/generate blocked response includes writing_state (blocked path does not call the LLM, so no network).",
+    "Codex added tests/test_writing_state.py to the py-compile file list in tools/run_quality_gates.py."
   ],
   "not_implemented": [
-    "No backend change (verify_claim / build_evidence_insufficiency untouched).",
-    "No semantic/NLI/truth language in the UI; the block is deterministic lexical audit metadata only.",
-    "No card-inside-card or marketing layout; a single dense audit `item` row reusing existing styles.",
-    "No new HTML container in index.html (the block is injected into the existing #searchResults template)."
+    "No LLM calls, no DOCX formatting, no semantic review, and no change to review-rule semantics (status/issues/score logic untouched).",
+    "No paragraph-level structured linkage, locked-paragraph diff/rollback, or targeted single-paragraph rewrite (later Stage 3 items).",
+    "No frontend UI change (writing_state is returned by the API; rendering was not requested by this task)."
   ],
   "test_files": [
-    "tests/test_frontend_ui.py (updated: 3 new test methods)"
+    "tests/test_writing_state.py (new)"
   ],
   "required_test_commands_for_codex": [
     "python -m unittest discover -s tests -v",
-    "python -m unittest tests.test_frontend_ui -v",
+    "python -m unittest tests.test_writing_state -v",
     "python tools/validate_retrieval_suite.py --suite tests/data/retrieval_eval_suite.json --json",
     "python tools/run_quality_gates.py --json",
     "python -m json.tool CODEX_HANDOFF.json",
     "git diff --check"
   ],
   "test_status": [
-    "python -m unittest tests.test_frontend_ui -v: 13 tests OK.",
-    "python -m unittest discover -s tests -v: 158 tests OK.",
+    "python -m unittest tests.test_writing_state -v: 10 tests OK.",
+    "python -m unittest discover -s tests -v: 168 tests OK.",
     "python tools/validate_retrieval_suite.py --suite tests/data/retrieval_eval_suite.json --json: passed=true, with expected placeholder/<50-case warnings.",
     "python tools/run_quality_gates.py --json: passed=true, 5 gates passed.",
     "python -m json.tool CODEX_HANDOFF.json: passed.",
     "git diff --check: passed."
   ],
   "risks": [
-    "insufficiency is deterministic lexical audit metadata; the UI must not be read as semantic entailment / NLI / truth. The block header, method note, and docs state this explicitly.",
-    "renderInsufficiency injects HTML via innerHTML like the rest of verifyClaim; all dynamic values are wrapped in escapeHtml, matching the existing XSS-safety convention.",
-    "The frontend has no automated JS execution in the suite (static string tests only), so runtime DOM behavior is validated by review, not by a browser test — consistent with the existing test approach."
+    "writing_state is deterministic workflow state only; it must not be read as semantic review or a guarantee of document quality. Docs state this boundary.",
+    "The ready_for_review test depends on CLEAN_DRAFT producing no fail issue; it was constructed to satisfy sentence_has_action_guard (owner 由 / time 年底 / result 完成/建立/形成) and to contain no 《》/percentage/4-digit-year/quantity pattern. If RULES change materially, revisit that fixture.",
+    "The Chinese labels were chosen from ROADMAP line 119 because the spec labels were mojibake; if Codex intended different label strings, adjust WRITING_STATE_LABEL and the test label assertions accordingly.",
+    "run_quality_gates.py py-compile gate now includes tests/test_writing_state.py; unittest discovery also covers it."
   ],
   "credentials": [
     "No credentials or .env files were read, created, or modified.",

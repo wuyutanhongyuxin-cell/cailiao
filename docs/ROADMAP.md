@@ -116,7 +116,7 @@
 
 优先级：高
 
-- [ ] “资料不足、可起草、待审、待修、可导出”状态机
+- [x] “资料不足、可起草、待审、待修、可导出”状态机 v1：确定性附加层 `build_writing_state(payload, analysis)`，并入每次 `analyze_payload` 返回与 `/api/generate`（含 blocked / prompt_only / llm / error）响应的 `writing_state`；输出 `state`/`label`/`can_generate`/`can_export`/`blockers`/`failures`/`warnings`/`required_actions`/`method=deterministic_writing_state_v1`；`review_approved`/`approved` 不能覆盖 blocker/fail（坏稿仍为待修/资料不足）。**边界：这是确定性工作流状态，不改动既有 status/issues 语义，不是语义复核，也不是正式 DOCX 排版。**
 - [ ] 大纲、段落、主张、证据结构化关联
 - [ ] 每段仅使用预先批准的事实
 - [ ] 失败段落单独重写，不整篇无差别重生成

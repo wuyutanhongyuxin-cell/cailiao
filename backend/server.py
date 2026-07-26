@@ -2369,6 +2369,95 @@ def evidence_text(items: list[dict[str, str]]) -> str:
     return "\n".join(" ".join(str(v) for v in item.values()) for item in items)
 
 
+# --- Stage 3: deterministic writing workflow state (v1) ----------------------
+#
+# An additive, deterministic surface over analyze_payload. It never changes the
+# existing status/issues/score; it only summarizes them into a workflow state so
+# the UI/callers know what is allowed next. It is NOT semantic review and NOT
+# DOCX formatting. Five states, stable codes + Chinese labels:
+#   materials_insufficient / 资料不足  -- any blocker; can_generate/export False
+#   ready_to_draft         / 可起草    -- no blocker/fail, no draft yet
+#   needs_revision         / 待修      -- draft exists AND fail issues present
+#   ready_for_review       / 待审      -- draft exists, no blocker/fail, not approved
+#   ready_to_export        / 可导出    -- draft exists, no blocker/fail, approved truthy
+WRITING_STATE_LABEL = {
+    "materials_insufficient": "资料不足",
+    "ready_to_draft": "可起草",
+    "needs_revision": "待修",
+    "ready_for_review": "待审",
+    "ready_to_export": "可导出",
+}
+
+
+def build_writing_state(payload: dict[str, Any], analysis: dict[str, Any]) -> dict[str, Any]:
+    """Deterministic Stage 3 workflow state derived from an analysis result.
+
+    Additive only: reads the analysis' issues (level blocker/fail/warning) and the
+    payload's draft/approval, and returns a JSON-serializable ``writing_state``.
+    An approval flag can NEVER override a blocker or a fail -- a bad draft stays
+    ``needs_revision``/``materials_insufficient``. This is deterministic workflow
+    state, not semantic review or final DOCX formatting.
+    """
+    issues = analysis.get("issues", []) or []
+    blockers = [i for i in issues if i.get("level") == "blocker"]
+    failures = [i for i in issues if i.get("level") == "fail"]
+    warnings = [i for i in issues if i.get("level") == "warning"]
+
+    draft_present = bool(str(payload.get("draft", "") or "").strip())
+    # Explicit human approval only; never inferred. Either key may carry it.
+    approved = bool(payload.get("review_approved") or payload.get("approved"))
+
+    # State precedence guarantees approval cannot mask a blocker/fail.
+    if blockers:
+        state = "materials_insufficient"
+    elif failures:
+        state = "needs_revision"
+    elif not draft_present:
+        state = "ready_to_draft"
+    elif approved:
+        state = "ready_to_export"
+    else:
+        state = "ready_for_review"
+
+    can_generate = state != "materials_insufficient"
+    can_export = state == "ready_to_export"
+
+    required_actions: list[dict[str, Any]] = []
+    if blockers:
+        for b in blockers:
+            required_actions.append({"code": "fill_" + str(b.get("code", "blocker")),
+                                     "target": b.get("target"),
+                                     "message": "补齐必备要素/事实：" + str(b.get("message", ""))})
+    elif failures:
+        for f in failures:
+            required_actions.append({"code": "fix_" + str(f.get("code", "fail")),
+                                     "target": f.get("target"),
+                                     "message": "修复失败项后再进入复核：" + str(f.get("message", ""))})
+    elif state == "ready_to_draft":
+        required_actions.append({"code": "generate_draft", "target": "draft",
+                                 "message": "要素齐备，可进行受约束起草生成。"})
+    elif state == "ready_for_review":
+        required_actions.append({"code": "human_review", "target": "draft",
+                                 "message": "草稿通过确定性词面检查，待人工语义复核后标记 review_approved。"})
+    elif state == "ready_to_export":
+        required_actions.append({"code": "export_docx", "target": "draft",
+                                 "message": "已人工批准，可导出。导出仅为结构化基础稿，非正式排版。"})
+
+    return {
+        "state": state,
+        "label": WRITING_STATE_LABEL[state],
+        "can_generate": can_generate,
+        "can_export": can_export,
+        "draft_present": draft_present,
+        "approved": approved,
+        "blockers": blockers,
+        "failures": failures,
+        "warnings": warnings,
+        "required_actions": required_actions,
+        "method": "deterministic_writing_state_v1",
+    }
+
+
 def analyze_payload(payload: dict[str, Any]) -> dict[str, Any]:
     genre = payload.get("genre", "work_plan")
     meta = payload.get("fields", {}) or {}
@@ -2405,7 +2494,10 @@ def analyze_payload(payload: dict[str, Any]) -> dict[str, Any]:
 
     score = max(0, 100 - sum(25 if i["level"] == "blocker" else 14 if i["level"] == "fail" else 6 for i in issues))
     status = "blocked" if any(i["level"] == "blocker" for i in issues) else "fail" if any(i["level"] == "fail" for i in issues) else "pass"
-    return {"status": status, "score": score, "issues": issues, "missing": missing, "genre": genre_rule}
+    analysis = {"status": status, "score": score, "issues": issues, "missing": missing, "genre": genre_rule}
+    # Additive Stage 3 deterministic workflow state (does not change status/issues).
+    analysis["writing_state"] = build_writing_state(payload, analysis)
+    return analysis
 
 
 def build_prompt(payload: dict[str, Any], analysis: dict[str, Any]) -> str:
@@ -2565,12 +2657,16 @@ class Handler(SimpleHTTPRequestHandler):
                 analysis = analyze_payload(payload)
                 prompt = build_prompt(payload, analysis)
                 if analysis["status"] == "blocked":
-                    self.json_response({"analysis": analysis, "mode": "blocked", "prompt": prompt, "draft": ""})
+                    # writing_state is nested in analysis; also surface it top-level.
+                    self.json_response({"analysis": analysis, "mode": "blocked", "prompt": prompt,
+                                        "draft": "", "writing_state": analysis["writing_state"]})
                 else:
                     result = call_llm(prompt)
                     if result.get("draft"):
                         payload["draft"] = result["draft"]
                     result["analysis"] = analyze_payload(payload)
+                    # Surface the (re-analyzed) workflow state top-level for prompt_only/llm/error.
+                    result["writing_state"] = result["analysis"]["writing_state"]
                     self.json_response(result)
             elif self.path == "/api/evidence":
                 self.json_response(add_evidence(payload), HTTPStatus.CREATED)
