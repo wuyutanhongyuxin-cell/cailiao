@@ -28,6 +28,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -147,11 +148,15 @@ def _inside_git_work_tree(root: Path) -> bool:
     return out.returncode == 0 and out.stdout.strip() == "true"
 
 
-def _run_cmd(argv: list[str]) -> tuple[int, str]:
+def _run_cmd(argv: list[str], env: dict[str, str] | None = None) -> tuple[int, str]:
     """Run a fixed argv (shell=False); return (returncode, combined tail)."""
     try:
+        child_env = os.environ.copy()
+        if env:
+            child_env.update(env)
         proc = subprocess.run(argv, cwd=str(ROOT), shell=False,
-                             capture_output=True, text=True, timeout=900)
+                             capture_output=True, text=True, timeout=900,
+                             env=child_env)
     except (OSError, subprocess.SubprocessError) as exc:
         return 1, f"failed to launch: {exc}"
     combined = (proc.stdout or "") + (proc.stderr or "")
@@ -162,9 +167,11 @@ def _run_cmd(argv: list[str]) -> tuple[int, str]:
 # --- individual gates: each returns (status, summary, returncode) -------------
 
 def _gate_py_compile() -> tuple[str, str, int]:
-    rc, tail = _run_cmd([PY, "-m", "py_compile",
-                         "backend/server.py", "tests/test_library.py",
-                         "tools/evaluate_retrieval.py", "tools/run_quality_gates.py"])
+    with tempfile.TemporaryDirectory(prefix="cailiao-pycache-") as pycache:
+        rc, tail = _run_cmd([PY, "-m", "py_compile",
+                             "backend/server.py", "tests/test_library.py",
+                             "tools/evaluate_retrieval.py", "tools/run_quality_gates.py"],
+                            env={"PYTHONPYCACHEPREFIX": pycache})
     return ("passed" if rc == 0 else "failed",
             "byte-compiled backend/tests/tools" if rc == 0 else tail, rc)
 

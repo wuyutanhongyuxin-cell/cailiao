@@ -141,6 +141,17 @@ CLI 行为：
 
 > 这是**词面覆盖**而非语义蕴含：它证明标记/词出现在证据里，不证明证据在语义上支持主张，也不检测冲突证据——语义蕴含与冲突检测需 LLM/NLI，超出本阶段范围。
 
+## 冲突证据检测（`verify_claim.conflict_evidence`）
+
+阶段 2B 新增保守的确定性冲突证据检测 v1（`detect_conflict_evidence(claim, items)`），并入 `verify_claim` 返回值的 `conflict_evidence` 字段。
+
+当前只标记两类可审计候选：
+
+- 同一检索上下文中共享年份/命名标记或足够词面重合，但证据分段出现与主张不同的数量标记；
+- 主张必备标记附近出现明确否定词，如“不得、禁止、取消、停止、未、not、shall not”等。
+
+检测结果只用于降级为 `needs_verification` 并提示人工复核，不把候选冲突自动判定为真实语义矛盾。返回结构包含 `has_conflicts`、`items`、`summary` 和 `method=deterministic_lexical_v1`；每条候选记录 chunk/document、冲突类型、主张标记、证据标记、共享年份、匹配词和检索命中理由。
+
 ## 本地可审计面板
 
 检索的 `top_reasons`（RRF 融合分、各通道 rank/score、命中理由、向量/BM25 元信息）与核验的 `evidence_map`（`required_markers`/`covered_markers`/`missing_markers`/`coverage_ratio`/`supporting_items`）都会在资料库的“检索与核验”标签中渲染出来（`frontend/index.html` 的 `#libSearch` 面板 + `frontend/app.js` 的 `renderSearch`/`verifyClaim`）。面板同时暴露来源类型、最低权威、地区、发文机关、格式、发布日期区间和有效性范围，并在结果摘要里显示“生效过滤”，便于审计哪些约束先于排序生效。面板文案明确声明这是词面覆盖、需人工语义复核，不把覆盖当作语义蕴含。

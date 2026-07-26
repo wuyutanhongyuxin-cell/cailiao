@@ -1,54 +1,58 @@
 {
   "status": "verified_by_codex",
-  "phase": "ROADMAP Stage 2B: retrieval eval suite validator/template v1",
-  "baseline": "GitHub main = 6c2ec752c8465a0a839905c21ed6463a417989ac (Add metadata filter coverage)",
+  "phase": "ROADMAP Stage 2B: deterministic conflict evidence candidates v1",
+  "baseline": "GitHub main = 320b5d4b1750dfb3255044bb5fff2c37f964e164 (Add retrieval eval suite validator)",
+  "context": [
+    "Claude was dispatched cailiao-stage2b-conflict-evidence-v1 in the isolated WSL workspace, but the current Codex session cannot access KiroUbuntu and no Claude diff/report is available.",
+    "Codex recovered the task scope from without_human STATUS.md, local screenshots, and the cailiao main baseline, then implemented the narrow deterministic v1 directly in the Windows review repo."
+  ],
   "changed_files": [
     "backend/server.py",
-    "tools/validate_retrieval_suite.py",
-    "tests/test_suite_validator.py",
+    "tests/test_library.py",
+    "tools/run_quality_gates.py",
     "README.md",
     "docs/ROADMAP.md",
     "docs/RETRIEVAL_EVALUATION.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "Added SUPPORTED_FILTER_KEYS and server.validate_retrieval_suite(suite) for DB-free, corpus-free eval suite shape validation.",
-    "Validator checks suite object shape, optional suite/name strings, non-empty cases, unique non-empty case ids, non-empty queries, supported filter keys, integer min_authority, normalized format values, and at least one non-empty relevance target list among relevant_titles/relevant_chunk_ids/relevant_chunk_markers.",
-    "Validator returns passed, errors, warnings, case_count, filter_keys_used, and relevance_target_counts. Structural errors fail validation; warnings do not.",
-    "Validator warns when case_count is below 50 or suite metadata marks the data as placeholder/synthetic. Unknown formats warn against SUPPORTED_FORMATS rather than failing.",
-    "Added tools/validate_retrieval_suite.py with --suite and --json. Exit 0 means no errors, exit 1 means validation errors, and exit 2 means the suite could not be loaded.",
-    "Added tests/test_suite_validator.py covering valid shape, duplicate ids, missing query, unsupported filters, missing/empty relevance targets, min_authority parsing, format warnings, small/placeholder warnings, marker-only targets, shipped placeholder suite behavior, and CLI exit behavior.",
-    "Updated README, ROADMAP, and docs/RETRIEVAL_EVALUATION.md to document the validator while keeping the real 50-100 anonymized eval suite marked as not yet built."
-  ],
-  "codex_adjustments": [
-    "Changed the invalid-suite CLI test to use tempfile.TemporaryDirectory instead of writing a scratch JSON file under tests/data, so tests remain reliable in restricted or read-only fixture directories.",
-    "Replaced Claude's mojibake CODEX_HANDOFF.json content with ASCII JSON and recorded actual Codex verification results."
+    "Added detect_conflict_evidence(claim, evidence_items), a stdlib-only deterministic lexical conflict candidate detector.",
+    "Added numeric conflict detection for retrieved chunks that share the claim context/year/named marker or strong lexical overlap but contain different numeric markers instead of the claim number.",
+    "Added explicit-negation detection for required markers near conservative negation terms such as not, shall not, no, never, without, bu de, forbid/cancel/stop style Chinese terms.",
+    "verify_claim now returns conflict_evidence with has_conflicts, items, summary, and method=deterministic_lexical_v1.",
+    "When a claim would otherwise be supported but conflict candidates are present, verify_claim downgrades status to needs_verification and prepends conflict_evidence_detected to reasons.",
+    "Added unit tests for different-number conflict, negated-marker conflict, clean support with no conflict, and HTTP JSON presence of conflict_evidence.",
+    "Hardened tools/run_quality_gates.py so the py-compile gate uses a temporary PYTHONPYCACHEPREFIX and does not depend on writable repository __pycache__ directories.",
+    "Updated README, ROADMAP, and retrieval evaluation docs to distinguish deterministic conflict candidates from full semantic/NLI conflict detection."
   ],
   "not_implemented": [
-    "A real 50-100 case anonymized retrieval/claim-verification suite is still not built; the shipped 10-case suite remains synthetic placeholder data.",
-    "The validator checks structure only. It does not prove relevance labels are semantically correct, does not verify anonymization quality, and does not resolve markers against a corpus or DB.",
-    "Vector retrieval, embeddings, reranking, semantic entailment, and conflict detection remain pending."
+    "This is not semantic entailment and does not prove a real contradiction.",
+    "No LLM/NLI model, vector retrieval, embedding pipeline, reranker, or cross-sentence reasoning was added.",
+    "The detector intentionally produces audit candidates and forces human verification rather than automatically rejecting a claim as false."
   ],
   "test_commands": [
-    "python -m py_compile backend/server.py tests/test_library.py tests/test_frontend_ui.py tools/evaluate_retrieval.py tools/run_quality_gates.py tests/test_quality_gates.py tools/validate_retrieval_suite.py tests/test_suite_validator.py",
+    "python -m unittest tests.test_library.ClaimEvidenceMapTest -v",
     "python -m unittest discover -s tests -v",
     "python tools/validate_retrieval_suite.py --suite tests/data/retrieval_eval_suite.json --json",
     "python tools/run_quality_gates.py --json",
     "git diff --check",
-    "rg -n --hidden -g '!*.sqlite3' -g '!__pycache__/**' -g '!*.pyc' -g '!.pycache-run/**' \"sk-[A-Za-z0-9_-]{20,}|ghp_[A-Za-z0-9_]{20,}|github_pat_[A-Za-z0-9_]{20,}|BEGIN (RSA|OPENSSH|EC|DSA) PRIVATE KEY\" ."
+    "rg -n --hidden -g '!*.sqlite3' -g '!__pycache__/**' -g '!*.pyc' -g '!.pycache-run/**' secret-shape-patterns ."
   ],
-  "test_status": "Codex verified on Windows review repo: py_compile passed using an isolated PYTHONPYCACHEPREFIX; unittest discover ran 118 tests OK; validate_retrieval_suite on tests/data/retrieval_eval_suite.json returned passed=true with expected placeholder and case_count<50 warnings; run_quality_gates.py --json returned passed=true with 5 gates passed; git diff --check passed; secret scan found no matches.",
-  "dependencies": [
-    "No new external dependencies.",
-    "Validator CLI and helper remain Python standard library only."
-  ],
-  "review_notes": [
-    "The validator is intentionally an early structural gate for a future human-built suite, not a quality claim about the existing placeholder suite.",
-    "Warnings are used for small/placeholder data to keep the existing placeholder regression suite runnable while preventing readers from mistaking it for a real benchmark.",
-    "SUPPORTED_FILTER_KEYS mirrors the current retrieval filter contract; SUPPORTED_FORMATS is reused from import/search normalization."
+  "test_status": [
+    "python -m unittest tests.test_library.ClaimEvidenceMapTest -v: 9 tests OK.",
+    "python -m unittest discover -s tests -v: 121 tests OK.",
+    "python tools/validate_retrieval_suite.py --suite tests/data/retrieval_eval_suite.json --json: passed=true with expected placeholder and case_count<50 warnings.",
+    "python tools/run_quality_gates.py --json: passed=true, 5 gates passed.",
+    "git diff --check: passed.",
+    "Credential shape scan: no matches."
   ],
   "risks": [
-    "Unknown format values are warnings rather than hard failures. This preserves forward compatibility but means downstream docs must keep saying validator pass is only structural.",
-    "Real eval-suite construction remains the major Stage 2B gap."
+    "Numeric conflict detection can still flag unrelated numbers if retrieved chunks are lexically similar enough; therefore the output is named conflict_evidence candidates and only downgrades to needs_verification.",
+    "Negation detection is substring/window based and conservative; it may miss implicit contradictions or long-distance negation.",
+    "The py-compile gate now isolates pycache writes, but future direct py_compile commands outside the gate may still hit inherited __pycache__ ownership on this machine."
+  ],
+  "credentials": [
+    "No credentials or .env files were read or modified.",
+    "No git commit or push was performed in this handoff."
   ]
 }

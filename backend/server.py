@@ -1290,6 +1290,123 @@ def map_claim_to_evidence(claim: str, evidence_items: list[dict[str, Any]]) -> d
     }
 
 
+NEGATION_TERMS = (
+    "不得", "禁止", "取消", "停止", "暂停", "不再", "未", "无", "没有",
+    "not", "no ", "never", "without", "shall not", "must not",
+)
+
+
+def _claim_marker_groups(text: str) -> dict[str, list[str]]:
+    markers = _required_claim_markers(text)
+    years: list[str] = []
+    numbers: list[str] = []
+    named: list[str] = []
+    for marker in markers:
+        if re.fullmatch(r"(?:19|20)\d{2}", marker):
+            years.append(marker)
+        elif re.fullmatch(r"\d+(?:\.\d+)?(?:%|[A-Za-z]+)?", marker):
+            numbers.append(marker)
+        else:
+            named.append(marker)
+    return {"years": years, "numbers": numbers, "named": named}
+
+
+def _has_near_negation(text: str, marker: str, window: int = 16) -> bool:
+    lowered = text.lower()
+    marker_lower = marker.lower()
+    pos = lowered.find(marker_lower)
+    while pos >= 0:
+        start = max(0, pos - window)
+        end = min(len(lowered), pos + len(marker_lower) + window)
+        around = lowered[start:end]
+        if any(term in around for term in NEGATION_TERMS):
+            return True
+        pos = lowered.find(marker_lower, pos + len(marker_lower))
+    return False
+
+
+def detect_conflict_evidence(claim: str, evidence_items: list[dict[str, Any]]) -> dict[str, Any]:
+    """Conservative deterministic conflict-evidence detector.
+
+    This v1 does not prove semantic contradiction. It flags narrow, auditable
+    lexical conflicts inside retrieved chunks:
+    - same claim context/year, but a different numeric marker appears instead of
+      the claim's numeric marker;
+    - a required marker is present near explicit negation words.
+
+    The output is advisory and should force human verification rather than an
+    automatic unsupported verdict.
+    """
+    groups = _claim_marker_groups(claim)
+    claim_terms = set(tokenize_query(claim))
+    claim_numbers = set(groups["numbers"])
+    claim_years = set(groups["years"])
+    conflicts: list[dict[str, Any]] = []
+
+    for item in evidence_items or []:
+        content = item.get("content") or ""
+        content_terms = set(tokenize_query(content))
+        matched_terms = sorted(claim_terms & content_terms)
+        if len(matched_terms) < 2:
+            continue
+
+        content_groups = _claim_marker_groups(content)
+        content_numbers = set(content_groups["numbers"])
+        content_years = set(content_groups["years"])
+        shared_year = sorted(claim_years & content_years)
+        shared_named = [m for m in groups["named"] if m in content]
+
+        context_matches = bool(shared_year or shared_named or len(matched_terms) >= 3)
+        if context_matches and claim_numbers:
+            different_numbers = sorted(content_numbers - claim_numbers)
+            missing_claim_numbers = sorted(claim_numbers - content_numbers)
+            if different_numbers and missing_claim_numbers:
+                conflicts.append({
+                    "chunk_id": item.get("chunk_id"),
+                    "document_id": item.get("document_id"),
+                    "document_title": item.get("document_title"),
+                    "conflict_type": "different_numeric_marker",
+                    "claim_markers": missing_claim_numbers,
+                    "evidence_markers": different_numbers,
+                    "shared_years": shared_year,
+                    "matched_terms": matched_terms[:12],
+                    "hit_reasons": item.get("hit_reasons", []),
+                })
+
+        negated = [m for m in groups["numbers"] + groups["years"] + groups["named"]
+                   if m in content and _has_near_negation(content, m)]
+        if negated:
+            conflicts.append({
+                "chunk_id": item.get("chunk_id"),
+                "document_id": item.get("document_id"),
+                "document_title": item.get("document_title"),
+                "conflict_type": "negated_required_marker",
+                "claim_markers": negated,
+                "evidence_markers": negated,
+                "shared_years": shared_year,
+                "matched_terms": matched_terms[:12],
+                "hit_reasons": item.get("hit_reasons", []),
+            })
+
+    # Stable de-duplication if both rules report the same chunk/type.
+    deduped: list[dict[str, Any]] = []
+    seen = set()
+    for conflict in conflicts:
+        key = (conflict.get("chunk_id"), conflict.get("conflict_type"),
+               tuple(conflict.get("claim_markers") or ()),
+               tuple(conflict.get("evidence_markers") or ()))
+        if key not in seen:
+            seen.add(key)
+            deduped.append(conflict)
+
+    return {
+        "has_conflicts": bool(deduped),
+        "items": deduped,
+        "summary": "conflict_candidates_found" if deduped else "no_deterministic_conflict_found",
+        "method": "deterministic_lexical_v1",
+    }
+
+
 def verify_claim(claim: str, filters: dict[str, str] | None = None, limit: int = 5) -> dict[str, Any]:
     """Conservative lexical claim support check over retrieved chunks.
 
@@ -1301,6 +1418,7 @@ def verify_claim(claim: str, filters: dict[str, str] | None = None, limit: int =
     result = search_library(claim, filters=filters, limit=limit)
     items = result["items"]
     evidence_map = map_claim_to_evidence(claim, items)
+    conflict_evidence = detect_conflict_evidence(claim, items)
     markers = evidence_map["required_markers"]
     missing = evidence_map["missing_markers"]
 
@@ -1325,6 +1443,10 @@ def verify_claim(claim: str, filters: dict[str, str] | None = None, limit: int =
             status = "unsupported"
             reasons = ["insufficient_lexical_overlap"]
 
+    if conflict_evidence["has_conflicts"] and status == "supported":
+        status = "needs_verification"
+        reasons = ["conflict_evidence_detected"] + reasons
+
     # Cite chunks that actually matched a marker first (most defensible), then fall
     # back to the top retrieved items so a citation list is still returned.
     marker_chunk_ids = [it["chunk_id"] for it in evidence_map["supporting_items"]
@@ -1344,6 +1466,7 @@ def verify_claim(claim: str, filters: dict[str, str] | None = None, limit: int =
         "missing_markers": missing,
         "cited_chunk_ids": cited[:limit],
         "evidence_map": evidence_map,
+        "conflict_evidence": conflict_evidence,
         "reasons": reasons,
         "search": result,
     }

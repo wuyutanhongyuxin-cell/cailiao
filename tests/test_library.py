@@ -1100,6 +1100,54 @@ class ClaimEvidenceMapTest(unittest.TestCase):
         self.assertEqual(set(emap["missing_markers"]), {"30", "2026"})
         self.assertAlmostEqual(emap["coverage_ratio"], 0.0, places=6)
 
+    def test_conflict_evidence_different_number_downgrades_supported_claim(self):
+        server.import_document({
+            "title": "Alpha Support", "format": "txt",
+            "text": "Alpha project shall receive 30 grants in 2026.",
+            "source_type": "law_regulation", "status": "effective",
+        })
+        server.import_document({
+            "title": "Alpha Conflict", "format": "txt",
+            "text": "Alpha project shall receive 31 grants in 2026.",
+            "source_type": "law_regulation", "status": "effective",
+        })
+        res = server.verify_claim("Alpha project shall receive 30 grants in 2026.",
+                                  filters={"effective_only": "true"}, limit=10)
+        self.assertEqual(res["status"], "needs_verification")
+        self.assertIn("conflict_evidence_detected", res["reasons"])
+        conflicts = res["conflict_evidence"]
+        self.assertTrue(conflicts["has_conflicts"])
+        self.assertEqual(conflicts["method"], "deterministic_lexical_v1")
+        self.assertTrue(any(
+            item["document_title"] == "Alpha Conflict"
+            and item["conflict_type"] == "different_numeric_marker"
+            and "30" in item["claim_markers"]
+            and "31" in item["evidence_markers"]
+            for item in conflicts["items"]
+        ))
+
+    def test_conflict_evidence_near_negation(self):
+        server.import_document({
+            "title": "Alpha Denial", "format": "txt",
+            "text": "Alpha project shall not receive 30 grants in 2026.",
+            "source_type": "law_regulation", "status": "effective",
+        })
+        res = server.verify_claim("Alpha project shall receive 30 grants in 2026.",
+                                  filters={"effective_only": "true"})
+        self.assertTrue(res["conflict_evidence"]["has_conflicts"])
+        self.assertTrue(any(
+            item["conflict_type"] == "negated_required_marker"
+            and "30" in item["claim_markers"]
+            for item in res["conflict_evidence"]["items"]
+        ))
+
+    def test_conflict_evidence_not_reported_for_clean_support(self):
+        self._seed_two_markers_in_two_chunks()
+        res = server.verify_claim("Alpha project shall receive 30 grants in 2026.",
+                                  filters={"effective_only": "true"})
+        self.assertFalse(res["conflict_evidence"]["has_conflicts"])
+        self.assertEqual(res["conflict_evidence"]["summary"], "no_deterministic_conflict_found")
+
 
 class EvidenceLibraryHTTPTest(unittest.TestCase):
     """End-to-end tests over the real HTTP handler on an ephemeral local port."""
@@ -1269,6 +1317,8 @@ class EvidenceLibraryHTTPTest(unittest.TestCase):
         self.assertEqual(emap["missing_markers"], [])
         self.assertTrue(emap["supporting_items"])
         self.assertTrue(emap["supporting_items"][0]["matched_markers"])
+        self.assertIn("conflict_evidence", verify)
+        self.assertFalse(verify["conflict_evidence"]["has_conflicts"])
 
     def test_http_library_search_metadata_filters(self):
         self._post("/api/library/import", {
