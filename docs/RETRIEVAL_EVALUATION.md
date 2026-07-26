@@ -1,6 +1,6 @@
 # 检索评测基座
 
-本文件记录阶段 2B 的可验收能力：稳定的检索评测运行器，以及在其之上落地的 BM25/FTS v1 确定性检索通道，另加一个**默认关闭**的向量检索/可替换 embedding 管线骨架 v1（`vector` 通道）。真实 embedding 模型、向量数据库、重排与语义核验仍在后续阶段——本文明确区分“骨架”与这些真实组件。
+本文件记录阶段 2B 的可验收能力：稳定的检索评测运行器，以及在其之上落地的 BM25/FTS v1 确定性检索通道，另加两个**默认关闭**的骨架——向量检索/可替换 embedding 管线骨架 v1（`vector` 通道）与可插拔重排骨架 v1（`rerank`，仅对已融合的 Top K 重排序）。真实 embedding 模型、向量数据库、真实重排模型与语义核验仍在后续阶段——本文明确区分“骨架”与这些真实组件。
 
 ## 当前能力
 
@@ -11,7 +11,7 @@
 - 逐 case 报告 Top K 内漏掉的标注答案（`missed_titles`、`missed_chunk_ids`）与首个命中排名（`first_relevant_rank`），聚合 `misses` 列表同样携带这些诊断字段，便于把质量门禁指向具体缺口；
 - 逐 case 输出 `top_reasons`（Top K 结果的 `fused_score`、各通道 `rank`/`score` 与 `hit_reasons`），可审计每个分段为何排到该位置；
 - HTTP API：`POST /api/library/evaluate-retrieval`；
-- 默认不调用任何真实 embedding、向量库、重排模型或外部服务；下文的向量骨架为**默认关闭**的可选项，即便开启也只用进程内确定性伪 embedder，绝不联网或读取凭证。
+- 默认不调用任何真实 embedding、向量库、重排模型或外部服务；下文的向量骨架与重排骨架均为**默认关闭**的可选项，即便开启也只用进程内确定性实现，绝不联网或读取凭证。
 
 ## BM25/FTS v1 检索通道
 
@@ -66,6 +66,34 @@ BM25 词元空间（`_bm25_terms`，仅标准库、完全确定性）：
 - `evaluate_retrieval_cases(..., vector_config=...)` 同样接受该参数并如实回报向量状态；默认（`eval-retrieval` 质量门禁的默认）保持关闭，因此确定性评测无需任何 embedding。
 
 **这是什么，不是什么**：`DeterministicHashEmbedder` 只捕获词面共现，用来跑通向量通道管线；它**不**建模语义、同义或蕴含，**不是**真实 embedding 模型、向量数据库或重排器。开启后的检索质量不代表真实语义检索质量。
+
+## 可插拔重排骨架 v1（默认关闭）
+
+这同样是一个**骨架（skeleton），不是真实重排模型**。它默认关闭；只有显式开启时才启用一个仅用标准库、完全确定性、进程内的重排器。它**绝不**调用外部 API、绝不读取凭证、绝不联网、也不建任何持久索引。它只对 `search_library` **已经融合并截断的 Top K 候选重新排序**，**绝不**检索新的文档/分段。目的同样是先把扩展缝钉好，方便将来真实 cross-encoder / 重排 provider 直接替入而无需改动调用方或返回结构。
+
+组件（均在 `backend/server.py`，仅标准库）：
+
+| 组件 | 角色 |
+|---|---|
+| `Reranker` | 未来真实重排 provider 要实现的接口（`score(query, item)`） |
+| `DeterministicLocalReranker` | **仅测试用**的离线可复现重排器：以查询词元对候选可检索文本的覆盖率打分，再用已有 `bm25_like` 通道分做极小 tie-breaker |
+| `RerankPipeline` | 用显式 `enabled` 开关把重排器包起来，`apply()` 只重排给定候选、`metadata()` 诚实回报状态 |
+| `resolve_rerank_pipeline(config)` | 把 opt-in 配置解析成管线；默认（`None`/假值）**关闭** |
+
+开启方式（默认全部关闭）：
+
+- `search_library(..., rerank_config=None)` —— 默认，返回融合后的 RRF 顺序，**不**附任何逐项 `rerank` 明细。
+- `search_library(..., rerank_config=True)` 或 `{"enabled": True, "mode": "deterministic_local_test"}` —— 启用确定性本地测试重排；可选 `{"top_k": 10}` 限定重排窗口。
+- HTTP：`GET /api/library/search?...&rerank=true`（`1`/`true`/`yes`/`on`/`test`/`deterministic_local_test` 之一开启）。
+- 唯一可用的 `mode` 是 `deterministic_local_test`；任何其它 `mode`（含设想中的真实 provider）都会被解析为**关闭**并在 `reason` 里说明原因，因此该路径不可能发起网络或凭证调用。
+
+开启后：
+
+- 重排**只重排序**当前 Top K 候选，绝不新增或拉取分段；命中项挂上 `rerank`（`score`/`original_rank`/`mode`），并在 `hit_reasons` 写入 `rerank_score:<分>` 与 `rerank_mode:<模式>`；关闭时这些逐项明细**完全不出现**（inert）；
+- 检索响应的 `rerank` 字段诚实回报 `enabled`、`mode`、`reason`，开启时另加 `top_k` 与 `is_real_rerank_model: false`；
+- `evaluate_retrieval_cases(..., rerank_config=...)` 同样接受该参数并如实回报重排状态；默认（`eval-retrieval` 质量门禁的默认）保持关闭，因此确定性评测无需任何重排模型。
+
+**这是什么，不是什么**：`DeterministicLocalReranker` 只按词面覆盖重排序，用来跑通重排管线；它**不是**真实重排模型、cross-encoder 或语义相关性判断，开启后的排序不代表真实重排质量。
 
 ## Case 格式
 
@@ -192,6 +220,7 @@ CLI 行为：
 - 它不证明片段语义蕴含主张；
 - 它不检测冲突证据；
 - 它不替代人工构建的 50-100 条真实匿名查询集；
-- 向量骨架的 `DeterministicHashEmbedder` 只是词面特征哈希，**不是**真实语义 embedding，开启它得到的召回不代表真实语义检索质量。
+- 向量骨架的 `DeterministicHashEmbedder` 只是词面特征哈希，**不是**真实语义 embedding，开启它得到的召回不代表真实语义检索质量；
+- 重排骨架的 `DeterministicLocalReranker` 只按词面覆盖重排序，**不是**真实重排模型，开启它得到的排序不代表真实重排质量。
 
-后续阶段 2B 的 BM25 参数、真实 embedding 管线和重排器都必须复用这套评测输出，避免凭主观观感判断检索质量。向量骨架已把接口缝钉好（`VectorEmbedder`/`InProcessVectorIndex`/`resolve_vector_pipeline`），真实 provider 接入时只需注册新的 embedder 工厂，无需改动融合与评测输出。
+后续阶段 2B 的 BM25 参数、真实 embedding 管线和真实重排器都必须复用这套评测输出，避免凭主观观感判断检索质量。向量与重排骨架均已把接口缝钉好（`VectorEmbedder`/`InProcessVectorIndex`/`resolve_vector_pipeline`、`Reranker`/`RerankPipeline`/`resolve_rerank_pipeline`），真实 provider 接入时只需注册新的工厂，无需改动融合、重排调用点与评测输出。

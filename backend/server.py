@@ -1123,7 +1123,8 @@ def _resolve_bm25_params(bm25_params: dict[str, Any] | None) -> tuple[float, flo
 #   * resolve_vector_pipeline() -- turns an opt-in config into a pipeline (default: OFF).
 #
 # What is intentionally NOT here: any real embedding model, credential/.env
-# handling, a persistent vector database, reranking, or semantic/NLI reasoning.
+# handling, a persistent vector database, a real reranking model, or semantic/NLI
+# reasoning. (A separate disabled-by-default reranker SKELETON follows below.)
 
 VECTOR_DIM_DEFAULT = 256
 VECTOR_MIN_SCORE_DEFAULT = 1e-9
@@ -1341,9 +1342,192 @@ def _vector_config_from_param(raw: str) -> Any:
     return None
 
 
+# --- Phase 2B: pluggable reranker skeleton (v1) ------------------------------
+#
+# This is a SKELETON, not a real reranking model. It is disabled by default and,
+# when explicitly enabled, uses only a deterministic, in-process, stdlib-only
+# reranker that REORDERS the already-fused Top K candidates. It never retrieves
+# new documents/chunks, never calls an external API, never reads credentials,
+# and never touches the network. Its purpose is to fix the extension seams so a
+# future real cross-encoder / reranking provider can drop in without reshaping
+# `search_library`'s callers or payload:
+#
+#   * Reranker                 -- interface a real reranking provider would implement.
+#   * DeterministicLocalReranker -- offline, reproducible reranker for tests only.
+#   * RerankPipeline           -- ties a reranker behind an `enabled` flag.
+#   * resolve_rerank_pipeline() -- turns an opt-in config into a pipeline (default: OFF).
+#
+# What is intentionally NOT here: any real reranking model, credential/.env
+# handling, network access, a persistent index, or semantic/NLI reasoning.
+
+RERANK_TEST_MODE = "deterministic_local_test"
+RERANK_TOP_K_DEFAULT = 10
+
+
+class Reranker:
+    """Extension point for a future real reranking provider.
+
+    A real implementation (a hosted cross-encoder, a local rerank model, etc.)
+    would subclass this and implement ``score``. This skeleton ships only the
+    deterministic offline reranker below; no subclass here performs I/O.
+    """
+
+    mode = "abstract"
+
+    def score(self, query: str, item: dict[str, Any]) -> float:
+        raise NotImplementedError
+
+
+class DeterministicLocalReranker(Reranker):
+    """Offline, reproducible reranker for tests only (NOT a rerank model).
+
+    Assigns each candidate a deterministic relevance score from signals already
+    present on the fused item -- query-term coverage over the candidate's
+    searchable text, plus a tiny BM25-channel nudge -- so the ordering is stable
+    and dependency-free. It reranks by re-scoring; it captures lexical overlap
+    only and does NOT model relevance, semantics, or entailment. It exists purely
+    to exercise the rerank plumbing without any model, service, or key.
+    """
+
+    mode = RERANK_TEST_MODE
+
+    def score(self, query: str, item: dict[str, Any]) -> float:
+        query_terms = set(_bm25_terms(query))
+        if not query_terms:
+            return 0.0
+        text_terms = set(_bm25_terms(_searchable_text(item)))
+        covered = query_terms & text_terms
+        coverage = len(covered) / len(query_terms)
+        # Small nudge from the existing bm25 channel score (if any) to break ties
+        # deterministically without overriding coverage.
+        bm25_score = 0.0
+        channels = item.get("channels") or {}
+        if isinstance(channels, dict) and isinstance(channels.get("bm25_like"), dict):
+            bm25_score = float(channels["bm25_like"].get("score") or 0.0)
+        return coverage + min(bm25_score, 10.0) * 1e-4
+
+
+class RerankPipeline:
+    """Ties a reranker behind an explicit ``enabled`` flag.
+
+    When disabled (the default everywhere), ``apply`` returns the fused items
+    unchanged and adds no per-item rerank details. When enabled, it re-scores and
+    reorders only the candidates it is given (the already-fused, already-limited
+    Top K) -- it never adds or fetches new items.
+    """
+
+    def __init__(self, enabled: bool, mode: str, reranker: Reranker | None = None,
+                 top_k: int = RERANK_TOP_K_DEFAULT, reason: str = "") -> None:
+        self.enabled = bool(enabled)
+        self.mode = mode
+        self.reranker = reranker
+        self.top_k = max(1, int(top_k))
+        self.reason = reason
+
+    def metadata(self) -> dict[str, Any]:
+        """JSON-serializable, honest description of the rerank state."""
+        meta: dict[str, Any] = {"enabled": self.enabled, "mode": self.mode, "reason": self.reason}
+        if self.enabled and self.reranker is not None:
+            meta["top_k"] = self.top_k
+            # Be explicit that this is not a real reranking model.
+            meta["is_real_rerank_model"] = False
+        return meta
+
+    def apply(self, query: str, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Reorder (only) the given candidates. Never adds/fetches new items."""
+        if not self.enabled or self.reranker is None or not items:
+            return items
+        window = min(self.top_k, len(items))
+        head = items[:window]
+        tail = items[window:]
+        scored = []
+        for original_rank, item in enumerate(head, start=1):
+            score = self.reranker.score(query, item)
+            # Attach inert-when-disabled, present-when-enabled rerank details.
+            item["rerank"] = {"score": score, "original_rank": original_rank, "mode": self.mode}
+            item["hit_reasons"] = sorted(set(item.get("hit_reasons", []) +
+                                             [f"rerank_score:{score:.4f}", f"rerank_mode:{self.mode}"]))
+            scored.append(item)
+        # Stable deterministic reorder: higher rerank score first, original order
+        # (then chunk_id) breaks ties so results are reproducible.
+        scored.sort(key=lambda it: (-it["rerank"]["score"], it["rerank"]["original_rank"],
+                                    str(it.get("chunk_id", ""))))
+        return scored + tail
+
+
+# Factory registry of AVAILABLE reranker modes. Only the deterministic offline
+# reranker is implemented; a real provider would register here (and only then
+# read config/credentials). Absence keeps the skeleton network-free.
+RERANK_FACTORIES = {
+    RERANK_TEST_MODE: lambda: DeterministicLocalReranker(),
+}
+
+
+def _disabled_rerank(reason: str) -> RerankPipeline:
+    return RerankPipeline(enabled=False, mode="none", reason=reason)
+
+
+def resolve_rerank_pipeline(rerank_config: Any) -> RerankPipeline:
+    """Turn an opt-in config into a RerankPipeline. Default is DISABLED.
+
+    Accepts:
+      * ``None`` / falsy               -> disabled (default; fused order unchanged);
+      * ``True``                       -> enabled in deterministic local test mode;
+      * a dict ``{"enabled": bool, "mode": str, "top_k": int}``.
+
+    Only ``mode == "deterministic_local_test"`` is available. Any other mode
+    (including a hypothetical real provider) resolves to DISABLED with an honest
+    reason, so this code path can never attempt a network or credentialed call.
+    """
+    if not rerank_config:
+        return _disabled_rerank(
+            "reranking disabled by default: fused RRF order preserved; no rerank model")
+    if rerank_config is True:
+        rerank_config = {"enabled": True, "mode": RERANK_TEST_MODE}
+    if not isinstance(rerank_config, dict):
+        return _disabled_rerank(f"rerank config ignored: unsupported type {type(rerank_config).__name__}")
+    if not rerank_config.get("enabled", False):
+        return _disabled_rerank("reranking explicitly disabled by config")
+
+    mode = str(rerank_config.get("mode") or RERANK_TEST_MODE)
+    factory = RERANK_FACTORIES.get(mode)
+    if factory is None:
+        return _disabled_rerank(
+            f"rerank mode {mode!r} is not available in this offline skeleton "
+            f"(only {sorted(RERANK_FACTORIES)} implemented; no external providers)")
+    try:
+        top_k = int(rerank_config.get("top_k", RERANK_TOP_K_DEFAULT))
+    except (TypeError, ValueError):
+        top_k = RERANK_TOP_K_DEFAULT
+    reranker = factory()
+    return RerankPipeline(
+        enabled=True, mode=mode, reranker=reranker, top_k=top_k,
+        reason=("deterministic local test reranker (query-term coverage over fused Top K); "
+                "reorders current candidates only, NOT a real reranking model"))
+
+
+# Truthy tokens that opt an HTTP caller into the deterministic local rerank mode.
+# Anything else (including empty/absent) keeps reranking disabled.
+RERANK_ENABLE_TOKENS = {"1", "true", "yes", "on", "test", "deterministic", RERANK_TEST_MODE}
+
+
+def _rerank_config_from_param(raw: str) -> Any:
+    """Map the optional ``?rerank=`` query param to a rerank_config (default OFF).
+
+    Only enables the offline deterministic reranker; it can never select a real
+    provider (none exist in this skeleton), so no network/credential path is
+    reachable from an HTTP request.
+    """
+    token = (raw or "").strip().lower()
+    if token in RERANK_ENABLE_TOKENS:
+        return {"enabled": True, "mode": RERANK_TEST_MODE}
+    return None
+
+
 def search_library(query: str, filters: dict[str, str] | None = None, limit: int = 10,
                    bm25_params: dict[str, Any] | None = None,
-                   vector_config: Any = None) -> dict[str, Any]:
+                   vector_config: Any = None,
+                   rerank_config: Any = None) -> dict[str, Any]:
     """Deterministic Phase 2B retrieval (BM25/FTS v1). No vector model is used.
 
     Three deterministic channels are fused with RRF:
@@ -1362,6 +1546,13 @@ def search_library(query: str, filters: dict[str, str] | None = None, limit: int
     RRF channel named ``vector`` with per-channel rank/score and ``vector_sim:*`` hit
     reasons. No external API, credential, or network access is ever used.
 
+    ``rerank_config`` is an OPT-IN, disabled-by-default hook for the Phase 2B reranker
+    skeleton (see resolve_rerank_pipeline). When omitted/falsy the fused RRF order is
+    returned unchanged and no per-item ``rerank`` details are attached. When enabled in
+    deterministic local test mode it REORDERS the already-fused, already-limited Top K
+    candidates only (it never retrieves new chunks) and attaches per-item ``rerank``
+    details. No external API, credential, or network access is ever used.
+
     Authority level only breaks ties; it never substitutes for textual support.
     """
     filters = filters or {}
@@ -1369,6 +1560,7 @@ def search_library(query: str, filters: dict[str, str] | None = None, limit: int
     limit = max(1, min(int(limit or 10), 50))
     k1, b = _resolve_bm25_params(bm25_params)
     vector_pipeline = resolve_vector_pipeline(vector_config)
+    rerank_pipeline = resolve_rerank_pipeline(rerank_config)
     tokens = tokenize_query(query)
     conn = db()
     try:
@@ -1469,13 +1661,18 @@ def search_library(query: str, filters: dict[str, str] | None = None, limit: int
     results.sort(key=lambda r: (-r["fused_score"], -(r.get("authority_level") or 0), r["chunk_id"]))
     for r in results:
         r["hit_reasons"] = sorted(set(r["hit_reasons"]))
+    # Opt-in reranking (disabled by default): reorders only the already-fused,
+    # already-limited Top K candidates -- it never retrieves new chunks. When
+    # disabled, items is the fused order and carries no per-item `rerank` details.
+    items = rerank_pipeline.apply(query, results[:limit])
     return {
         "query": query,
-        "items": results[:limit],
+        "items": items,
         "channels": {name: len(vals) for name, vals in channels.items()},
         "bm25": {"k1": k1, "b": b, "cjk_ngram_max": BM25_CJK_NGRAM_MAX,
                  "corpus_size": n_docs, "avg_doc_len": avg_len},
         "vector": vector_pipeline.metadata(),
+        "rerank": rerank_pipeline.metadata(),
     }
 
 
@@ -1742,7 +1939,8 @@ def mean_reciprocal_rank(ranked_lists: list[list[str]], relevant_sets: list[set[
 
 def evaluate_retrieval_cases(cases: list[dict[str, Any]], k: int = 10,
                              bm25_params: dict[str, Any] | None = None,
-                             vector_config: Any = None) -> dict[str, Any]:
+                             vector_config: Any = None,
+                             rerank_config: Any = None) -> dict[str, Any]:
     """Run a deterministic retrieval benchmark over library search.
 
     Phase 2B needs a stable benchmark harness before BM25 tuning, embeddings, or
@@ -1770,7 +1968,7 @@ def evaluate_retrieval_cases(cases: list[dict[str, Any]], k: int = 10,
         query = str(case.get("query", "")).strip()
         filters = case.get("filters", {}) or {}
         result = search_library(query, filters=filters, limit=k, bm25_params=bm25_params,
-                                vector_config=vector_config)
+                                vector_config=vector_config, rerank_config=rerank_config)
         items = result.get("items", [])
         ranked_titles = [str(item.get("document_title", "")) for item in items]
         ranked_chunks = [str(item.get("chunk_id", "")) for item in items]
@@ -1853,6 +2051,9 @@ def evaluate_retrieval_cases(cases: list[dict[str, Any]], k: int = 10,
         # vector_config (the eval-retrieval quality gate default) this stays disabled,
         # so the deterministic benchmark needs no embeddings.
         "vector": resolve_vector_pipeline(vector_config).metadata(),
+        # Honest rerank state: disabled by default (the eval-retrieval quality gate
+        # default), so the deterministic benchmark needs no reranking model.
+        "rerank": resolve_rerank_pipeline(rerank_config).metadata(),
     }
 
 
@@ -2255,7 +2456,8 @@ class Handler(SimpleHTTPRequestHandler):
             self.json_response(search_library(
                 self._query_param("q"), filters=filters,
                 limit=int(self._query_param("limit") or 10),
-                vector_config=_vector_config_from_param(self._query_param("vector"))))
+                vector_config=_vector_config_from_param(self._query_param("vector")),
+                rerank_config=_rerank_config_from_param(self._query_param("rerank"))))
             return
         return super().do_GET()
 

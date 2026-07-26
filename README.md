@@ -29,6 +29,7 @@
 | 资料库格式扩展 | 阶段 1B：XLSX 基础导入（按行分段、含表名/行号定位），分段定位信息与更丰富来源快照（文件名、MIME、字节数、正文快照） |
 | 资料库确定性检索 | 阶段 2A：词面精确通道 + 中文字符 ngram/FTS 回退通道；阶段 2B（BM25/FTS v1）：新增确定性 `bm25_like` 通道（1-4 字中文 ngram + ASCII/数字词元、IDF、tf 饱和与文档长度归一，权威仅作 tie-breaker），三路 RRF 融合并输出命中理由；过滤覆盖 v1 支持有效性、权威等级、来源类型、地区、发文机关、发布日期区间、文档状态、分段状态与格式过滤，过滤先约束候选再参与 BM25/RRF 排序 |
 | 向量检索管线骨架（默认关闭） | 阶段 2B：可替换 embedding 管线骨架 v1（`VectorEmbedder`/`DeterministicHashEmbedder`/`InProcessVectorIndex`/`VectorPipeline`/`resolve_vector_pipeline`），仅标准库、完全确定性、进程内，**默认关闭且绝不联网或读取凭证**；显式开启（`search_library(vector_config=...)` 或 `?vector=true`）后新增 `vector` RRF 通道，带 rank/score 与 `vector_sim:*` 命中理由，`vector` 元信息诚实回报 enabled/mode 并标注 `is_real_embedding_model: false`。这是**骨架不是真实语义检索**：伪 embedder 只做词面特征哈希，为将来真实 embedding provider/向量库/重排预留扩展缝 |
+| 可插拔重排骨架（默认关闭） | 阶段 2B：重排骨架 v1（`Reranker`/`DeterministicLocalReranker`/`RerankPipeline`/`resolve_rerank_pipeline`），仅标准库、完全确定性、进程内，**默认关闭且绝不联网或读取凭证**；显式开启（`search_library(rerank_config=...)` 或 `?rerank=true`）后**只对已融合的 Top K 重排序、绝不检索新分段**，命中项挂 `rerank`（`score`/`original_rank`/`mode`）与 `rerank_score:*` 命中理由，关闭时逐项明细完全不出现；`rerank` 元信息诚实回报 enabled/mode 并标注 `is_real_rerank_model: false`。这是**骨架不是真实重排模型**：仅按词面覆盖重排序，为将来真实 cross-encoder/重排 provider 预留扩展缝 |
 | 保守主张核验 | 阶段 2A：按文号/年份/数值/政策标记和词面覆盖判断证据是否支撑主张；不足时返回“待核实”，不伪造语义证明。阶段 2B：主张到证据精确映射，逐标记归因到覆盖它的分段列表（`covered_markers`: marker → [chunk_id, ...]）、列出漏标记与逐分段命中详情（`supporting_items`）、给出覆盖率，未覆盖必填标记绝不判 `supported`；并新增确定性冲突证据候选 v1（`conflict_evidence`），对同上下文不同数量或标记附近明确否定进行保守提示，命中时降级为“待核实” |
 | 检索评测基础 | 阶段 2A：内置 Recall@K 与 MRR 指标 helper；阶段 2B：检索评测运行器输出文档级/分段级 Recall@K、MRR、逐 case miss 诊断与 `top_reasons` 可解释性；可复用 helper（加载/运行评测集、隔离临时库）与命令行质量门禁 `eval-retrieval`（阈值判定、达标 exit 0）；BM25 `k1`/`b` 可经 API/CLI 覆盖与扫参，附 10 条匿名占位评测集固定行为 |
 | 评测集校验工具 | 阶段 2B：`tools/validate_retrieval_suite.py` 校验评测集结构（id 唯一、query 非空、过滤键受支持、至少一个相关性目标、min_authority/format 合法性），错误退出非 0、告警不失败；用于在人工建立真实匿名评测集后、纳入门禁前先行校验（真实 50-100 条评测集仍待建立） |
@@ -133,6 +134,7 @@ cailiao/
 
 - 阶段 2B（BM25/FTS v1）已加入确定性 `bm25_like` 通道（IDF + tf 饱和 + 文档长度归一，1-4 字中文 ngram），与词面/ngram 通道 RRF 融合；但 `k1`/`b` 仍为默认值、尚未在更大真实查询集上扫参校准。
 - 向量检索目前只是**骨架**：`vector_config` 默认关闭，开启后用的是进程内确定性伪 embedder（词面特征哈希），**不是**真实语义 embedding 模型、向量数据库或重排器，也无持久化向量索引；它只跑通了通道/融合/评测的接口缝，不代表真实语义检索能力。真实 embedding provider、向量库与重排仍待实施。
+- 重排同样只是**骨架**：`rerank_config` 默认关闭，开启后用的是进程内确定性重排器（按词面覆盖对已融合 Top K 重排序），**不是**真实重排模型或 cross-encoder，也不检索新分段；它只跑通了重排调用点/元信息/评测的接口缝，不代表真实重排质量。真实重排 provider 仍待实施。
 - 主张核验为保守词面规则：阶段 2A 判断文号/年份/数字/政策标记是否被证据覆盖，阶段 2B 进一步把每个标记精确归因到覆盖它的分段并给出覆盖率与逐分段命中详情，并加入确定性冲突证据候选 v1；但这仍是**词面覆盖**，不等于语义蕴含——尚无真正语义蕴含、完整语义级冲突检测和跨句推理。
 - XLSX 解析为基础实现：按行读取共享/内联字符串与单元格文本，不处理公式计算、合并单元格语义、样式、图表与日期数字格式。
 - 不保留二进制原文：仅保存规范化正文快照（raw_text，上限约 20 万字）、文件名、MIME 与字节数，不落地原始文件字节。
