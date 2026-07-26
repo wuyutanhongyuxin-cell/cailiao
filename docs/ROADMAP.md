@@ -82,7 +82,7 @@
 
 ### 阶段 2B：语义检索、重排与引用验证深化
 
-状态：进行中（检索评测运行器已完成；语义检索、重排和引用验证深化待实施）
+状态：进行中（检索评测运行器、BM25/FTS v1 与向量管线骨架 v1 已完成；真实语义 embedding、向量库、重排和引用验证深化待实施）
 
 - [x] 检索评测运行器：支持查询集、文档级/分段级相关标注、Recall@K、MRR、miss 列表和 HTTP API
 - [x] 逐 case miss 诊断：报告 Top K 内漏召回的标注标题/分段与首个命中排名，聚合 miss 列表携带同样字段
@@ -97,8 +97,9 @@
 - [ ] 人工建立 50-100 条真实匿名查询集，替换内置占位集
 - [x] 评测集结构校验工具 v1：`tools/validate_retrieval_suite.py` + `server.validate_retrieval_suite`（校验 id 唯一/query/受支持过滤键/相关性目标/min_authority/format；错误退出非 0、告警不失败；数量不足或占位元数据给告警）——仅为真实集就绪后纳入门禁前的校验工具，不代表真实集已建立
 - [ ] 在真实查询集上用 CLI 扫参校准 BM25 k1/b 与阈值
-- [ ] 向量检索与可替换 embedding 管线
-- [ ] RRF 融合排序和可插拔重排深化
+- [x] 向量检索与可替换 embedding 管线骨架 v1：**默认关闭**（`VectorEmbedder`/`DeterministicHashEmbedder`/`InProcessVectorIndex`/`VectorPipeline`/`resolve_vector_pipeline`，仅标准库、确定性、进程内、绝不联网/读凭证）；`search_library`/`evaluate_retrieval_cases` 新增 opt-in `vector_config`、HTTP `?vector=` 参数，开启后作为 `vector` RRF 通道并诚实回报状态（`is_real_embedding_model: false`）
+- [ ] 真实 embedding provider、持久化向量库与生产级向量索引
+- [ ] RRF 融合排序和可插拔重排深化（真实重排模型仍未接入）
 - [x] 地区、机构、时间、格式/文种、有效性过滤的 UI/评测覆盖扩展 v1：`search_library`/HTTP 检索支持 `organization`、`format`、`date_from`/`date_to` 并保持来源类型、地区、权威、文档/分段状态与 `effective_only` 过滤；资料库“检索与核验”面板暴露机关、格式、日期、有效性范围并显示生效过滤摘要；单元/HTTP/评测 case 覆盖过滤先于 BM25/RRF 排序生效
 - [x] 主张到证据的精确映射 v1：`map_claim_to_evidence` 逐标记归因到覆盖分段列表（`covered_markers`: marker → [chunk_id, ...]）、`missing_markers`、逐分段 `supporting_items`（`matched_markers`/`matched_terms`/`hit_reasons`）与 `coverage_ratio`，并入 `verify_claim` 的 `evidence_map`；保守判定不变
 - [x] 确定性冲突证据候选 v1：`detect_conflict_evidence`/`verify_claim.conflict_evidence` 对同上下文不同数量标记、必备标记附近明确否定进行保守提示；命中时把原本 `supported` 的结论降级为 `needs_verification`

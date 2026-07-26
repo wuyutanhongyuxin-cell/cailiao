@@ -1,6 +1,6 @@
 # 检索评测基座
 
-本文件记录阶段 2B 的可验收能力：稳定的检索评测运行器，以及在其之上落地的 BM25/FTS v1 确定性检索通道。向量检索、重排与语义核验仍在后续阶段。
+本文件记录阶段 2B 的可验收能力：稳定的检索评测运行器，以及在其之上落地的 BM25/FTS v1 确定性检索通道，另加一个**默认关闭**的向量检索/可替换 embedding 管线骨架 v1（`vector` 通道）。真实 embedding 模型、向量数据库、重排与语义核验仍在后续阶段——本文明确区分“骨架”与这些真实组件。
 
 ## 当前能力
 
@@ -11,7 +11,7 @@
 - 逐 case 报告 Top K 内漏掉的标注答案（`missed_titles`、`missed_chunk_ids`）与首个命中排名（`first_relevant_rank`），聚合 `misses` 列表同样携带这些诊断字段，便于把质量门禁指向具体缺口；
 - 逐 case 输出 `top_reasons`（Top K 结果的 `fused_score`、各通道 `rank`/`score` 与 `hit_reasons`），可审计每个分段为何排到该位置；
 - HTTP API：`POST /api/library/evaluate-retrieval`；
-- 不调用 embedding、向量库、重排模型或外部服务。
+- 默认不调用任何真实 embedding、向量库、重排模型或外部服务；下文的向量骨架为**默认关闭**的可选项，即便开启也只用进程内确定性伪 embedder，绝不联网或读取凭证。
 
 ## BM25/FTS v1 检索通道
 
@@ -36,6 +36,36 @@ BM25 词元空间（`_bm25_terms`，仅标准库、完全确定性）：
 - 命中项写入 `hit_reasons`（`bm25:<按 idf 排序的命中词>`），检索响应的 `bm25` 字段回报 `k1`/`b`/`cjk_ngram_max`/`corpus_size`/`avg_doc_len`。
 
 过滤（`effective_only`/`source_type`/`min_authority`/`region`/`organization`/`format`/`date_from`/`date_to`/`document_status`/`status` 等）在 SQL 层先行生效，BM25 只在过滤后的候选集上打分，因此不会绕过有效性、权威、机关、时间或格式门禁。`format` 会归一为小写并去掉前导点；空值和非法 `min_authority` 会被保守忽略。
+
+## 向量检索 / 可替换 embedding 管线骨架 v1（默认关闭）
+
+这是一个**骨架（skeleton），不是真实语义检索**。它默认关闭；只有在显式开启时才会启用一个仅用标准库、完全确定性、进程内的“伪 embedder”。它**绝不**调用外部 API、绝不读取任何凭证、绝不访问网络。它的唯一目的是先把扩展缝（extension seams）钉好，以便将来真实的 embedding provider + 向量索引可以直接替入，而无需改动 `search_library` 的调用方、RRF 融合或返回结构。
+
+组件（均在 `backend/server.py`，仅标准库）：
+
+| 组件 | 角色 |
+|---|---|
+| `VectorEmbedder` | 未来真实 embedding provider 要实现的接口（`embed`/`embed_many`） |
+| `DeterministicHashEmbedder` | **仅测试用**的离线可复现 embedder：对 `_bm25_terms` 词元做带符号特征哈希（SHA-256 → 桶下标 + 符号），按词频累加后 L2 归一 |
+| `InProcessVectorIndex` | 进程内暴力余弦索引（`add`/`build`/`search`）；将来可替换为 ANN 索引或外部向量库 |
+| `VectorPipeline` | 用显式 `enabled` 开关把 embedder + 索引包起来，并提供 `metadata()` 与 `rank_rows()` |
+| `resolve_vector_pipeline(config)` | 把 opt-in 配置解析成管线；默认（`None`/假值）**关闭** |
+
+开启方式（默认全部关闭）：
+
+- `search_library(..., vector_config=None)` —— 默认，纯词面/BM25；`result["vector"]["enabled"] == False`，不产生 `vector` 通道，排序与返回结构与阶段 2A/2B BM25 完全一致（向后兼容）。
+- `search_library(..., vector_config=True)` 或 `{"enabled": True, "mode": "deterministic_local_test"}` —— 启用确定性本地测试通道。
+- 可选 `{"dim": 256, "min_score": 1e-9}` 调整维度与最小相似度阈值；非法值回退默认。
+- HTTP：`GET /api/library/search?...&vector=true`（`1`/`true`/`yes`/`on`/`test`/`deterministic_local_test` 之一开启）。
+- 唯一可用的 `mode` 是 `deterministic_local_test`。任何其它 `mode`（含设想中的真实 provider）都会被解析为**关闭**并在 `reason` 里说明原因，因此该路径不可能发起网络或凭证调用。
+
+开启后 `vector` 只是又一路排好序的通道，经由与其它通道**相同**的 RRF 循环融合，无任何特殊分支：
+
+- 命中项在 `channels["vector"]` 里带 `rank`/`score`（余弦相似度），并在 `hit_reasons` 写入 `vector_sim:<相似度>` 与 `vector_mode:<模式>`；
+- 检索响应的 `vector` 字段诚实回报状态：`enabled`、`mode`、`reason`，开启时另加 `dim`、`min_score` 与 `is_real_embedding_model: false`；
+- `evaluate_retrieval_cases(..., vector_config=...)` 同样接受该参数并如实回报向量状态；默认（`eval-retrieval` 质量门禁的默认）保持关闭，因此确定性评测无需任何 embedding。
+
+**这是什么，不是什么**：`DeterministicHashEmbedder` 只捕获词面共现，用来跑通向量通道管线；它**不**建模语义、同义或蕴含，**不是**真实 embedding 模型、向量数据库或重排器。开启后的检索质量不代表真实语义检索质量。
 
 ## Case 格式
 
@@ -161,6 +191,7 @@ CLI 行为：
 - 该评测器只衡量当前检索结果是否召回标注答案；
 - 它不证明片段语义蕴含主张；
 - 它不检测冲突证据；
-- 它不替代人工构建的 50-100 条真实匿名查询集。
+- 它不替代人工构建的 50-100 条真实匿名查询集；
+- 向量骨架的 `DeterministicHashEmbedder` 只是词面特征哈希，**不是**真实语义 embedding，开启它得到的召回不代表真实语义检索质量。
 
-后续阶段 2B 的 BM25 参数、embedding 管线和重排器都必须复用这套评测输出，避免凭主观观感判断检索质量。
+后续阶段 2B 的 BM25 参数、真实 embedding 管线和重排器都必须复用这套评测输出，避免凭主观观感判断检索质量。向量骨架已把接口缝钉好（`VectorEmbedder`/`InProcessVectorIndex`/`resolve_vector_pipeline`），真实 provider 接入时只需注册新的 embedder 工厂，无需改动融合与评测输出。

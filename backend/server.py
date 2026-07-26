@@ -1106,8 +1106,244 @@ def _resolve_bm25_params(bm25_params: dict[str, Any] | None) -> tuple[float, flo
     return k1, b
 
 
+# --- Phase 2B: replaceable vector retrieval pipeline skeleton (v1) -----------
+#
+# This is a SKELETON, not a real semantic search stack. It is disabled by
+# default and, when explicitly enabled in tests, uses only a deterministic,
+# in-process, stdlib-only "embedder" (signed feature hashing over the same
+# BM25 term space). It never calls an external API, never reads credentials,
+# and never touches the network. Its purpose is to fix the extension seams so a
+# future real embedding provider + vector index can drop in without reshaping
+# `search_library`'s callers, fusion, or payload:
+#
+#   * VectorEmbedder            -- interface a real provider would implement.
+#   * DeterministicHashEmbedder -- offline, reproducible embedder for tests only.
+#   * InProcessVectorIndex      -- brute-force cosine index; swap for FAISS/pgvector later.
+#   * VectorPipeline            -- ties embedder + index behind an `enabled` flag.
+#   * resolve_vector_pipeline() -- turns an opt-in config into a pipeline (default: OFF).
+#
+# What is intentionally NOT here: any real embedding model, credential/.env
+# handling, a persistent vector database, reranking, or semantic/NLI reasoning.
+
+VECTOR_DIM_DEFAULT = 256
+VECTOR_MIN_SCORE_DEFAULT = 1e-9
+# The only embedder mode this skeleton actually implements. A real provider mode
+# (e.g. "provider_api") is deliberately absent so nothing can silently attempt a
+# network/credentialed call; resolve_vector_pipeline() rejects unknown modes.
+VECTOR_TEST_MODE = "deterministic_local_test"
+
+
+class VectorEmbedder:
+    """Extension point for a future real embedding provider.
+
+    A real implementation (a hosted embedding API, a local model, etc.) would
+    subclass this and implement ``embed``. This skeleton ships only the
+    deterministic offline embedder below; no subclass here performs I/O.
+    """
+
+    mode = "abstract"
+
+    def embed(self, text: str) -> list[float]:
+        raise NotImplementedError
+
+    def embed_many(self, texts: list[str]) -> list[list[float]]:
+        return [self.embed(t) for t in texts]
+
+
+class DeterministicHashEmbedder(VectorEmbedder):
+    """Offline, reproducible embedder for tests only (NOT a semantic model).
+
+    Uses signed feature hashing over the existing ``_bm25_terms`` term space:
+    each term is hashed (SHA-256) to a bucket index and a sign, and its term
+    frequency is accumulated into that bucket; the vector is then L2-normalized.
+    Shared terms between a query and a document land in the same signed bucket,
+    so cosine similarity rewards literal term overlap. This is deterministic and
+    dependency-free, but it captures lexical co-occurrence only -- it does NOT
+    model meaning, synonymy, or entailment. It exists purely to exercise the
+    vector channel plumbing without any model, service, or key.
+    """
+
+    mode = VECTOR_TEST_MODE
+
+    def __init__(self, dim: int = VECTOR_DIM_DEFAULT) -> None:
+        self.dim = max(8, int(dim))
+
+    def embed(self, text: str) -> list[float]:
+        vec = [0.0] * self.dim
+        for term, tf in Counter(_bm25_terms(text or "")).items():
+            digest = hashlib.sha256(term.encode("utf-8")).digest()
+            idx = int.from_bytes(digest[:4], "big") % self.dim
+            sign = 1.0 if (digest[4] & 1) else -1.0
+            vec[idx] += sign * float(tf)
+        norm = math.sqrt(sum(v * v for v in vec))
+        if norm > 0:
+            vec = [v / norm for v in vec]
+        return vec
+
+    @staticmethod
+    def cosine(a: list[float], b: list[float]) -> float:
+        # Both vectors are unit-normalized on creation, so the dot product is the
+        # cosine similarity. Guard length just in case of a dimension mismatch.
+        n = min(len(a), len(b))
+        return sum(a[i] * b[i] for i in range(n))
+
+
+class InProcessVectorIndex:
+    """Brute-force, in-memory cosine index (extension point for a real index).
+
+    Holds ``(id, vector)`` pairs and does a linear cosine scan on query. This is
+    fine for the small deterministic test corpora used here; a production build
+    would replace this class with an ANN index or an external vector DB behind
+    the same ``add``/``search`` surface. Nothing here persists to disk.
+    """
+
+    def __init__(self, embedder: VectorEmbedder) -> None:
+        self.embedder = embedder
+        self._items: list[tuple[str, list[float]]] = []
+
+    def add(self, item_id: str, vector: list[float]) -> None:
+        self._items.append((str(item_id), vector))
+
+    def build(self, docs: list[tuple[str, str]]) -> "InProcessVectorIndex":
+        """Embed and index ``(id, text)`` pairs. Deterministic, offline."""
+        for item_id, text in docs:
+            self.add(item_id, self.embedder.embed(text))
+        return self
+
+    def search(self, query: str, min_score: float = VECTOR_MIN_SCORE_DEFAULT) -> list[tuple[str, float]]:
+        qvec = self.embedder.embed(query or "")
+        hits = []
+        for item_id, vec in self._items:
+            score = DeterministicHashEmbedder.cosine(qvec, vec)
+            if score > min_score:
+                hits.append((item_id, score))
+        hits.sort(key=lambda x: (-x[1], x[0]))
+        return hits
+
+    def __len__(self) -> int:
+        return len(self._items)
+
+
+class VectorPipeline:
+    """Ties an embedder + index behind an explicit ``enabled`` flag.
+
+    When disabled (the default everywhere), it contributes no channel and simply
+    reports honest metadata. When enabled, it builds an in-process index over the
+    candidate rows and exposes a ``rank`` list shaped exactly like the lexical
+    channels so the existing RRF fusion consumes it with no special-casing.
+    """
+
+    def __init__(self, enabled: bool, mode: str, embedder: VectorEmbedder | None = None,
+                 min_score: float = VECTOR_MIN_SCORE_DEFAULT, reason: str = "") -> None:
+        self.enabled = bool(enabled)
+        self.mode = mode
+        self.embedder = embedder
+        self.min_score = min_score
+        self.reason = reason
+
+    def metadata(self) -> dict[str, Any]:
+        """JSON-serializable, honest description of the vector channel state."""
+        meta: dict[str, Any] = {"enabled": self.enabled, "mode": self.mode, "reason": self.reason}
+        if self.enabled and self.embedder is not None:
+            meta["dim"] = getattr(self.embedder, "dim", None)
+            # Be explicit that this is not a real semantic model.
+            meta["is_real_embedding_model"] = False
+            meta["min_score"] = self.min_score
+        return meta
+
+    def rank_rows(self, query: str, rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        """Return ranked vector hits shaped like ``_rank_channel`` output."""
+        if not self.enabled or self.embedder is None:
+            return []
+        index = InProcessVectorIndex(self.embedder)
+        index.build([(row["chunk_id"], _searchable_text(row)) for row in rows])
+        by_id = {row["chunk_id"]: row for row in rows}
+        out = []
+        for rank, (cid, score) in enumerate(index.search(query, self.min_score), start=1):
+            row = by_id.get(cid)
+            if row is None:
+                continue
+            reason = [f"vector_sim:{score:.4f}", f"vector_mode:{self.mode}"]
+            out.append({"rank": rank, "score": score, "reason": reason, "row": row})
+        return out
+
+
+# Factory registry of AVAILABLE embedder modes. Only the deterministic offline
+# test embedder is implemented; a real provider would register here (and only
+# then read config/credentials). Absence keeps the skeleton network-free.
+VECTOR_EMBEDDER_FACTORIES = {
+    VECTOR_TEST_MODE: lambda dim: DeterministicHashEmbedder(dim=dim),
+}
+
+
+def _disabled_pipeline(reason: str) -> VectorPipeline:
+    return VectorPipeline(enabled=False, mode="none", reason=reason)
+
+
+def resolve_vector_pipeline(vector_config: Any) -> VectorPipeline:
+    """Turn an opt-in config into a VectorPipeline. Default is DISABLED.
+
+    Accepts:
+      * ``None`` / falsy               -> disabled (the default, lexical/BM25 only);
+      * ``True``                       -> enabled in deterministic local test mode;
+      * a dict ``{"enabled": bool, "mode": str, "dim": int, "min_score": float}``.
+
+    Only ``mode == "deterministic_local_test"`` is available. Any other mode
+    (including a hypothetical real provider) resolves to DISABLED with an honest
+    reason, so this code path can never attempt a network or credentialed call.
+    """
+    if not vector_config:
+        return _disabled_pipeline(
+            "vector retrieval disabled by default: deterministic lexical/BM25 only; no embeddings")
+    if vector_config is True:
+        vector_config = {"enabled": True, "mode": VECTOR_TEST_MODE}
+    if not isinstance(vector_config, dict):
+        return _disabled_pipeline(f"vector config ignored: unsupported type {type(vector_config).__name__}")
+    if not vector_config.get("enabled", False):
+        return _disabled_pipeline("vector retrieval explicitly disabled by config")
+
+    mode = str(vector_config.get("mode") or VECTOR_TEST_MODE)
+    factory = VECTOR_EMBEDDER_FACTORIES.get(mode)
+    if factory is None:
+        return _disabled_pipeline(
+            f"vector mode {mode!r} is not available in this offline skeleton "
+            f"(only {sorted(VECTOR_EMBEDDER_FACTORIES)} implemented; no external providers)")
+    try:
+        dim = int(vector_config.get("dim", VECTOR_DIM_DEFAULT))
+    except (TypeError, ValueError):
+        dim = VECTOR_DIM_DEFAULT
+    try:
+        min_score = float(vector_config.get("min_score", VECTOR_MIN_SCORE_DEFAULT))
+    except (TypeError, ValueError):
+        min_score = VECTOR_MIN_SCORE_DEFAULT
+    embedder = factory(dim)
+    return VectorPipeline(
+        enabled=True, mode=mode, embedder=embedder, min_score=min_score,
+        reason=("deterministic local test embedder (signed feature hashing over BM25 terms); "
+                "offline, reproducible, NOT a real semantic embedding model"))
+
+
+# Truthy tokens that opt an HTTP caller into the deterministic local test channel.
+# Anything else (including empty/absent) keeps vector retrieval disabled.
+VECTOR_ENABLE_TOKENS = {"1", "true", "yes", "on", "test", "deterministic", VECTOR_TEST_MODE}
+
+
+def _vector_config_from_param(raw: str) -> Any:
+    """Map the optional ``?vector=`` query param to a vector_config (default OFF).
+
+    Only enables the offline deterministic test channel; it can never select a
+    real provider (none exist in this skeleton), so no network/credential path
+    is reachable from an HTTP request.
+    """
+    token = (raw or "").strip().lower()
+    if token in VECTOR_ENABLE_TOKENS:
+        return {"enabled": True, "mode": VECTOR_TEST_MODE}
+    return None
+
+
 def search_library(query: str, filters: dict[str, str] | None = None, limit: int = 10,
-                   bm25_params: dict[str, Any] | None = None) -> dict[str, Any]:
+                   bm25_params: dict[str, Any] | None = None,
+                   vector_config: Any = None) -> dict[str, Any]:
     """Deterministic Phase 2B retrieval (BM25/FTS v1). No vector model is used.
 
     Three deterministic channels are fused with RRF:
@@ -1119,12 +1355,20 @@ def search_library(query: str, filters: dict[str, str] | None = None, limit: int
     ``bm25_params`` optionally overrides {"k1", "b"} for a tuning sweep; when omitted
     the module defaults (BM25_K1/BM25_B) are used and behavior is unchanged.
 
+    ``vector_config`` is an OPT-IN, disabled-by-default hook for the Phase 2B vector
+    retrieval skeleton (see resolve_vector_pipeline). When omitted/falsy the result is
+    exactly lexical/BM25-only and ``result["vector"]["enabled"]`` is ``False`` (backward
+    compatible). When enabled in deterministic local test mode it contributes a fourth
+    RRF channel named ``vector`` with per-channel rank/score and ``vector_sim:*`` hit
+    reasons. No external API, credential, or network access is ever used.
+
     Authority level only breaks ties; it never substitutes for textual support.
     """
     filters = filters or {}
     query = (query or "").strip()
     limit = max(1, min(int(limit or 10), 50))
     k1, b = _resolve_bm25_params(bm25_params)
+    vector_pipeline = resolve_vector_pipeline(vector_config)
     tokens = tokenize_query(query)
     conn = db()
     try:
@@ -1207,6 +1451,10 @@ def search_library(query: str, filters: dict[str, str] | None = None, limit: int
         "fts_or_ngram": _rank_channel(rows, ngram),
         "bm25_like": _rank_channel(rows, bm25_like),
     }
+    # Opt-in vector channel (disabled by default). When enabled it is just another
+    # ranked list fused via the same RRF loop below -- no special-casing.
+    if vector_pipeline.enabled:
+        channels["vector"] = vector_pipeline.rank_rows(query, rows)
     fused: dict[str, dict[str, Any]] = {}
     for channel_name, ranked in channels.items():
         for item in ranked:
@@ -1227,7 +1475,7 @@ def search_library(query: str, filters: dict[str, str] | None = None, limit: int
         "channels": {name: len(vals) for name, vals in channels.items()},
         "bm25": {"k1": k1, "b": b, "cjk_ngram_max": BM25_CJK_NGRAM_MAX,
                  "corpus_size": n_docs, "avg_doc_len": avg_len},
-        "vector": {"enabled": False, "reason": "Phase 2B BM25/FTS v1: deterministic lexical/ngram/BM25 only; no embeddings/vector retrieval"},
+        "vector": vector_pipeline.metadata(),
     }
 
 
@@ -1493,7 +1741,8 @@ def mean_reciprocal_rank(ranked_lists: list[list[str]], relevant_sets: list[set[
 
 
 def evaluate_retrieval_cases(cases: list[dict[str, Any]], k: int = 10,
-                             bm25_params: dict[str, Any] | None = None) -> dict[str, Any]:
+                             bm25_params: dict[str, Any] | None = None,
+                             vector_config: Any = None) -> dict[str, Any]:
     """Run a deterministic retrieval benchmark over library search.
 
     Phase 2B needs a stable benchmark harness before BM25 tuning, embeddings, or
@@ -1520,7 +1769,8 @@ def evaluate_retrieval_cases(cases: list[dict[str, Any]], k: int = 10,
     for idx, case in enumerate(cases or [], start=1):
         query = str(case.get("query", "")).strip()
         filters = case.get("filters", {}) or {}
-        result = search_library(query, filters=filters, limit=k, bm25_params=bm25_params)
+        result = search_library(query, filters=filters, limit=k, bm25_params=bm25_params,
+                                vector_config=vector_config)
         items = result.get("items", [])
         ranked_titles = [str(item.get("document_title", "")) for item in items]
         ranked_chunks = [str(item.get("chunk_id", "")) for item in items]
@@ -1599,7 +1849,10 @@ def evaluate_retrieval_cases(cases: list[dict[str, Any]], k: int = 10,
         "bm25": {"k1": _resolve_bm25_params(bm25_params)[0],
                  "b": _resolve_bm25_params(bm25_params)[1],
                  "cjk_ngram_max": BM25_CJK_NGRAM_MAX},
-        "vector": {"enabled": False, "reason": "Phase 2B benchmark harness only; embeddings are not implemented"},
+        # Honest vector state: mirrors whatever search_library actually used. With no
+        # vector_config (the eval-retrieval quality gate default) this stays disabled,
+        # so the deterministic benchmark needs no embeddings.
+        "vector": resolve_vector_pipeline(vector_config).metadata(),
     }
 
 
@@ -1999,7 +2252,10 @@ class Handler(SimpleHTTPRequestHandler):
             return
         if self.path.startswith("/api/library/search"):
             filters = {k: self._query_param(k) for k in ("source_type", "region", "organization", "format", "min_authority", "status", "document_status", "effective_only", "date_from", "date_to")}
-            self.json_response(search_library(self._query_param("q"), filters=filters, limit=int(self._query_param("limit") or 10)))
+            self.json_response(search_library(
+                self._query_param("q"), filters=filters,
+                limit=int(self._query_param("limit") or 10),
+                vector_config=_vector_config_from_param(self._query_param("vector"))))
             return
         return super().do_GET()
 

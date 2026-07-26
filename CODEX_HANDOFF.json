@@ -1,14 +1,16 @@
 {
   "status": "verified_by_codex",
-  "phase": "ROADMAP Stage 2B: deterministic conflict evidence candidates v1",
-  "baseline": "GitHub main = 320b5d4b1750dfb3255044bb5fff2c37f964e164 (Add retrieval eval suite validator)",
+  "task_id": "cailiao-stage2b-vector-pipeline-skeleton-v1",
+  "phase": "ROADMAP Stage 2B: vector retrieval / replaceable embedding pipeline skeleton v1",
+  "baseline": "Isolated repo local sync commit 20bc2f5 Sync, content-aligned with published GitHub main 1e4a77edccbc9ff3fbd46fe01dc1aa4dfab1a757; older stash codex-archive-stale-conflict-evidence-diff-20260726 ignored.",
   "context": [
-    "Claude was dispatched cailiao-stage2b-conflict-evidence-v1 in the isolated WSL workspace, but the current Codex session cannot access KiroUbuntu and no Claude diff/report is available.",
-    "Codex recovered the task scope from without_human STATUS.md, local screenshots, and the cailiao main baseline, then implemented the narrow deterministic v1 directly in the Windows review repo."
+    "Claude implemented the Stage 2B vector pipeline skeleton in the isolated WSL Claude Code workspace at /home/kiro/kiro-work/work/cailiao-task.",
+    "Claude reported it could not run tests in its tool environment. Codex applied the diff to the Windows release repo and ran the required verification before commit/push.",
+    "No git commit or push was performed by Claude; no GitHub interaction occurred."
   ],
   "changed_files": [
     "backend/server.py",
-    "tests/test_library.py",
+    "tests/test_vector_pipeline.py",
     "tools/run_quality_gates.py",
     "README.md",
     "docs/ROADMAP.md",
@@ -16,43 +18,50 @@
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "Added detect_conflict_evidence(claim, evidence_items), a stdlib-only deterministic lexical conflict candidate detector.",
-    "Added numeric conflict detection for retrieved chunks that share the claim context/year/named marker or strong lexical overlap but contain different numeric markers instead of the claim number.",
-    "Added explicit-negation detection for required markers near conservative negation terms such as not, shall not, no, never, without, bu de, forbid/cancel/stop style Chinese terms.",
-    "verify_claim now returns conflict_evidence with has_conflicts, items, summary, and method=deterministic_lexical_v1.",
-    "When a claim would otherwise be supported but conflict candidates are present, verify_claim downgrades status to needs_verification and prepends conflict_evidence_detected to reasons.",
-    "Added unit tests for different-number conflict, negated-marker conflict, clean support with no conflict, and HTTP JSON presence of conflict_evidence.",
-    "Hardened tools/run_quality_gates.py so the py-compile gate uses a temporary PYTHONPYCACHEPREFIX and does not depend on writable repository __pycache__ directories.",
-    "Updated README, ROADMAP, and retrieval evaluation docs to distinguish deterministic conflict candidates from full semantic/NLI conflict detection."
+    "Added a stdlib-only, deterministic, disabled-by-default vector pipeline skeleton in backend/server.py with clear extension seams.",
+    "VectorEmbedder: abstract interface a future real embedding provider would implement (embed/embed_many).",
+    "DeterministicHashEmbedder(VectorEmbedder): offline, reproducible, tests-only embedder using signed feature hashing (SHA-256 -> bucket index + sign) over the existing _bm25_terms term space, accumulating term frequency and L2-normalizing; static cosine() helper. Captures lexical co-occurrence only, NOT semantics.",
+    "InProcessVectorIndex: brute-force in-memory cosine index (add/build/search) as the extension point for a future ANN index / external vector DB; nothing persists to disk.",
+    "VectorPipeline: wraps embedder+index behind an explicit enabled flag; metadata() returns honest JSON state (enabled/mode/reason, plus dim/min_score/is_real_embedding_model=false when enabled); rank_rows() returns a ranked list shaped exactly like _rank_channel output.",
+    "resolve_vector_pipeline(vector_config): maps None/False/{} -> disabled (default); True -> deterministic_local_test; dict{enabled,mode,dim,min_score} -> pipeline. Only mode 'deterministic_local_test' is registered in VECTOR_EMBEDDER_FACTORIES; any other mode (e.g. a hypothetical real provider) resolves to DISABLED with an honest reason, so no network/credential path is reachable.",
+    "_vector_config_from_param(raw): maps the optional HTTP ?vector= query param (1/true/yes/on/test/deterministic/deterministic_local_test) to the deterministic test config; anything else stays disabled.",
+    "Extended search_library(query, filters, limit, bm25_params, vector_config=None): default remains exactly lexical/BM25-only with result['vector']['enabled']==False and NO 'vector' channel (backward compatible). When enabled, a 'vector' channel is fused via the SAME existing RRF loop (no special-casing), contributing per-item channels['vector'] rank/score and 'vector_sim:<score>' / 'vector_mode:<mode>' hit_reasons; result['vector'] now reports vector_pipeline.metadata().",
+    "Extended evaluate_retrieval_cases(cases, k, bm25_params, vector_config=None) to thread vector_config through and report honest vector state (disabled by default, so eval-retrieval needs no embeddings).",
+    "Wired an opt-in ?vector= param into the GET /api/library/search HTTP handler (default disabled).",
+    "Added tests/test_vector_pipeline.py (focused new file) proving default-off backward compatibility and the deterministic enabled mode, offline/no-credentials, determinism, unknown-mode-stays-disabled, eval honesty, and the HTTP param helper.",
+    "Added tests/test_vector_pipeline.py to the py-compile gate file list in tools/run_quality_gates.py.",
+    "Updated README.md (capability row + known limitations), docs/ROADMAP.md (Stage 2B items/status), and docs/RETRIEVAL_EVALUATION.md (new skeleton section + boundary notes), clearly distinguishing this SKELETON from a real embedding model/vector DB/reranker."
   ],
   "not_implemented": [
-    "This is not semantic entailment and does not prove a real contradiction.",
-    "No LLM/NLI model, vector retrieval, embedding pipeline, reranker, or cross-sentence reasoning was added.",
-    "The detector intentionally produces audit candidates and forces human verification rather than automatically rejecting a claim as false."
+    "No real embedding API/provider or local embedding model.",
+    "No credential or .env handling; the deterministic embedder reads no environment and never touches the network.",
+    "No persistent vector database (index is in-process and ephemeral).",
+    "No semantic entailment/NLI, no reranking model, no claim truth judgement.",
+    "No unrelated frontend UI changes (the existing search panel already renders result['vector'] state; it now shows mode/reason when enabled without markup changes)."
   ],
-  "test_commands": [
-    "python -m unittest tests.test_library.ClaimEvidenceMapTest -v",
-    "python -m unittest discover -s tests -v",
-    "python tools/validate_retrieval_suite.py --suite tests/data/retrieval_eval_suite.json --json",
-    "python tools/run_quality_gates.py --json",
-    "git diff --check",
-    "rg -n --hidden -g '!*.sqlite3' -g '!__pycache__/**' -g '!*.pyc' -g '!.pycache-run/**' secret-shape-patterns ."
+  "test_files": [
+    "tests/test_vector_pipeline.py (new)"
+  ],
+  "required_test_commands_for_codex": [
+    "python3 -m unittest discover -s tests -v",
+    "python3 tools/validate_retrieval_suite.py --suite tests/data/retrieval_eval_suite.json --json",
+    "python3 tools/run_quality_gates.py --json  (or 'python' on Windows)",
+    "git diff --check"
   ],
   "test_status": [
-    "python -m unittest tests.test_library.ClaimEvidenceMapTest -v: 9 tests OK.",
-    "python -m unittest discover -s tests -v: 121 tests OK.",
+    "python -m unittest discover -s tests -v: 133 tests OK.",
     "python tools/validate_retrieval_suite.py --suite tests/data/retrieval_eval_suite.json --json: passed=true with expected placeholder and case_count<50 warnings.",
     "python tools/run_quality_gates.py --json: passed=true, 5 gates passed.",
     "git diff --check: passed.",
-    "Credential shape scan: no matches."
+    "Secret scan gate: no secret-shaped tokens; no .env files. An extra broad ad hoc grep only matched an existing fake OPENAI_API_KEY fixture in tests/test_quality_gates.py, not a real credential."
   ],
   "risks": [
-    "Numeric conflict detection can still flag unrelated numbers if retrieved chunks are lexically similar enough; therefore the output is named conflict_evidence candidates and only downgrades to needs_verification.",
-    "Negation detection is substring/window based and conservative; it may miss implicit contradictions or long-distance negation.",
-    "The py-compile gate now isolates pycache writes, but future direct py_compile commands outside the gate may still hit inherited __pycache__ ownership on this machine."
+    "DeterministicHashEmbedder is signed feature hashing, not a semantic model; enabling the vector channel can rank by lexical co-occurrence in ways that look 'semantic' but are not. It is disabled by default and documented as a skeleton; the metadata sets is_real_embedding_model=false.",
+    "When enabled, result['channels'] gains a 'vector' key and items may carry channels['vector']; any downstream consumer that hard-codes the three-channel set should opt in explicitly. Default callers are unaffected.",
+    "The vector skeleton intentionally provides extension seams only; it does not establish production semantic retrieval quality until a real embedding provider, vector index, and real anonymized query suite are added."
   ],
   "credentials": [
-    "No credentials or .env files were read or modified.",
-    "No git commit or push was performed in this handoff."
+    "No credentials or .env files were read, created, or modified.",
+    "Claude performed no git commit or push. Codex will commit/push only after verification."
   ]
 }
