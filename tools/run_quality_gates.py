@@ -170,6 +170,7 @@ def _gate_py_compile() -> tuple[str, str, int]:
     with tempfile.TemporaryDirectory(prefix="cailiao-pycache-") as pycache:
         rc, tail = _run_cmd([PY, "-m", "py_compile",
                              "backend/server.py", "tests/test_library.py",
+                             "tests/test_claim_insufficiency.py",
                              "tests/test_vector_pipeline.py",
                              "tests/test_reranker_pipeline.py",
                              "tools/evaluate_retrieval.py", "tools/run_quality_gates.py"],

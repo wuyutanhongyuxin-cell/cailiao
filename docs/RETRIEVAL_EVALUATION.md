@@ -210,6 +210,26 @@ CLI 行为：
 
 检测结果只用于降级为 `needs_verification` 并提示人工复核，不把候选冲突自动判定为真实语义矛盾。返回结构包含 `has_conflicts`、`items`、`summary` 和 `method=deterministic_lexical_v1`；每条候选记录 chunk/document、冲突类型、主张标记、证据标记、共享年份、匹配词和检索命中理由。
 
+## 证据不足 / 拒绝理由（`verify_claim.insufficiency`）
+
+阶段 2B 新增确定性、可审计的**证据不足 / 拒绝理由 v1**（`build_evidence_insufficiency(...)`），并入 `verify_claim` 每次返回值的 `insufficiency` 字段。它把“为什么这条主张不能被安全支撑”写成机器可读、稳定、可 JSON 序列化的结构，来源与 `verify_claim` 已算出的保守词面信号完全一致。
+
+**这是确定性词面审计元数据，不是语义蕴含、NLI、真实矛盾证明或任何模型判断。**
+
+返回结构（`method=deterministic_lexical_insufficiency_v1`）：
+
+| 字段 | 含义 |
+|---|---|
+| `has_insufficiency` | 是否有需要说明的不足（`summary != none` 时为真） |
+| `summary` | 单一稳定标签：`no_retrieved_evidence` / `required_markers_missing` / `conflict_candidates_found` / `weak_lexical_overlap` / `none`，按“最根本缺口优先”选取 |
+| `blocking` | 结果是否**不得**当作 `supported`（即 `status != supported` 时为真） |
+| `missing_markers` | 从 `evidence_map` 复制的未覆盖必备标记列表 |
+| `conflict_count` | 从 `conflict_evidence` 复制的候选冲突条数 |
+| `overlap` | 词面重合的计数/比率（`claim_token_count`/`overlap_token_count`/`overlap_ratio`/`coverage_ratio`），仅词面、确定性 |
+| `details` | 稳定的机器可读理由对象列表（每条带 `code`），而非纯文字串 |
+
+约定：无检索结果 → `has_insufficiency` 为真且 `summary=no_retrieved_evidence`；必备标记缺失 → 顶层 `missing_markers` 与一条 `required_markers_missing` detail 同时列出缺失标记；命中确定性冲突候选 → 报告 `conflict_count`，若原本 `supported` 被降级则 `blocking` 为真且 detail 的 `downgraded_from_supported` 为真；仅有弱词面支撑/无必备标记 → detail 明确说明这是词面不足、非语义判断；当 `status=supported` 且无冲突/缺失标记 → `has_insufficiency` 为假、`summary=none`。既有的 `status`/`reasons`/`missing_markers`/`evidence_map`/`conflict_evidence` 等键保持不变，向后兼容。
+
 ## 本地可审计面板
 
 检索的 `top_reasons`（RRF 融合分、各通道 rank/score、命中理由、向量/BM25 元信息）与核验的 `evidence_map`（`required_markers`/`covered_markers`/`missing_markers`/`coverage_ratio`/`supporting_items`）都会在资料库的“检索与核验”标签中渲染出来（`frontend/index.html` 的 `#libSearch` 面板 + `frontend/app.js` 的 `renderSearch`/`verifyClaim`）。面板同时暴露来源类型、最低权威、地区、发文机关、格式、发布日期区间和有效性范围，并在结果摘要里显示“生效过滤”，便于审计哪些约束先于排序生效。面板文案明确声明这是词面覆盖、需人工语义复核，不把覆盖当作语义蕴含。
@@ -219,6 +239,7 @@ CLI 行为：
 - 该评测器只衡量当前检索结果是否召回标注答案；
 - 它不证明片段语义蕴含主张；
 - 它不检测冲突证据；
+- `insufficiency` 拒绝理由只是确定性词面审计，**不是**语义蕴含或 NLI，也不证明主张真伪；
 - 它不替代人工构建的 50-100 条真实匿名查询集；
 - 向量骨架的 `DeterministicHashEmbedder` 只是词面特征哈希，**不是**真实语义 embedding，开启它得到的召回不代表真实语义检索质量；
 - 重排骨架的 `DeterministicLocalReranker` 只按词面覆盖重排序，**不是**真实重排模型，开启它得到的排序不代表真实重排质量。

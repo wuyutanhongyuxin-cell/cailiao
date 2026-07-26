@@ -1,16 +1,17 @@
 {
   "status": "verified_by_codex",
-  "task_id": "cailiao-stage2b-reranker-skeleton-v1",
-  "phase": "ROADMAP Stage 2B: pluggable reranker skeleton v1",
-  "baseline": "Isolated repo local sync commit 7237c18 Sync-fb7e36b, content-aligned with published GitHub main fb7e36b307e7dd8bde2906f192e5bd38b7a2e1da; older stashes ignored.",
+  "task_id": "cailiao-stage2b-claim-insufficiency-v1",
+  "phase": "ROADMAP Stage 2B: deterministic evidence-insufficiency / refusal detail v1",
+  "baseline": "Isolated repo clean sync baseline (local commit Sync-6543b7b). No push, no credentials, no external calls.",
   "context": [
-    "Claude implemented the Stage 2B pluggable reranker skeleton in the isolated WSL Claude Code workspace at /home/kiro/kiro-work/work/cailiao-task, on top of the already-merged vector pipeline skeleton.",
-    "Claude reported it could not run tests in its tool environment. Codex applied the diff to the Windows release repo and ran the required verification before commit/push.",
+    "Claude implemented the deterministic evidence-insufficiency / refusal detail in the isolated WSL Claude Code workspace at /home/kiro/kiro-work/work/cailiao-task, on top of the merged verify_claim/evidence_map/conflict_evidence work.",
+    "Claude could not run tests in its tool environment. Codex applied the diff to the Windows release repo, fixed delivery metadata and gate coverage, and ran the required verification before commit/push.",
     "No git commit or push was performed by Claude; no GitHub interaction occurred."
   ],
+  "summary": "Added build_evidence_insufficiency(...) and wired an always-present, JSON-serializable, deterministic `insufficiency` object into every verify_claim(...) response. It explains why a claim is not safely supported using only the conservative lexical signals verify_claim already computed (no semantic entailment / NLI / model use). All existing verify_claim keys and status/reasons behavior are unchanged (backward compatible); the object is additive.",
   "changed_files": [
     "backend/server.py",
-    "tests/test_reranker_pipeline.py",
+    "tests/test_claim_insufficiency.py",
     "tools/run_quality_gates.py",
     "README.md",
     "docs/ROADMAP.md",
@@ -18,50 +19,46 @@
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "Added a stdlib-only, deterministic, disabled-by-default pluggable reranker skeleton in backend/server.py with clear extension seams.",
-    "Reranker: abstract interface a future real reranking provider would implement (score(query, item)).",
-    "DeterministicLocalReranker(Reranker): offline, reproducible, tests-only reranker that scores a candidate by query-term coverage (over _bm25_terms of _searchable_text) plus a tiny bm25_like-channel tie-breaker. Lexical only, NOT a real relevance/semantic model.",
-    "RerankPipeline: wraps a reranker behind an explicit enabled flag; metadata() returns honest JSON state (enabled/mode/reason, plus top_k/is_real_rerank_model=false when enabled); apply(query, items) REORDERS ONLY the given (already-fused, already-limited Top K) candidates and never adds/fetches new items. When disabled, apply returns items unchanged and attaches no per-item 'rerank' key.",
-    "resolve_rerank_pipeline(rerank_config): maps None/False/{} -> disabled (default); True -> deterministic_local_test; dict{enabled,mode,top_k} -> pipeline. Only mode 'deterministic_local_test' is registered in RERANK_FACTORIES; any other mode (e.g. a hypothetical real provider) resolves to DISABLED with an honest reason, so no network/credential path is reachable.",
-    "_rerank_config_from_param(raw): maps the optional HTTP ?rerank= param (1/true/yes/on/test/deterministic/deterministic_local_test) to the deterministic config; anything else stays disabled.",
-    "Extended search_library(query, filters, limit, bm25_params, vector_config=None, rerank_config=None): default ranking is unchanged (fused RRF order, result['rerank']['enabled']==False, no per-item 'rerank' details). All existing lexical/BM25/vector channels are produced and fused BEFORE reranking; rerank is applied only to results[:limit] after the fused sort. When enabled, items carry 'rerank' {score, original_rank, mode} and 'rerank_score:'/'rerank_mode:' hit_reasons, and the reorder is stable/deterministic; result now includes a 'rerank' metadata key.",
-    "Extended evaluate_retrieval_cases(cases, k, bm25_params, vector_config, rerank_config=None) to thread rerank_config through and report honest rerank state; default (eval-retrieval quality-gate default) stays disabled so the deterministic benchmark needs no reranking model.",
-    "Wired an opt-in ?rerank= param into the GET /api/library/search HTTP handler (default disabled), alongside the existing ?vector= param.",
-    "Updated the vector-section 'NOT here' comment to note the reranker skeleton now follows below and that only a REAL rerank model is still absent.",
-    "Added tests/test_reranker_pipeline.py (focused new file) covering: default-off backward compatibility + no per-item details; deterministic enabled metadata + item-level details; reorder-only-does-not-add-chunks; a direct crafted-items unit test proving reordering by score with original_rank; determinism; disabled-apply is inert; unknown-mode stays disabled; eval honesty; HTTP param helper.",
-    "Added tests/test_reranker_pipeline.py to the py-compile gate file list in tools/run_quality_gates.py.",
-    "Updated README.md (capability row + known limitations), docs/ROADMAP.md (Stage 2B items/status), and docs/RETRIEVAL_EVALUATION.md (new reranker skeleton section + boundary notes), clearly distinguishing this SKELETON from a real reranking model."
+    "build_evidence_insufficiency(status, items, evidence_map, conflict_evidence, claim_tokens, overlap, downgraded_by_conflict): returns {has_insufficiency, summary, blocking, missing_markers, conflict_count, overlap, details, method=deterministic_lexical_insufficiency_v1}. Deterministic and stdlib-only.",
+    "summary is a single stable label chosen by priority: no_retrieved_evidence > required_markers_missing > conflict_candidates_found > weak_lexical_overlap > none.",
+    "blocking = (status != 'supported'); has_insufficiency = (summary != 'none').",
+    "details is a list of machine-readable reason objects (each with a 'code'), not prose-only strings: no_retrieved_evidence, required_markers_missing (+markers), conflict_candidates_found (+conflict_count, conflict_types, downgraded_from_supported), weak_lexical_overlap (explicitly framed as lexical, not semantic).",
+    "verify_claim now computes the claim/evidence token overlap once (used by both the existing status logic and the insufficiency audit), tracks downgraded_by_conflict when a supported result is downgraded due to conflict candidates, and includes the `insufficiency` object in its return dict. All prior keys (claim, status, required_markers, missing_markers, cited_chunk_ids, evidence_map, conflict_evidence, reasons, search) are unchanged and still present.",
+    "HTTP POST /api/library/verify-claim naturally includes `insufficiency` via verify_claim (no handler change needed).",
+    "Added tests/test_claim_insufficiency.py: no-evidence, missing-marker (top-level + detail), conflict downgrade (conflict_count + blocking + downgraded_from_supported), supported/no-insufficiency, weak-lexical-overlap (lexical-not-semantic), helper determinism, and two HTTP tests (supported response includes insufficiency; no-evidence response is blocking).",
+    "Docs: README.md capability row + known-limitations bullet; docs/ROADMAP.md Stage 2B status/checklist; docs/RETRIEVAL_EVALUATION.md new section '证据不足 / 拒绝理由（verify_claim.insufficiency）' + a 使用边界 bullet, all stating this is deterministic lexical audit metadata, NOT semantic entailment / NLI.",
+    "Codex added tests/test_claim_insufficiency.py to the py-compile file list in tools/run_quality_gates.py."
   ],
   "not_implemented": [
-    "No real reranking model/API/provider or cross-encoder.",
-    "No credential or .env handling; the deterministic reranker reads no environment and never touches the network.",
-    "No network access and no persistent index.",
-    "No semantic entailment/NLI, no claim truth judgement, and no change to evidence-insufficiency refusal behavior.",
-    "No unrelated frontend UI changes (the existing search panel already renders result metadata; rerank is opt-in and additive)."
+    "No semantic entailment, NLI, true-contradiction proof, or claim truth judgement.",
+    "No real model use, no external services, no credentials/.env handling, no network access.",
+    "No change to the conservative status thresholds or refusal behavior beyond adding the additive insufficiency object.",
+    "No frontend UI changes (the field is returned over HTTP; panel rendering was not required by the task)."
   ],
   "test_files": [
-    "tests/test_reranker_pipeline.py (new)"
+    "tests/test_claim_insufficiency.py (new)"
   ],
   "required_test_commands_for_codex": [
-    "python3 -m unittest discover -s tests -v",
-    "python3 tools/validate_retrieval_suite.py --suite tests/data/retrieval_eval_suite.json --json",
-    "python3 tools/run_quality_gates.py --json  (or 'python' on Windows)",
+    "python -m unittest discover -s tests -v",
+    "python tools/validate_retrieval_suite.py --suite tests/data/retrieval_eval_suite.json --json",
+    "python tools/run_quality_gates.py --json",
+    "python -m json.tool CODEX_HANDOFF.json",
     "git diff --check"
   ],
   "test_status": [
-    "python -m unittest discover -s tests -v: 147 tests OK.",
+    "python -m unittest discover -s tests -v: 155 tests OK.",
+    "python tools/validate_retrieval_suite.py --suite tests/data/retrieval_eval_suite.json --json: passed=true, with expected placeholder/<50-case warnings.",
     "python tools/run_quality_gates.py --json: passed=true, 5 gates passed.",
     "python -m json.tool CODEX_HANDOFF.json: passed.",
     "git diff --check: passed."
   ],
   "risks": [
-    "DeterministicLocalReranker ranks by lexical term coverage, not relevance/semantics; enabling it can reorder Top K in ways that look 'smart' but are not. It is disabled by default, documented as a skeleton, and metadata sets is_real_rerank_model=false.",
-    "When rerank is enabled with top_k < limit, items beyond the window keep fused order and carry no 'rerank' key (only the reranked window is annotated). This is intentional and honest but callers iterating items should treat 'rerank' as optional.",
-    "apply() mutates the item dicts it reorders (adds 'rerank' and extends 'hit_reasons'); these are the fused result dicts, not shared with the DB, so this is local to the response.",
-    "The reranker skeleton intentionally provides extension seams only; it does not establish production reranking quality until a real reranking provider and real anonymized query suite are added."
+    "insufficiency is deterministic lexical audit metadata only; it must not be presented as semantic entailment, NLI, or a truth judgement. Docs and the detail messages state this explicitly.",
+    "blocking == (status != 'supported') and has_insufficiency == (summary != 'none') are equivalent to the existing status in this v1; they are surfaced as explicit fields for callers/UIs and future extension.",
+    "run_quality_gates.py py-compile gate now includes tests/test_claim_insufficiency.py; unittest discovery also covers it."
   ],
   "credentials": [
     "No credentials or .env files were read, created, or modified.",
-    "Claude performed no git commit or push. Codex will commit/push only after verification."
+    "No git commit or push was performed; no network access was used."
   ]
 }

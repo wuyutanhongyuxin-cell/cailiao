@@ -1852,6 +1852,85 @@ def detect_conflict_evidence(claim: str, evidence_items: list[dict[str, Any]]) -
     }
 
 
+def build_evidence_insufficiency(status: str, items: list[dict[str, Any]],
+                                 evidence_map: dict[str, Any],
+                                 conflict_evidence: dict[str, Any],
+                                 claim_tokens: set[str], overlap: set[str],
+                                 downgraded_by_conflict: bool = False) -> dict[str, Any]:
+    """Deterministic, auditable evidence-insufficiency / refusal detail (v1).
+
+    Explains -- in machine-readable, JSON-serializable form -- WHY a claim is not
+    safely supported, from the same conservative lexical signals ``verify_claim``
+    already computed. This is deterministic lexical audit metadata: it is NOT
+    semantic entailment, NLI, a true-contradiction proof, or any model judgement.
+
+    ``blocking`` is true whenever the result must not be treated as supported
+    (i.e. any status other than ``supported``). ``has_insufficiency`` is true
+    whenever there is something to explain (summary != ``none``). The ``details``
+    list carries stable reason objects (each with a ``code``), not prose-only
+    strings, so callers/UIs can branch on them.
+    """
+    missing_markers = list(evidence_map.get("missing_markers") or [])
+    required_markers = list(evidence_map.get("required_markers") or [])
+    conflict_items = list(conflict_evidence.get("items") or [])
+    conflict_count = len(conflict_items)
+    coverage_ratio = evidence_map.get("coverage_ratio")
+
+    overlap_info = {
+        "claim_token_count": len(claim_tokens),
+        "overlap_token_count": len(overlap),
+        "overlap_ratio": (len(overlap) / len(claim_tokens)) if claim_tokens else None,
+        "coverage_ratio": coverage_ratio,
+    }
+
+    details: list[dict[str, Any]] = []
+    if not items:
+        details.append({"code": "no_retrieved_evidence",
+                        "message": "no chunks were retrieved for this claim"})
+    if missing_markers:
+        details.append({"code": "required_markers_missing",
+                        "markers": missing_markers,
+                        "message": "required markers are not covered by any retrieved chunk"})
+    if conflict_count:
+        details.append({"code": "conflict_candidates_found",
+                        "conflict_count": conflict_count,
+                        "conflict_types": sorted({str(c.get("conflict_type")) for c in conflict_items}),
+                        "downgraded_from_supported": bool(downgraded_by_conflict),
+                        "message": "deterministic lexical conflict candidates were found (not a proven contradiction)"})
+    # Weak lexical support: retrieved something, no missing markers, but either no
+    # required markers at all or too little token overlap to be safely supported.
+    if items and not missing_markers and status != "supported":
+        details.append({"code": "weak_lexical_overlap",
+                        "required_marker_count": len(required_markers),
+                        "overlap_token_count": len(overlap),
+                        "message": ("support is only lexical overlap, not semantic entailment; "
+                                    "insufficient to treat as supported")})
+
+    # Pick a single stable summary by priority (most fundamental gap first).
+    if not items:
+        summary = "no_retrieved_evidence"
+    elif missing_markers:
+        summary = "required_markers_missing"
+    elif downgraded_by_conflict or (conflict_count and status != "supported"):
+        summary = "conflict_candidates_found"
+    elif items and status != "supported":
+        summary = "weak_lexical_overlap"
+    else:
+        summary = "none"
+
+    blocking = status != "supported"
+    return {
+        "has_insufficiency": summary != "none",
+        "summary": summary,
+        "blocking": blocking,
+        "missing_markers": missing_markers,
+        "conflict_count": conflict_count,
+        "overlap": overlap_info,
+        "details": details,
+        "method": "deterministic_lexical_insufficiency_v1",
+    }
+
+
 def verify_claim(claim: str, filters: dict[str, str] | None = None, limit: int = 5) -> dict[str, Any]:
     """Conservative lexical claim support check over retrieved chunks.
 
@@ -1867,6 +1946,14 @@ def verify_claim(claim: str, filters: dict[str, str] | None = None, limit: int =
     markers = evidence_map["required_markers"]
     missing = evidence_map["missing_markers"]
 
+    # Lexical token overlap between the claim and all retrieved evidence. Computed
+    # once (deterministically) so both the status logic and the insufficiency audit
+    # below use the same numbers. Safe when there are no items (empty overlap).
+    combined = "\n".join(item.get("content") or "" for item in items)
+    claim_tokens = set(tokenize_query(claim))
+    evidence_tokens = set(tokenize_query(combined))
+    overlap = claim_tokens & evidence_tokens
+
     if not items:
         status = "unsupported"
         reasons = ["no_retrieved_evidence"]
@@ -1874,10 +1961,6 @@ def verify_claim(claim: str, filters: dict[str, str] | None = None, limit: int =
         status = "needs_verification"
         reasons = ["required_markers_missing:" + ",".join(missing)]
     else:
-        combined = "\n".join(item.get("content") or "" for item in items)
-        claim_tokens = set(tokenize_query(claim))
-        evidence_tokens = set(tokenize_query(combined))
-        overlap = claim_tokens & evidence_tokens
         if markers and overlap:
             status = "supported"
             reasons = ["required_markers_present", "lexical_overlap"]
@@ -1888,9 +1971,11 @@ def verify_claim(claim: str, filters: dict[str, str] | None = None, limit: int =
             status = "unsupported"
             reasons = ["insufficient_lexical_overlap"]
 
+    downgraded_by_conflict = False
     if conflict_evidence["has_conflicts"] and status == "supported":
         status = "needs_verification"
         reasons = ["conflict_evidence_detected"] + reasons
+        downgraded_by_conflict = True
 
     # Cite chunks that actually matched a marker first (most defensible), then fall
     # back to the top retrieved items so a citation list is still returned.
@@ -1904,6 +1989,11 @@ def verify_claim(claim: str, filters: dict[str, str] | None = None, limit: int =
             if item["chunk_id"] not in cited:
                 cited.append(item["chunk_id"])
 
+    insufficiency = build_evidence_insufficiency(
+        status=status, items=items, evidence_map=evidence_map,
+        conflict_evidence=conflict_evidence, claim_tokens=claim_tokens,
+        overlap=overlap, downgraded_by_conflict=downgraded_by_conflict)
+
     return {
         "claim": claim,
         "status": status,
@@ -1912,6 +2002,7 @@ def verify_claim(claim: str, filters: dict[str, str] | None = None, limit: int =
         "cited_chunk_ids": cited[:limit],
         "evidence_map": evidence_map,
         "conflict_evidence": conflict_evidence,
+        "insufficiency": insufficiency,
         "reasons": reasons,
         "search": result,
     }
