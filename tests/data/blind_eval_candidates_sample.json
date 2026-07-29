@@ -1,0 +1,29 @@
+{
+  "metadata": {
+    "name": "blind eval candidates sample",
+    "version": "v1",
+    "note": "Synthetic candidate answers for the Stage 5 blind-eval skeleton. Not real model output."
+  },
+  "candidates": [
+    {
+      "provider": "example-provider-1",
+      "model": "example-model-x",
+      "version": "1.0",
+      "answers": {
+        "bench-001": "标题：关于开展示例专项工作的通知\n主送机关：各科室\n正文：请各科室于示例日期前反馈。请遵照执行。\n落款：示例办公室\n特此通知。",
+        "bench-002": "标题：示例专项工作阶段报告\n正文：现将有关情况报告如下：已完成示例第一阶段。\n结尾：特此报告。",
+        "bench-003": "标题：关于商请示例事项的函\n正文：现商请协助办理示例事项，请予支持。特此函达。"
+      }
+    },
+    {
+      "provider": "example-provider-2",
+      "model": "example-model-y",
+      "version": "2.3",
+      "answers": {
+        "bench-001": "关于示例工作的通知\n各科室：请尽快反馈。",
+        "bench-002": "示例阶段报告\n已完成部分工作。",
+        "bench-003": "示例函\n请协助办理。"
+      }
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "metadata": {
+    "name": "blind eval scores sample",
+    "note": "Synthetic reviewer scores keyed by case id then blind id (1-5 scale). Not real review data."
+  },
+  "scores": {
+    "bench-001": {"candidate_a": 5, "candidate_b": 3},
+    "bench-002": {"candidate_a": 4, "candidate_b": 3},
+    "bench-003": {"candidate_a": 5, "candidate_b": 2}
+  }
+}

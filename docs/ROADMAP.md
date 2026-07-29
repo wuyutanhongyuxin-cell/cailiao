@@ -144,7 +144,7 @@
 
 - [x] 匿名化真实任务集和标准答案要素（schema）v1：确定性 `load_benchmark_suite`/`validate_benchmark_suite` 与 `tools/validate_benchmark_suite.py`；定义基准集 schema——`metadata`（name/version/`anonymized=true`）与 `cases[]`（id、genre、prompt_fields、facts、evidence、expected_elements），`expected_elements` 分 facts/citations/structure/language 四维；校验唯一 id、必填字段、类型与维度合法性，占位/小规模集给告警不失败。附合成样例 `tests/data/benchmark_suite_sample.json`。**边界：仅结构 schema 与校验骨架，不含真实私有数据（样例为合成占位），真实 50-100 条匿名集仍需人工建立。**
 - [x] 事实、引用、结构、语言分项评分（骨架）v1：确定性 `score_benchmark_suite(suite, responses=None)`；对每个 case 按词面标记覆盖率逐维（facts/citations/structure/language）评分，候选文本取 `responses[case_id]` 或 case 的 `reference_answer`，返回逐 case 维度分与聚合维度均值/总均值，`method=benchmark_lexical_scoring_v1`。**边界：仅词面覆盖率打分骨架，非语义/事实/人工质量评分，不调用模型、不访问网络。**
-- [ ] 模型和版本隐藏的盲评
+- [x] 模型和版本隐藏的盲评（打包/揭盲骨架）v1：确定性 `build_blind_evaluation_pack(suite, candidates)`/`validate_blind_evaluation_pack(pack)`/`reveal_blind_evaluation_results(pack, scores_or_reviews)` 与 `tools/validate_blind_eval.py`；候选按稳定盲标签（`candidate_a`/`candidate_b`…）打包，评审视图仅暴露盲 id、case id 与答案文本，隐藏 provider/model/version，身份映射另存 `reveal_map`；校验元数据、case id 唯一、各 case 盲 id 一致、评审面无身份字段（model/provider/version/vendor…）泄漏；揭盲按 case+盲 id 汇入评审分并给出逐候选数值均值。附合成样例 `tests/data/blind_eval_candidates_sample.json` 与 `tests/data/blind_eval_scores_sample.json`。**边界：仅 v1 打包/揭盲骨架，盲标签按输入顺序（防位置泄漏需上游预洗牌），不含真实数据、不调用模型/网络、不加 UI/持久化。**
 - [ ] 与人工写作、通用提示词和不同模型对照
 - [ ] 记录采纳率、修改距离、完成时间、返工轮次
 - [ ] 每次规则或模型更新运行回归评测

@@ -183,10 +183,12 @@ def _gate_py_compile() -> tuple[str, str, int]:
                              "tests/test_docx_font_preflight.py",
                              "tests/test_docx_layout_regression.py",
                              "tests/test_benchmark_suite.py",
+                             "tests/test_blind_evaluation.py",
                              "tests/test_vector_pipeline.py",
                              "tests/test_reranker_pipeline.py",
                              "tools/evaluate_retrieval.py", "tools/run_quality_gates.py",
-                             "tools/validate_benchmark_suite.py"],
+                             "tools/validate_benchmark_suite.py",
+                             "tools/validate_blind_eval.py"],
                             env={"PYTHONPYCACHEPREFIX": pycache})
     return ("passed" if rc == 0 else "failed",
             "byte-compiled backend/tests/tools" if rc == 0 else tail, rc)

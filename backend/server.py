@@ -2548,6 +2548,234 @@ def score_benchmark_suite(suite: dict[str, Any],
     }
 
 
+# --- Stage 5: blind evaluation packaging + reveal skeleton v1 -----------------
+
+# Identity fields that must never appear on an evaluator-facing candidate item.
+BLIND_IDENTITY_FIELDS = frozenset({
+    "provider", "model", "version", "vendor", "engine", "system", "family", "name",
+})
+
+
+def _blind_label(index: int) -> str:
+    """Deterministic stable blind label: candidate_a, candidate_b, ... then numeric."""
+    if 0 <= index < 26:
+        return f"candidate_{chr(97 + index)}"
+    return f"candidate_{index + 1}"
+
+
+def _blind_candidates_list(candidates: Any) -> list[dict[str, Any]]:
+    """Normalize the candidates input into a list of candidate dicts."""
+    if isinstance(candidates, dict):
+        raw = candidates.get("candidates", candidates)
+    else:
+        raw = candidates
+    if not isinstance(raw, list):
+        return []
+    return [c for c in raw if isinstance(c, dict)]
+
+
+def build_blind_evaluation_pack(suite: dict[str, Any], candidates: Any) -> dict[str, Any]:
+    """Build a blind-evaluation pack that hides candidate model/provider identity.
+
+    Assigns each candidate a deterministic blind label (candidate_a, candidate_b,
+    ... in input order) and produces an evaluator-facing view that exposes only
+    the blind label, case id, and answer text — never provider/model/version. The
+    identity mapping is kept in a separate ``reveal_map`` section so results can be
+    de-anonymized later via ``reveal_blind_evaluation_results``.
+
+    Deterministic and stdlib only. No model call, no network. Candidate answers are
+    read from each candidate's ``answers`` object keyed by suite case id (a missing
+    answer becomes an empty string so every case exposes the same blind ids).
+    """
+    cand_list = _blind_candidates_list(candidates)
+    blind_ids: list[str] = []
+    reveal_map: dict[str, Any] = {}
+    answers_by_label: dict[str, dict[str, str]] = {}
+    for idx, cand in enumerate(cand_list):
+        label = _blind_label(idx)
+        blind_ids.append(label)
+        reveal_map[label] = {
+            field: cand.get(field) for field in ("provider", "model", "version", "vendor")
+            if cand.get(field) is not None
+        }
+        answers = cand.get("answers") if isinstance(cand.get("answers"), dict) else {}
+        answers_by_label[label] = {str(k): str(v or "") for k, v in answers.items()}
+
+    cases_out: list[dict[str, Any]] = []
+    for idx, case in enumerate(suite.get("cases", []) or [], start=1):
+        if not isinstance(case, dict):
+            continue
+        cid = case.get("id") or f"case-{idx}"
+        cases_out.append({
+            "case_id": cid,
+            "genre": case.get("genre", ""),
+            "prompt_fields": case.get("prompt_fields", {}) if isinstance(case.get("prompt_fields"), dict) else {},
+            "candidates": [
+                {"blind_id": label, "answer": answers_by_label[label].get(cid, "")}
+                for label in blind_ids
+            ],
+        })
+
+    return {
+        "method": "blind_evaluation_pack_v1",
+        "boundary": (
+            "blind-eval packaging skeleton only; evaluator view hides identity, "
+            "labels follow input order (pre-shuffle upstream if positional leakage "
+            "matters), and no model is invoked"
+        ),
+        "metadata": {
+            "suite_name": suite.get("metadata", {}).get("name", "") if isinstance(suite.get("metadata"), dict) else "",
+            "candidate_count": len(blind_ids),
+            "case_count": len(cases_out),
+        },
+        "evaluator_view": {
+            "blind_ids": blind_ids,
+            "cases": cases_out,
+        },
+        "reveal_map": reveal_map,
+    }
+
+
+def validate_blind_evaluation_pack(pack: Any) -> dict[str, Any]:
+    """Validate a blind-evaluation pack's shape and identity hygiene.
+
+    Checks: metadata present; evaluator case ids exist and are unique; every case
+    exposes the same set of candidate blind ids; and no evaluator-facing candidate
+    item leaks an obvious identity field (provider/model/version/vendor/...).
+    Deterministic, stdlib only. Returns {passed, errors, warnings, case_count, blind_ids}.
+    """
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    if not isinstance(pack, dict):
+        return {"passed": False, "errors": [f"pack must be a JSON object, got {type(pack).__name__}"],
+                "warnings": [], "case_count": 0, "blind_ids": []}
+
+    if not isinstance(pack.get("metadata"), dict) or not pack["metadata"]:
+        errors.append("pack 'metadata' must be a non-empty object")
+
+    view = pack.get("evaluator_view")
+    if not isinstance(view, dict):
+        errors.append("pack must contain an 'evaluator_view' object")
+        return {"passed": not errors, "errors": errors, "warnings": warnings,
+                "case_count": 0, "blind_ids": []}
+
+    declared_ids = view.get("blind_ids", [])
+    if not isinstance(declared_ids, list) or not declared_ids:
+        errors.append("evaluator_view 'blind_ids' must be a non-empty list")
+        declared_ids = []
+    declared_set = {str(b) for b in declared_ids}
+
+    cases = view.get("cases")
+    if not isinstance(cases, list) or not cases:
+        errors.append("evaluator_view must contain a non-empty 'cases' list")
+        cases = []
+
+    seen_ids: set[str] = set()
+    for idx, case in enumerate(cases, start=1):
+        where = f"case #{idx}"
+        if not isinstance(case, dict):
+            errors.append(f"{where}: must be an object")
+            continue
+        cid = case.get("case_id")
+        if not (isinstance(cid, str) and cid.strip()):
+            errors.append(f"{where}: 'case_id' must be a non-empty string")
+        else:
+            where = f"case '{cid}'"
+            if cid in seen_ids:
+                errors.append(f"{where}: duplicate case_id")
+            seen_ids.add(cid)
+
+        cand_items = case.get("candidates")
+        if not isinstance(cand_items, list) or not cand_items:
+            errors.append(f"{where}: 'candidates' must be a non-empty list")
+            continue
+        case_blind: set[str] = set()
+        for c in cand_items:
+            if not isinstance(c, dict):
+                errors.append(f"{where}: each candidate must be an object")
+                continue
+            leaked = sorted(BLIND_IDENTITY_FIELDS & set(c))
+            if leaked:
+                errors.append(f"{where}: evaluator-facing candidate leaks identity field(s) {leaked}")
+            bid = c.get("blind_id")
+            if not (isinstance(bid, str) and bid.strip()):
+                errors.append(f"{where}: candidate 'blind_id' must be a non-empty string")
+            else:
+                case_blind.add(bid)
+            if "answer" not in c:
+                errors.append(f"{where}: candidate '{bid}' is missing 'answer'")
+        if declared_set and case_blind != declared_set:
+            errors.append(f"{where}: candidate blind ids {sorted(case_blind)} "
+                          f"do not match declared blind ids {sorted(declared_set)}")
+
+    return {
+        "passed": not errors,
+        "errors": errors,
+        "warnings": warnings,
+        "case_count": len(cases),
+        "blind_ids": sorted(declared_set),
+    }
+
+
+def reveal_blind_evaluation_results(pack: dict[str, Any],
+                                    scores_or_reviews: Any) -> dict[str, Any]:
+    """Join reviewer scores back to hidden candidate identity and aggregate.
+
+    ``scores_or_reviews`` maps case id -> {blind_id -> score/review}. A ``scores``
+    wrapper key is also accepted. Scores that parse as numbers are aggregated into
+    a per-candidate mean; non-numeric reviews are counted but not averaged. Returns
+    per-candidate aggregates joined to the reveal_map identity, plus per-case rows.
+
+    Deterministic, stdlib only. No model call, no network.
+    """
+    reveal_map = pack.get("reveal_map", {}) if isinstance(pack.get("reveal_map"), dict) else {}
+    if isinstance(scores_or_reviews, dict) and isinstance(scores_or_reviews.get("scores"), dict):
+        scores = scores_or_reviews["scores"]
+    elif isinstance(scores_or_reviews, dict):
+        scores = scores_or_reviews
+    else:
+        scores = {}
+
+    numeric_by_label: dict[str, list[float]] = {}
+    count_by_label: dict[str, int] = {}
+    cases_scored: list[dict[str, Any]] = []
+
+    for case_id, per_case in scores.items():
+        if not isinstance(per_case, dict):
+            continue
+        row: dict[str, Any] = {"case_id": str(case_id), "scores": {}}
+        for blind_id, value in per_case.items():
+            blind_id = str(blind_id)
+            row["scores"][blind_id] = value
+            count_by_label[blind_id] = count_by_label.get(blind_id, 0) + 1
+            try:
+                numeric_by_label.setdefault(blind_id, []).append(float(value))
+            except (TypeError, ValueError):
+                pass
+        cases_scored.append(row)
+
+    all_labels = sorted(set(count_by_label) | set(reveal_map))
+    per_candidate: list[dict[str, Any]] = []
+    for label in all_labels:
+        nums = numeric_by_label.get(label, [])
+        per_candidate.append({
+            "blind_id": label,
+            "identity": reveal_map.get(label, {}),
+            "score_count": count_by_label.get(label, 0),
+            "numeric_count": len(nums),
+            "mean_score": round(sum(nums) / len(nums), 4) if nums else None,
+        })
+
+    return {
+        "method": "blind_evaluation_reveal_v1",
+        "boundary": "joins reviewer scores to hidden identity; aggregates numeric scores only",
+        "candidate_count": len(per_candidate),
+        "cases_scored": cases_scored,
+        "per_candidate": per_candidate,
+    }
+
+
 def run_retrieval_eval_suite(suite: dict[str, Any], k: int | None = None,
                              db_path: str | Path | None = None,
                              bm25_params: dict[str, Any] | None = None) -> dict[str, Any]:
