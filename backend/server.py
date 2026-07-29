@@ -4403,21 +4403,140 @@ Unit template constraints:
 """
 
 
-def call_llm(prompt: str) -> dict[str, Any]:
+# --- Stage 6: local configuration + offline model option skeleton v1 ----------
+
+# Supported model modes. "offline" and "prompt_only" never touch the network;
+# "openai_compatible" is the existing remote OpenAI-compatible path.
+MODEL_MODES = ("offline", "prompt_only", "openai_compatible")
+
+# Model modes that are guaranteed to make no network / model call.
+OFFLINE_MODEL_MODES = frozenset({"offline", "prompt_only"})
+
+
+def build_local_config(overrides: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Return a deterministic, safe-by-default local configuration.
+
+    The default mode is "offline": no network and no model call. An optional
+    ``overrides`` dict (e.g. a request body) may set ``model_mode`` and a couple
+    of local UI preferences. Provider *configuration presence* is reported as a
+    boolean derived from the environment via bool(); credential values and .env
+    files are never read into the config. Stdlib only.
+    """
+    raw = overrides if isinstance(overrides, dict) else {}
+    mode = str(raw.get("model_mode") or raw.get("mode") or "offline").strip() or "offline"
+    if mode not in MODEL_MODES:
+        mode = "offline"
+    offline = mode in OFFLINE_MODEL_MODES
+    # Only the *presence* of provider settings is surfaced, never the values.
+    provider_configured = bool(os.getenv("MATERIAL_LLM_BASE_URL")) and bool(os.getenv("MATERIAL_LLM_API_KEY"))
+    return {
+        "method": "local_config_v1",
+        "model_mode": mode,
+        "offline": offline,
+        "allow_network": not offline,
+        "provider_configured": provider_configured,
+        "local_placeholder_enabled": bool(raw.get("local_placeholder_enabled", True)),
+        "save_draft_locally": bool(raw.get("save_draft_locally", True)),
+        "offline_notice": (
+            "离线模式：不进行任何网络或模型调用，仅输出严格提示词/本地占位草稿；"
+            "不读取 .env 或任何凭据。"
+        ),
+        "boundary": (
+            "local config + offline model option skeleton v1; no bundled local "
+            "inference engine, no dependency install, no credential/.env read"
+        ),
+    }
+
+
+def validate_local_config(config: Any) -> dict[str, Any]:
+    """Validate a local configuration's shape and mode without any I/O.
+
+    Deterministic, stdlib only. Errors on unsupported model_mode or wrong types;
+    warns when a non-offline mode is selected but no provider is configured (that
+    path will fall back to prompt_only at call time). Returns
+    {passed, errors, warnings, model_mode, offline}.
+    """
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    if not isinstance(config, dict):
+        return {"passed": False, "errors": [f"config must be a JSON object, got {type(config).__name__}"],
+                "warnings": [], "model_mode": None, "offline": None}
+
+    mode = config.get("model_mode", config.get("mode"))
+    if not (isinstance(mode, str) and mode.strip()):
+        errors.append("'model_mode' must be a non-empty string")
+        mode = None
+    elif mode not in MODEL_MODES:
+        errors.append(f"unsupported model_mode '{mode}' (supported: {list(MODEL_MODES)})")
+        mode = None
+
+    for key in ("local_placeholder_enabled", "save_draft_locally"):
+        if key in config and not isinstance(config[key], bool):
+            errors.append(f"'{key}' must be a boolean when present")
+
+    offline = mode in OFFLINE_MODEL_MODES if mode else None
+    if mode == "openai_compatible" and not (
+        bool(os.getenv("MATERIAL_LLM_BASE_URL")) and bool(os.getenv("MATERIAL_LLM_API_KEY"))
+    ):
+        warnings.append("model_mode 'openai_compatible' selected but no provider is configured; "
+                        "generation will fall back to prompt_only.")
+
+    return {
+        "passed": not errors,
+        "errors": errors,
+        "warnings": warnings,
+        "model_mode": mode,
+        "offline": offline,
+    }
+
+
+def build_offline_placeholder_draft(prompt: str) -> str:
+    """Deterministic local placeholder 'draft' for offline mode (no model call)."""
+    return (
+        "【离线模式占位草稿】本系统当前为完全离线模式，未调用任何模型或网络。\n"
+        "以下为可复制的严格提示词，请在你自有的本地/离线模型中使用，或改用在线模式：\n\n"
+        + prompt
+    )
+
+
+def call_llm(prompt: str, config: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Produce a draft for ``prompt`` honoring the resolved model mode.
+
+    In an offline mode ("offline"/"prompt_only") this makes NO network or model
+    call: it returns the strict prompt (and, for "offline", a local placeholder
+    draft) with an explicit no-network marker. Only "openai_compatible" mode may
+    reach the network, and only when a provider is configured; otherwise it
+    degrades to prompt_only. Never reads .env or credentials beyond os.getenv of
+    the documented MATERIAL_LLM_* settings.
+    """
+    cfg = build_local_config(config or {})
+    mode = cfg["model_mode"]
+
+    if mode == "offline":
+        return {"mode": "offline", "draft": build_offline_placeholder_draft(prompt),
+                "prompt": prompt, "network_used": False,
+                "notice": cfg["offline_notice"]}
+    if mode == "prompt_only":
+        return {"mode": "prompt_only", "draft": "", "prompt": prompt, "network_used": False,
+                "notice": "仅提示词模式：不进行网络或模型调用，仅输出严格提示词。"}
+
+    # openai_compatible: only mode allowed to use the network.
     base = os.getenv("MATERIAL_LLM_BASE_URL", "").rstrip("/")
     key = os.getenv("MATERIAL_LLM_API_KEY", "")
     model = os.getenv("MATERIAL_LLM_MODEL", "gpt-4.1")
     if not base or not key:
-        return {"mode": "prompt_only", "draft": "", "prompt": prompt, "error": "未配置 MATERIAL_LLM_BASE_URL / MATERIAL_LLM_API_KEY。"}
+        return {"mode": "prompt_only", "draft": "", "prompt": prompt, "network_used": False,
+                "error": "未配置 MATERIAL_LLM_BASE_URL / MATERIAL_LLM_API_KEY。"}
     data = json.dumps({"model": model, "messages": [{"role": "user", "content": prompt}], "temperature": 0.2}).encode("utf-8")
     req = urllib.request.Request(base + "/chat/completions", data=data, headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"}, method="POST")
     try:
         with urllib.request.urlopen(req, timeout=120) as resp:
             body = json.loads(resp.read().decode("utf-8"))
         content = body["choices"][0]["message"]["content"]
-        return {"mode": "llm", "draft": content, "prompt": prompt}
+        return {"mode": "llm", "draft": content, "prompt": prompt, "network_used": True}
     except (urllib.error.URLError, KeyError, TimeoutError, json.JSONDecodeError) as exc:
-        return {"mode": "error", "draft": "", "prompt": prompt, "error": str(exc)}
+        return {"mode": "error", "draft": "", "prompt": prompt, "network_used": True, "error": str(exc)}
 
 
 def add_evidence(item: dict[str, str]) -> dict[str, str]:
@@ -5101,6 +5220,9 @@ class Handler(SimpleHTTPRequestHandler):
         if self.path.startswith("/api/health"):
             self.json_response({"ok": True, "provider_configured": bool(os.getenv("MATERIAL_LLM_API_KEY")), "rules": RULES["genres"]})
             return
+        if self.path.startswith("/api/config"):
+            self.json_response(build_local_config({}))
+            return
         if self.path.startswith("/api/evidence/search"):
             q = self.path.split("q=", 1)[1] if "q=" in self.path else ""
             self.json_response({"items": search_evidence(q)})
@@ -5155,13 +5277,16 @@ class Handler(SimpleHTTPRequestHandler):
                     self.json_response({"analysis": analysis, "mode": "blocked", "prompt": prompt,
                                         "draft": "", "writing_state": analysis["writing_state"]})
                 else:
-                    result = call_llm(prompt)
+                    result = call_llm(prompt, payload.get("config"))
                     if result.get("draft"):
                         payload["draft"] = result["draft"]
                     result["analysis"] = analyze_payload(payload)
                     # Surface the (re-analyzed) workflow state top-level for prompt_only/llm/error.
                     result["writing_state"] = result["analysis"]["writing_state"]
                     self.json_response(result)
+            elif self.path == "/api/config/validate":
+                report = validate_local_config(payload)
+                self.json_response(report, 200 if report["passed"] else HTTPStatus.UNPROCESSABLE_ENTITY)
             elif self.path == "/api/evidence":
                 self.json_response(add_evidence(payload), HTTPStatus.CREATED)
             elif self.path == "/api/library/import":

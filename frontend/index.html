@@ -22,6 +22,7 @@
         <button class="nav" data-panel="library">资料库</button>
         <button class="nav" data-panel="review">审稿</button>
         <button class="nav" data-panel="export">导出</button>
+        <button class="nav" data-panel="settings">设置</button>
       </nav>
       <div class="statusBox">
         <span>规则状态</span>
@@ -212,6 +213,23 @@
           <button id="clearBtn">清空本地草稿</button>
         </div>
         <pre id="exportLog"></pre>
+      </section>
+
+      <section id="settings" class="panel">
+        <div class="block">
+          <label for="modelMode">模型模式</label>
+          <select id="modelMode">
+            <option value="offline">离线（不联网、不调用模型）</option>
+            <option value="prompt_only">仅提示词（不联网，仅输出严格提示词）</option>
+            <option value="openai_compatible">在线 OpenAI 兼容接口（需已配置）</option>
+          </select>
+        </div>
+        <div class="exportActions">
+          <button id="applyConfigBtn" class="primary">应用并校验</button>
+        </div>
+        <p class="muted">离线模式与仅提示词模式绝不进行任何网络或模型调用，也不读取 .env 或任何凭据；在线模式仅在服务端已配置 MATERIAL_LLM_* 时才会联网，否则自动回退为仅提示词。</p>
+        <div id="configStatus" class="muted"></div>
+        <pre id="configLog"></pre>
       </section>
     </main>
   </div>

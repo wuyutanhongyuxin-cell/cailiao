@@ -1,6 +1,7 @@
 ﻿const state = {
   rules: {},
   evidence: JSON.parse(localStorage.getItem('mws_evidence') || '[]'),
+  config: { model_mode: localStorage.getItem('mws_model_mode') || 'offline' },
 };
 
 const $ = (id) => document.getElementById(id);
@@ -107,6 +108,7 @@ async function init() {
   restoreDraft(true);
   renderGenreFields();
   renderEvidence();
+  loadConfig();
 }
 
 document.querySelectorAll('.nav').forEach((btn) => btn.addEventListener('click', () => setPanel(btn.dataset.panel)));
@@ -126,7 +128,9 @@ $('analyzeBtn').addEventListener('click', async () => {
   setPanel('review');
 });
 $('generateBtn').addEventListener('click', async () => {
-  const data = await api('/api/generate', payload());
+  const body = payload();
+  body.config = { model_mode: state.config.model_mode };
+  const data = await api('/api/generate', body);
   $('prompt').value = data.prompt || '';
   if (data.draft) $('draft').value = data.draft;
   renderAnalysis(data.analysis);
@@ -153,6 +157,50 @@ $('clearBtn').addEventListener('click', () => {
   localStorage.removeItem('mws_evidence');
   location.reload();
 });
+
+// --- Stage 6: local config / offline model option --------------------------
+
+async function loadConfig() {
+  try {
+    const cfg = await fetch('/api/config').then((r) => r.json());
+    // Server default is offline; prefer the locally-saved mode if present.
+    state.config.model_mode = localStorage.getItem('mws_model_mode') || cfg.model_mode;
+    if ($('modelMode')) $('modelMode').value = state.config.model_mode;
+    renderConfigStatus(cfg);
+  } catch (e) {
+    if ($('configStatus')) $('configStatus').textContent = '无法读取本地配置。';
+  }
+}
+
+function renderConfigStatus(cfg) {
+  const offline = state.config.model_mode === 'offline' || state.config.model_mode === 'prompt_only';
+  const line = offline
+    ? '当前为离线/仅提示词模式：不联网、不调用模型、不读取 .env 或凭据。'
+    : '当前为在线模式：仅在服务端已配置 MATERIAL_LLM_* 时联网，否则回退为仅提示词。';
+  if ($('configStatus')) $('configStatus').textContent = line;
+  if (cfg && $('providerState')) {
+    $('providerState').textContent = offline ? '离线模式' : (cfg.provider_configured ? '已接入模型' : '未配置模型');
+  }
+}
+
+async function applyConfig() {
+  const mode = $('modelMode').value;
+  const report = await fetch('/api/config/validate', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model_mode: mode }),
+  }).then((r) => r.json());
+  if (report.passed) {
+    state.config.model_mode = mode;
+    localStorage.setItem('mws_model_mode', mode);
+    renderConfigStatus(null);
+    $('configLog').textContent = `已应用模型模式：${mode}` +
+      (report.warnings && report.warnings.length ? `\n提示：${report.warnings.join('；')}` : '');
+  } else {
+    $('configLog').textContent = `配置无效：${(report.errors || []).join('；')}`;
+  }
+}
+
+if ($('applyConfigBtn')) $('applyConfigBtn').addEventListener('click', applyConfig);
 
 // --- Phase 1: trusted evidence library UI -----------------------------------
 

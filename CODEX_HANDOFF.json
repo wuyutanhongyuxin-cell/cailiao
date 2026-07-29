@@ -1,65 +1,62 @@
 {
   "status": "implemented_by_claude",
-  "task_id": "cailiao-stage5-regression-runner-v1",
-  "phase": "ROADMAP Stage 5 (final item): regression evaluation runner skeleton v1 (assemble/validate/summarize already-produced component reports; synthetic fixture only). Completes the Stage 5 deterministic skeletons.",
-  "baseline": "6e44a57ad82dcfa7f87f459a40fc4f1fda36edaa Add outcome metrics summary",
-  "summary": "Added a deterministic, stdlib-only Stage 5 regression-evaluation runner skeleton. build_regression_evaluation_run normalizes a config (trigger_kind rules_update/model_update/manual, baseline_ref, candidate_ref, suite, and component reports) into a run record with normalized report counts and baseline/candidate metric pairs. validate_regression_evaluation_run checks required metadata, supported trigger kind, unique report names, known report kinds (warn), and well-formed numeric metric values. summarize_regression_evaluation_run aggregates pass/fail/warn totals, computes candidate-minus-baseline metric deltas, and returns a deterministic overall status (failed / needs_review / passed). A CLI tools/run_regression_evaluation.py assembles+validates+summarizes. It normalizes already-produced reports only; it does not execute evaluations, invoke a model, hit the network, or schedule CI.",
+  "task_id": "cailiao-stage6-local-config-offline-model-v1",
+  "phase": "ROADMAP Stage 6 (first item): local configuration + offline model option skeleton v1 (offline / prompt_only / openai_compatible modes; offline is default and makes no network call)",
+  "baseline": "ab3dc6b09ed84d1e9f02fb16354c04cd818c0272 Add regression evaluation runner",
+  "summary": "Added a deterministic, stdlib-only Stage 6 local-config + offline-model skeleton. build_local_config returns a safe default (model_mode=offline, allow_network=false) and normalizes an optional override; provider configuration is surfaced only as a boolean derived via bool(os.getenv(...)), never reading credential values or .env. validate_local_config checks the mode and preference types and warns when openai_compatible is chosen without a configured provider. call_llm is now mode-aware: offline returns a local placeholder draft, prompt_only returns the strict prompt, and only openai_compatible may reach the network (degrading to prompt_only when unconfigured); offline/prompt_only hard-guarantee network_used=false. New HTTP endpoints GET /api/config and POST /api/config/validate, and /api/generate now threads payload.config into call_llm. A front-end 设置 panel exposes the model-mode selector and offline boundary. No dependency install, no local inference engine, no network/model call, no secret/.env read.",
   "changed_files": [
     "backend/server.py",
-    "tools/run_regression_evaluation.py",
-    "tests/test_regression_evaluation.py",
-    "tests/data/regression_run_sample.json",
+    "frontend/index.html",
+    "frontend/app.js",
+    "tests/test_local_config.py",
     "tools/run_quality_gates.py",
     "README.md",
     "docs/ROADMAP.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "backend/server.py: added REGRESSION_TRIGGER_KINDS, REGRESSION_REPORT_KINDS, _regression_reports_list.",
-    "backend/server.py: added build_regression_evaluation_run(config) with method=regression_evaluation_run_v1; normalized metadata + reports (name/kind/status/counts/metrics), metric values coerced to float baseline/candidate pairs (bare numeric -> candidate-only).",
-    "backend/server.py: added validate_regression_evaluation_run(run) returning {passed, errors, warnings, report_count, report_names}; enforces required metadata, supported trigger_kind, unique report names, numeric metric values; warns on unknown report kind, missing status/counts, or no reports.",
-    "backend/server.py: added summarize_regression_evaluation_run(run) with method=regression_evaluation_summary_v1; pass/fail/warn totals, per-report candidate-minus-baseline metric deltas, and overall status (failed if any report failed/failed>0; else needs_review if warnings/deltas/needs_review; else passed).",
-    "tools/run_regression_evaluation.py: CLI (--config/--json) delegating to the server helpers; exit 0/1/2.",
-    "tests/data/regression_run_sample.json: synthetic rules_update run with 3 component reports carrying baseline/candidate metric pairs.",
-    "tests/test_regression_evaluation.py: 17 tests across build, validation, summary, and the CLI.",
-    "tools/run_quality_gates.py: py-compile gate now includes tests/test_regression_evaluation.py and tools/run_regression_evaluation.py.",
-    "README.md and docs/ROADMAP.md document the v1 boundary; the ROADMAP '每次规则或模型更新运行回归评测' item is marked done and a Stage 5 skeleton-status note states all evaluation items are deterministic v1 skeletons while real data/providers/CI remain outstanding."
+    "backend/server.py: added MODEL_MODES, OFFLINE_MODEL_MODES, build_local_config(overrides=None) (method=local_config_v1, default offline, provider_configured as bool only), validate_local_config(config), build_offline_placeholder_draft(prompt).",
+    "backend/server.py: call_llm(prompt, config=None) is now mode-aware; offline/prompt_only make no network call and return network_used=false; openai_compatible keeps the existing remote path and returns network_used=true (or degrades to prompt_only when unconfigured).",
+    "backend/server.py: Handler.do_GET serves GET /api/config (build_local_config); do_POST serves POST /api/config/validate (422 on invalid) and passes payload.config into call_llm for /api/generate.",
+    "frontend/index.html: added a 设置 nav button and #settings panel with #modelMode selector, #applyConfigBtn, offline boundary text, #configStatus and #configLog.",
+    "frontend/app.js: added state.config, loadConfig()/renderConfigStatus()/applyConfig() wired to /api/config and /api/config/validate, persists mws_model_mode in localStorage, and threads {config:{model_mode}} into /api/generate.",
+    "tests/test_local_config.py: 18 tests (config defaults, validation, offline no-network guarantee incl. a urlopen monkeypatch, live HTTP GET/POST config + offline generate, and frontend settings-panel assertions).",
+    "tools/run_quality_gates.py: py-compile gate now includes tests/test_local_config.py.",
+    "README.md and docs/ROADMAP.md document the v1 boundary; only the ROADMAP '本地配置页面和完全离线模型选项' item is marked done (other Stage 6 items untouched)."
   ],
   "not_implemented": [
-    "Does not execute any underlying evaluation; it only assembles/normalizes already-produced component reports.",
-    "No scheduling or CI integration beyond the CLI.",
-    "No real benchmark data or model execution; the fixture is synthetic placeholder data.",
-    "No model call or network. No Stage 6 work started."
+    "No bundled or real local inference engine; offline mode returns a deterministic placeholder draft plus the strict prompt.",
+    "No dependency install, no container/packaging work.",
+    "No multi-user roles, encryption/backup, provider data-flow risk grading, or dependency locking (other Stage 6 items remain unchecked).",
+    "No network/model call in offline or prompt_only modes; no credential or .env read in any mode."
   ],
   "test_files": [
-    "tests/test_regression_evaluation.py"
+    "tests/test_local_config.py"
   ],
   "required_test_commands_for_codex": [
-    "python -m unittest tests.test_regression_evaluation -v",
+    "python -m unittest tests.test_local_config -v",
     "python -m unittest discover -s tests -v",
-    "python tools/run_regression_evaluation.py --config tests/data/regression_run_sample.json --json",
     "python tools/run_quality_gates.py --json",
     "python -m json.tool CODEX_HANDOFF.json",
     "git diff --check"
   ],
   "test_status": [
-    "python -m unittest tests.test_regression_evaluation -v: 17 tests OK.",
-    "python -m unittest discover -s tests -v: 321 tests OK.",
-    "python tools/run_regression_evaluation.py --config tests/data/regression_run_sample.json --json: passed=true, status=needs_review, totals passed=11/failed=0/warnings=1, deltas overall=+0.08, best_arm_mean=+0.1667, adoption_rate=+0.0875.",
-    "python tools/run_quality_gates.py --json (default 'python' on PATH): passed=true, all 5 gates passed; unittest gate ran 321 tests OK.",
+    "python -m unittest tests.test_local_config -v: 18 tests OK (includes live ThreadingHTTPServer GET/POST and a urlopen monkeypatch proving offline makes no network call).",
+    "python -m unittest discover -s tests -v: 339 tests OK.",
+    "python tools/run_quality_gates.py --json (default 'python' on PATH): passed=true, all 5 gates passed; unittest gate ran 339 tests OK.",
     "python -m json.tool CODEX_HANDOFF.json: valid JSON.",
     "git diff --check: no whitespace/conflict issues."
   ],
   "risks": [
-    "Overall status is a coarse deterministic rollup: any metric delta (in either direction) forces needs_review, so a purely improving candidate is still flagged for a human to look at rather than auto-passed.",
-    "The runner trusts caller-supplied component report statuses/counts; it does not re-run or cross-check the underlying evaluations, so a wrong input report yields a wrong summary.",
-    "Metric deltas are raw candidate-minus-baseline with no thresholds, regression-direction awareness (higher-is-better vs lower-is-better), or significance testing.",
-    "Fixtures are synthetic placeholder data; a green run here does not indicate real evaluation coverage.",
+    "call_llm gained an optional config arg; existing callers that omit it now get offline behavior (no network) rather than the old auto-remote-if-configured behavior. The HTTP /api/generate path passes payload.config, defaulting to offline when absent — a deliberate safe default, but a behavior change for any caller that relied on implicit remote calls.",
+    "Offline placeholder draft is a fixed template plus the prompt; it is not model output and must not be mistaken for a generated draft.",
+    "provider_configured only reflects presence of MATERIAL_LLM_BASE_URL and MATERIAL_LLM_API_KEY via bool(); it does not validate that the endpoint actually works.",
+    "The settings panel persists the chosen mode in browser localStorage only; there is no server-side or multi-user persistence (out of scope for v1).",
     "Environment note: the local interpreter is python3 (no bare 'python' on PATH); the quality-gate runner honors PYTHON=python3, and a local 'python->python3' PATH shim lets its default-interpreter meta-test pass."
   ],
   "credentials": [
-    "No credentials or .env files were read, created, or modified.",
-    "No external network calls were used for implementation or local tests.",
+    "No credentials or .env files were read, created, or modified; provider settings are surfaced only as booleans via bool(os.getenv(...)).",
+    "No external network calls were used for implementation or local tests; offline/prompt_only modes are proven to make no network call.",
     "No push performed; commit/push left to the maintainer."
   ]
 }

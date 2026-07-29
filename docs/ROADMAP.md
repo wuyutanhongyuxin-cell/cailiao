@@ -157,7 +157,7 @@
 
 优先级：中
 
-- [ ] 本地配置页面和完全离线模型选项
+- [x] 本地配置页面和完全离线模型选项（骨架）v1：确定性 `build_local_config(overrides=None)`/`validate_local_config(config)`/`build_offline_placeholder_draft(prompt)` 与模型模式感知的 `call_llm(prompt, config=None)`；HTTP `GET /api/config` 返回安全默认（离线）配置、`POST /api/config/validate` 校验模式；模型模式 `offline`（默认，不联网、返回本地占位草稿）、`prompt_only`（不联网，仅严格提示词）、`openai_compatible`（仅服务端已配置 MATERIAL_LLM_* 时联网，否则回退 prompt_only），离线/仅提示词模式硬保证 `network_used=false`；配置仅以布尔暴露 provider 是否已配置，绝不读取 `.env`/凭据值；前端新增“设置”面板（模式选择 + 离线边界说明），并按模式把 `config` 传入 `/api/generate`。**边界：v1 本地配置/离线选项骨架，不内置本地推理引擎、不安装依赖、不联网、不读取 `.env`/凭据；其余阶段 6 项（多用户/加密备份/数据流分级/依赖锁定）未开始。**
 - [ ] 多用户角色、项目空间、最小权限
 - [ ] 加密、备份、恢复、保留期和审计日志
 - [ ] 模型供应商数据流提示与风险分级
