@@ -1,0 +1,11 @@
+{
+  "metadata": {
+    "name": "comparison baseline scores sample",
+    "note": "Synthetic reviewer scores keyed by case id then arm id (1-5 scale). Not real review data."
+  },
+  "scores": {
+    "bench-001": {"human": 5, "generic": 2, "project": 4, "model_x": 3},
+    "bench-002": {"human": 5, "generic": 2, "project": 3, "model_x": 4},
+    "bench-003": {"human": 5, "generic": 2, "project": 3, "model_x": 4}
+  }
+}

@@ -1,63 +1,63 @@
 {
   "status": "implemented_by_claude",
-  "task_id": "cailiao-stage5-blind-eval-v1",
-  "phase": "ROADMAP Stage 5: blind evaluation packaging + reveal skeleton v1 (model/provider/version identity hidden from evaluator; synthetic fixtures only)",
-  "baseline": "0ed1d733f920d1276c285c8829a79edd7ae22666 Add benchmark schema scoring",
-  "summary": "Added a deterministic, stdlib-only Stage 5 blind-evaluation skeleton. build_blind_evaluation_pack assigns each candidate a stable blind label (candidate_a, candidate_b, ...) and produces an evaluator-facing view exposing only blind id + case id + answer text, hiding provider/model/version; the identity mapping is kept in a separate reveal_map. validate_blind_evaluation_pack checks metadata presence, unique case ids, matching blind-id sets per case, and that no evaluator-facing candidate leaks an identity field. reveal_blind_evaluation_results joins reviewer scores (case id -> blind id -> score) back to the hidden identity and aggregates numeric scores into per-candidate means. A CLI tools/validate_blind_eval.py builds+validates and optionally reveals. Synthetic fixtures only; no real data, no model call, no network.",
+  "task_id": "cailiao-stage5-comparison-baselines-v1",
+  "phase": "ROADMAP Stage 5: comparison-baseline matrix + aggregate skeleton v1 (human / generic-prompt / project-prompt / model arms from offline outputs; synthetic fixtures only)",
+  "baseline": "b00acf6778afcd49e191e5d19c5fb9b99584cda8 Add blind evaluation pack",
+  "summary": "Added a deterministic, stdlib-only Stage 5 comparison-baseline skeleton. build_comparison_baseline_matrix joins suite case ids to each offline arm's output (human writing, generic-prompt, project-prompt, and model/version arms), exposing evaluator-safe arm descriptors (arm_id, arm_type, label, optional blind_id) while keeping provider/model/version in a separate identity_map; missing outputs become empty strings. validate_comparison_baseline_matrix checks unique case/arm ids, matching arm-id sets per case, supported arm_type values, and no identity leak, and warns (not fails) on empty outputs. summarize_comparison_baseline_scores aggregates supplied numeric case scores into per-arm means without inventing scores, and accepts the blind-reveal cases_scored shape. A CLI tools/validate_comparison_baselines.py builds+validates and optionally summarizes. Synthetic fixtures only; no real human/model data, no model call, no network.",
   "changed_files": [
     "backend/server.py",
-    "tools/validate_blind_eval.py",
-    "tests/test_blind_evaluation.py",
-    "tests/data/blind_eval_candidates_sample.json",
-    "tests/data/blind_eval_scores_sample.json",
+    "tools/validate_comparison_baselines.py",
+    "tests/test_comparison_baselines.py",
+    "tests/data/comparison_baselines_sample.json",
+    "tests/data/comparison_baseline_scores_sample.json",
     "tools/run_quality_gates.py",
     "README.md",
     "docs/ROADMAP.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "backend/server.py: added BLIND_IDENTITY_FIELDS, _blind_label, _blind_candidates_list.",
-    "backend/server.py: added build_blind_evaluation_pack(suite, candidates) with method=blind_evaluation_pack_v1; evaluator_view exposes blind_ids + per-case candidates (blind_id, answer) only; identity kept in reveal_map; missing answers become empty strings so every case exposes the same blind ids.",
-    "backend/server.py: added validate_blind_evaluation_pack(pack) returning {passed, errors, warnings, case_count, blind_ids}; enforces metadata, unique case ids, per-case blind-id set equality, and no identity-field leak (provider/model/version/vendor/engine/system/family/name) on evaluator-facing candidates.",
-    "backend/server.py: added reveal_blind_evaluation_results(pack, scores_or_reviews) with method=blind_evaluation_reveal_v1; joins case-id->blind-id scores to reveal_map identity, aggregates numeric scores into per-candidate means, counts non-numeric reviews.",
-    "tools/validate_blind_eval.py: CLI (--suite/--candidates/--json, optional --reveal) delegating to the server helpers; exit 0/1/2.",
-    "tests/data/blind_eval_candidates_sample.json and tests/data/blind_eval_scores_sample.json: synthetic 2-candidate fixtures keyed to the benchmark sample's bench-001/002/003 case ids.",
-    "tests/test_blind_evaluation.py: 14 tests across packaging, validation, reveal, and the CLI.",
-    "tools/run_quality_gates.py: py-compile gate now includes tests/test_blind_evaluation.py and tools/validate_blind_eval.py.",
-    "README.md and docs/ROADMAP.md document the v1 boundary; only the ROADMAP '模型和版本隐藏的盲评' item is marked done (other Stage 5 items untouched)."
+    "backend/server.py: added COMPARISON_ARM_TYPES, COMPARISON_IDENTITY_FIELDS, _comparison_arms_list.",
+    "backend/server.py: added build_comparison_baseline_matrix(suite, candidate_outputs) with method=comparison_baseline_matrix_v1; evaluator-safe arms + identity_map + per-case arm outputs; missing outputs default to empty strings so every case exposes the same arm ids.",
+    "backend/server.py: added validate_comparison_baseline_matrix(matrix) returning {passed, errors, warnings, case_count, arm_ids, arm_types}; enforces metadata, unique arm/case ids, supported arm_type, per-case arm-id equality, and no identity-field leak; empty outputs are warnings.",
+    "backend/server.py: added summarize_comparison_baseline_scores(matrix, scoring_results=None) with method=comparison_baseline_summary_v1; aggregates numeric case scores per arm (mean_score=None when absent), joins identity, reports best_arm_id, and accepts the reveal_blind_evaluation_results cases_scored shape.",
+    "tools/validate_comparison_baselines.py: CLI (--suite/--outputs/--json, optional --scores) delegating to the server helpers; exit 0/1/2.",
+    "tests/data/comparison_baselines_sample.json and tests/data/comparison_baseline_scores_sample.json: synthetic 4-arm fixtures keyed to the benchmark sample's bench-001/002/003 case ids.",
+    "tests/test_comparison_baselines.py: 19 tests across matrix build, validation, summary, and the CLI.",
+    "tools/run_quality_gates.py: py-compile gate now includes tests/test_comparison_baselines.py and tools/validate_comparison_baselines.py.",
+    "README.md and docs/ROADMAP.md document the v1 boundary; only the ROADMAP '与人工写作、通用提示词和不同模型对照' item is marked done (adoption/edit-distance/time/regression-run items untouched)."
   ],
   "not_implemented": [
-    "No real candidate/model output; fixtures are synthetic placeholder data.",
-    "No LLM/model invocation, scoring model, or automated reviewer.",
-    "Blind labels follow input order; positional de-anonymization protection (shuffling) is left to the upstream caller.",
-    "No human-vs-model comparison, adoption/edit-distance metrics, or regression-run automation (later Stage 5 items). No UI, persistence, or network call."
+    "No real human or model output; fixtures are synthetic placeholder data.",
+    "No LLM/model invocation or scoring model; scores must be supplied by the caller.",
+    "No adoption-rate, edit-distance, completion-time, or regression-run automation (those Stage 5 items remain unchecked).",
+    "No statistical significance / reviewer-agreement analysis. No UI, persistence, or network call."
   ],
   "test_files": [
-    "tests/test_blind_evaluation.py"
+    "tests/test_comparison_baselines.py"
   ],
   "required_test_commands_for_codex": [
-    "python -m unittest tests.test_blind_evaluation -v",
+    "python -m unittest tests.test_comparison_baselines -v",
     "python -m unittest discover -s tests -v",
-    "python tools/validate_blind_eval.py --suite tests/data/benchmark_suite_sample.json --candidates tests/data/blind_eval_candidates_sample.json --json",
-    "python tools/validate_blind_eval.py --suite tests/data/benchmark_suite_sample.json --candidates tests/data/blind_eval_candidates_sample.json --reveal tests/data/blind_eval_scores_sample.json --json",
+    "python tools/validate_comparison_baselines.py --suite tests/data/benchmark_suite_sample.json --outputs tests/data/comparison_baselines_sample.json --json",
+    "python tools/validate_comparison_baselines.py --suite tests/data/benchmark_suite_sample.json --outputs tests/data/comparison_baselines_sample.json --scores tests/data/comparison_baseline_scores_sample.json --json",
     "python tools/run_quality_gates.py --json",
     "python -m json.tool CODEX_HANDOFF.json",
     "git diff --check"
   ],
   "test_status": [
-    "python -m unittest tests.test_blind_evaluation -v: 14 tests OK.",
-    "python -m unittest discover -s tests -v: 270 tests OK.",
-    "python tools/validate_blind_eval.py --suite ... --candidates ... --json: passed=true, 3 cases, blind_ids=[candidate_a, candidate_b].",
-    "python tools/validate_blind_eval.py --suite ... --candidates ... --reveal ... --json: passed=true; reveal candidate_a mean=4.6667 (example-model-x), candidate_b mean=2.6667 (example-model-y).",
-    "python tools/run_quality_gates.py --json (default 'python' on PATH): passed=true, all 5 gates passed; unittest gate ran 270 tests OK.",
+    "python -m unittest tests.test_comparison_baselines -v: 19 tests OK.",
+    "python -m unittest discover -s tests -v: 289 tests OK.",
+    "python tools/validate_comparison_baselines.py --suite ... --outputs ... --json: passed=true, 3 cases, arm_ids=[generic, human, model_x, project], arm_types=[generic_prompt, human, model, project_prompt].",
+    "python tools/validate_comparison_baselines.py --suite ... --outputs ... --scores ... --json: passed=true; best_arm_id=human; means human=5.0, generic=2.0, project=3.3333, model_x=3.6667 (identity example-model-x).",
+    "python tools/run_quality_gates.py --json (default 'python' on PATH): passed=true, all 5 gates passed; unittest gate ran 289 tests OK.",
     "python -m json.tool CODEX_HANDOFF.json: valid JSON.",
     "git diff --check: no whitespace/conflict issues."
   ],
   "risks": [
-    "Blind labels are assigned in candidate input order, so a caller that always lists a given provider first would leak identity positionally; the pack documents that upstream shuffling is required if that matters.",
-    "Identity-leak detection is a fixed field-name denylist (provider/model/version/vendor/engine/system/family/name); an identity embedded in free-text answers or an unusual field name would not be caught.",
-    "Reveal aggregates only values that parse as floats; non-numeric reviews are counted but not averaged, and there is no reviewer-agreement or significance analysis.",
-    "Fixtures are synthetic placeholder data and must not be mistaken for real model output.",
+    "Identity-leak detection is a fixed field-name denylist (provider/model/version/vendor); an identity embedded in free-text output or an unusual field name would not be caught.",
+    "Summary aggregates only values that parse as floats; non-numeric reviews are counted but not averaged, and best_arm_id is a raw mean argmax with no significance test or tie-breaking beyond first-max.",
+    "The matrix trusts caller-supplied arm ordering and arm_ids; a caller that mislabels an arm_type mislabels the comparison (validation only checks the value is supported, not that it is correct).",
+    "Fixtures are synthetic placeholder data and must not be mistaken for real human/model output.",
     "Environment note: the local interpreter is python3 (no bare 'python' on PATH); the quality-gate runner honors PYTHON=python3, and a local 'python->python3' PATH shim lets its default-interpreter meta-test pass."
   ],
   "credentials": [

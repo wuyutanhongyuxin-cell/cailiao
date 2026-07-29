@@ -1,0 +1,52 @@
+{
+  "metadata": {
+    "name": "comparison baselines sample",
+    "version": "v1",
+    "note": "Synthetic offline comparison arm outputs for the Stage 5 comparison-baseline skeleton. Not real human/model data."
+  },
+  "arms": [
+    {
+      "arm_id": "human",
+      "arm_type": "human",
+      "label": "人工写作基线",
+      "outputs": {
+        "bench-001": "标题：关于开展示例专项工作的通知\n主送机关：各科室\n正文：请各科室于示例日期前反馈。请遵照执行。\n落款：示例办公室\n特此通知。",
+        "bench-002": "标题：示例专项工作阶段报告\n正文：现将有关情况报告如下：已完成示例第一阶段。\n结尾：特此报告。",
+        "bench-003": "标题：关于商请示例事项的函\n正文：现商请协助办理示例事项，请予支持。特此函达。"
+      }
+    },
+    {
+      "arm_id": "generic",
+      "arm_type": "generic_prompt",
+      "label": "通用提示词基线",
+      "outputs": {
+        "bench-001": "关于示例工作的通知\n各科室：请尽快反馈。",
+        "bench-002": "示例阶段报告\n已完成部分工作。",
+        "bench-003": "示例函\n请协助办理。"
+      }
+    },
+    {
+      "arm_id": "project",
+      "arm_type": "project_prompt",
+      "label": "项目提示词基线",
+      "outputs": {
+        "bench-001": "标题：关于开展示例专项工作的通知\n主送机关：各科室\n正文：请遵照执行。\n落款：示例办公室",
+        "bench-002": "标题：示例专项工作阶段报告\n正文：特此报告。",
+        "bench-003": "标题：关于商请示例事项的函\n正文：特此函达。"
+      }
+    },
+    {
+      "arm_id": "model_x",
+      "arm_type": "model",
+      "label": "模型 X",
+      "provider": "example-provider-1",
+      "model": "example-model-x",
+      "version": "1.0",
+      "outputs": {
+        "bench-001": "关于示例专项工作的通知\n请各科室反馈。",
+        "bench-002": "示例专项工作阶段报告\n已完成第一阶段。",
+        "bench-003": "关于商请示例事项的函\n请予支持。"
+      }
+    }
+  ]
+}

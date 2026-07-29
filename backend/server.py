@@ -2776,6 +2776,267 @@ def reveal_blind_evaluation_results(pack: dict[str, Any],
     }
 
 
+# --- Stage 5: comparison-baseline matrix + aggregate skeleton v1 --------------
+
+# Supported comparison arm types. "model" arms carry hidden identity; the other
+# three are baselines produced offline (human writing, a generic prompt, and the
+# project/system prompt). No arm type invokes a model here.
+COMPARISON_ARM_TYPES = frozenset({"human", "generic_prompt", "project_prompt", "model"})
+
+# Identity fields kept out of the evaluator-safe arm descriptors.
+COMPARISON_IDENTITY_FIELDS = ("provider", "model", "version", "vendor")
+
+
+def _comparison_arms_list(candidate_outputs: Any) -> list[dict[str, Any]]:
+    """Normalize the comparison arms input into a list of arm dicts."""
+    if isinstance(candidate_outputs, dict):
+        raw = candidate_outputs.get("arms", candidate_outputs.get("candidate_outputs", candidate_outputs))
+    else:
+        raw = candidate_outputs
+    if not isinstance(raw, list):
+        return []
+    return [a for a in raw if isinstance(a, dict)]
+
+
+def build_comparison_baseline_matrix(suite: dict[str, Any],
+                                     candidate_outputs: Any) -> dict[str, Any]:
+    """Build a comparison-baseline matrix joining suite case ids to each arm output.
+
+    Arms represent comparison conditions produced offline — a human writing
+    baseline, a generic-prompt baseline, a project/system-prompt baseline, and any
+    model/version arms — never invoking a model here. Each arm gets an evaluator-safe
+    descriptor (arm_id, arm_type, label, optional blind_id); provider/model/version
+    identity is kept in a separate ``identity_map`` section. Every case exposes the
+    same arm ids; a missing output is represented deterministically as an empty
+    string (validation surfaces it as a warning).
+
+    Deterministic and stdlib only. No model call, no network.
+    """
+    arms_in = _comparison_arms_list(candidate_outputs)
+    arms_out: list[dict[str, Any]] = []
+    identity_map: dict[str, Any] = {}
+    outputs_by_arm: dict[str, dict[str, str]] = {}
+    arm_ids: list[str] = []
+
+    for idx, arm in enumerate(arms_in):
+        arm_type = str(arm.get("arm_type") or "").strip()
+        arm_id = str(arm.get("arm_id") or "").strip() or f"{arm_type or 'arm'}_{idx + 1}"
+        label = str(arm.get("label") or arm_id).strip()
+        arm_ids.append(arm_id)
+        descriptor = {"arm_id": arm_id, "arm_type": arm_type, "label": label}
+        blind_id = arm.get("blind_id")
+        if isinstance(blind_id, str) and blind_id.strip():
+            descriptor["blind_id"] = blind_id.strip()
+        arms_out.append(descriptor)
+        identity_map[arm_id] = {
+            field: arm.get(field) for field in COMPARISON_IDENTITY_FIELDS
+            if arm.get(field) is not None
+        }
+        outputs = arm.get("outputs") if isinstance(arm.get("outputs"), dict) else {}
+        outputs_by_arm[arm_id] = {str(k): str(v or "") for k, v in outputs.items()}
+
+    cases_out: list[dict[str, Any]] = []
+    for idx, case in enumerate(suite.get("cases", []) or [], start=1):
+        if not isinstance(case, dict):
+            continue
+        cid = case.get("id") or f"case-{idx}"
+        cases_out.append({
+            "case_id": cid,
+            "genre": case.get("genre", ""),
+            "arms": [
+                {"arm_id": aid, "output": outputs_by_arm[aid].get(cid, "")}
+                for aid in arm_ids
+            ],
+        })
+
+    return {
+        "method": "comparison_baseline_matrix_v1",
+        "boundary": (
+            "offline comparison matrix skeleton only; arms carry pre-produced "
+            "outputs, identity is separated from evaluator-safe fields, and no "
+            "model is invoked"
+        ),
+        "metadata": {
+            "suite_name": suite.get("metadata", {}).get("name", "") if isinstance(suite.get("metadata"), dict) else "",
+            "arm_count": len(arms_out),
+            "case_count": len(cases_out),
+            "arm_types": sorted({a["arm_type"] for a in arms_out if a["arm_type"]}),
+        },
+        "arms": arms_out,
+        "identity_map": identity_map,
+        "cases": cases_out,
+    }
+
+
+def validate_comparison_baseline_matrix(matrix: Any) -> dict[str, Any]:
+    """Validate a comparison-baseline matrix's shape.
+
+    Checks: metadata present; arm descriptors have unique arm ids and supported
+    arm_type values; case ids exist and are unique; every case exposes the same
+    arm-id set. Missing/empty outputs are reported as warnings (not errors) so a
+    partially-populated matrix validates. Deterministic, stdlib only.
+    Returns {passed, errors, warnings, case_count, arm_ids, arm_types}.
+    """
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    if not isinstance(matrix, dict):
+        return {"passed": False, "errors": [f"matrix must be a JSON object, got {type(matrix).__name__}"],
+                "warnings": [], "case_count": 0, "arm_ids": [], "arm_types": []}
+
+    if not isinstance(matrix.get("metadata"), dict) or not matrix["metadata"]:
+        errors.append("matrix 'metadata' must be a non-empty object")
+
+    arms = matrix.get("arms")
+    arm_ids: list[str] = []
+    arm_types: set[str] = set()
+    if not isinstance(arms, list) or not arms:
+        errors.append("matrix must contain a non-empty 'arms' list")
+        arms = []
+    seen_arm_ids: set[str] = set()
+    for idx, arm in enumerate(arms, start=1):
+        where = f"arm #{idx}"
+        if not isinstance(arm, dict):
+            errors.append(f"{where}: must be an object")
+            continue
+        aid = arm.get("arm_id")
+        if not (isinstance(aid, str) and aid.strip()):
+            errors.append(f"{where}: 'arm_id' must be a non-empty string")
+        else:
+            if aid in seen_arm_ids:
+                errors.append(f"arm '{aid}': duplicate arm_id")
+            seen_arm_ids.add(aid)
+            arm_ids.append(aid)
+        atype = arm.get("arm_type")
+        if not (isinstance(atype, str) and atype.strip()):
+            errors.append(f"{where}: 'arm_type' must be a non-empty string")
+        elif atype not in COMPARISON_ARM_TYPES:
+            errors.append(f"{where}: unsupported arm_type '{atype}' "
+                          f"(supported: {sorted(COMPARISON_ARM_TYPES)})")
+        else:
+            arm_types.add(atype)
+        for leak in COMPARISON_IDENTITY_FIELDS:
+            if leak in arm:
+                errors.append(f"{where}: evaluator-facing arm descriptor leaks identity field '{leak}'")
+
+    declared_arm_set = set(arm_ids)
+    cases = matrix.get("cases")
+    if not isinstance(cases, list) or not cases:
+        errors.append("matrix must contain a non-empty 'cases' list")
+        cases = []
+    seen_case_ids: set[str] = set()
+    for idx, case in enumerate(cases, start=1):
+        where = f"case #{idx}"
+        if not isinstance(case, dict):
+            errors.append(f"{where}: must be an object")
+            continue
+        cid = case.get("case_id")
+        if not (isinstance(cid, str) and cid.strip()):
+            errors.append(f"{where}: 'case_id' must be a non-empty string")
+        else:
+            where = f"case '{cid}'"
+            if cid in seen_case_ids:
+                errors.append(f"{where}: duplicate case_id")
+            seen_case_ids.add(cid)
+        case_arms = case.get("arms")
+        if not isinstance(case_arms, list) or not case_arms:
+            errors.append(f"{where}: 'arms' must be a non-empty list")
+            continue
+        case_arm_set: set[str] = set()
+        for a in case_arms:
+            if not isinstance(a, dict):
+                errors.append(f"{where}: each arm entry must be an object")
+                continue
+            aid = a.get("arm_id")
+            if isinstance(aid, str) and aid.strip():
+                case_arm_set.add(aid)
+            if "output" not in a:
+                errors.append(f"{where}: arm '{aid}' is missing 'output'")
+            elif not str(a.get("output") or "").strip():
+                warnings.append(f"{where}: arm '{aid}' has an empty output")
+        if declared_arm_set and case_arm_set != declared_arm_set:
+            errors.append(f"{where}: arm ids {sorted(case_arm_set)} do not match "
+                          f"declared arm ids {sorted(declared_arm_set)}")
+
+    return {
+        "passed": not errors,
+        "errors": errors,
+        "warnings": warnings,
+        "case_count": len(cases),
+        "arm_ids": sorted(declared_arm_set),
+        "arm_types": sorted(arm_types),
+    }
+
+
+def summarize_comparison_baseline_scores(matrix: dict[str, Any],
+                                         scoring_results: Any = None) -> dict[str, Any]:
+    """Aggregate per-arm scores from supplied numeric case scores.
+
+    ``scoring_results`` maps case id -> {arm_id -> score}. A ``scores`` wrapper key
+    is also accepted, as is the ``cases_scored`` shape emitted by
+    ``reveal_blind_evaluation_results`` (case_id + scores keyed by arm/blind id).
+    Only values that parse as numbers are aggregated into a per-arm mean; no score
+    is ever invented. Arms with no numeric score report mean_score=None.
+
+    Deterministic, stdlib only. No model call, no network.
+    """
+    arms = matrix.get("arms", []) if isinstance(matrix.get("arms"), list) else []
+    identity_map = matrix.get("identity_map", {}) if isinstance(matrix.get("identity_map"), dict) else {}
+    arm_descriptors = {a["arm_id"]: a for a in arms if isinstance(a, dict) and a.get("arm_id")}
+
+    scores = {}
+    if isinstance(scoring_results, dict):
+        if isinstance(scoring_results.get("scores"), dict):
+            scores = scoring_results["scores"]
+        elif isinstance(scoring_results.get("cases_scored"), list):
+            scores = {
+                row.get("case_id"): row.get("scores", {})
+                for row in scoring_results["cases_scored"]
+                if isinstance(row, dict) and isinstance(row.get("scores"), dict)
+            }
+        else:
+            scores = scoring_results
+
+    numeric_by_arm: dict[str, list[float]] = {}
+    count_by_arm: dict[str, int] = {}
+    for _case_id, per_case in scores.items():
+        if not isinstance(per_case, dict):
+            continue
+        for arm_id, value in per_case.items():
+            arm_id = str(arm_id)
+            count_by_arm[arm_id] = count_by_arm.get(arm_id, 0) + 1
+            try:
+                numeric_by_arm.setdefault(arm_id, []).append(float(value))
+            except (TypeError, ValueError):
+                pass
+
+    all_ids = sorted(set(arm_descriptors) | set(count_by_arm))
+    per_arm: list[dict[str, Any]] = []
+    for aid in all_ids:
+        nums = numeric_by_arm.get(aid, [])
+        desc = arm_descriptors.get(aid, {})
+        per_arm.append({
+            "arm_id": aid,
+            "arm_type": desc.get("arm_type", ""),
+            "label": desc.get("label", ""),
+            "identity": identity_map.get(aid, {}),
+            "score_count": count_by_arm.get(aid, 0),
+            "numeric_count": len(nums),
+            "mean_score": round(sum(nums) / len(nums), 4) if nums else None,
+        })
+
+    scored = [row for row in per_arm if row["mean_score"] is not None]
+    best = max(scored, key=lambda r: r["mean_score"])["arm_id"] if scored else None
+    return {
+        "method": "comparison_baseline_summary_v1",
+        "boundary": "aggregates supplied numeric scores per arm only; never invents scores; no model invoked",
+        "has_scores": bool(scored),
+        "arm_count": len(per_arm),
+        "per_arm": per_arm,
+        "best_arm_id": best,
+    }
+
+
 def run_retrieval_eval_suite(suite: dict[str, Any], k: int | None = None,
                              db_path: str | Path | None = None,
                              bm25_params: dict[str, Any] | None = None) -> dict[str, Any]:
