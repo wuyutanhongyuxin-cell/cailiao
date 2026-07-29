@@ -94,7 +94,8 @@
 - [x] BM25 参数化：`k1`/`b` 可经 `bm25_params` 或 CLI（`--bm25-k1`/`--bm25-b`/`--sweep-bm25`）覆盖与扫参，默认行为不变
 - [x] 统一质量门禁入口 `tools/run_quality_gates.py`（字节编译/单测/检索评测/`git diff --check`/机密与 `.env` 扫描；`--json`/`--skip-git-diff`；达标 exit 0）
 - [x] GitHub Actions CI（`.github/workflows/quality-gates.yml`，push/PR，Ubuntu + Python 3.11/3.12，调用统一入口，不打印 secret、不上传 artifact）
-- [ ] 人工建立 50-100 条真实匿名查询集，替换内置占位集
+- [ ] 人工建立 50-100 条真实匿名查询集，替换内置占位集（**仍未完成**：仓库尚无真实匿名集，不得在真实集真正就绪前勾选本项）
+  - [x] 真实匿名查询集接入脚手架 v1：确定性 `load_real_query_set(path)`/`validate_real_query_set(dataset)`/`summarize_real_query_readiness(dataset)` 与 `tools/validate_real_query_set.py`；校验结构、匿名化（拒绝 `name`/`phone`/`email`/`身份证` 等 PII/密钥字段名与手机号/身份证/邮箱等 PII 形态值，仅报类别不回显原值）与 provenance（`source`/`collected_at`/`anonymized=true`），就绪度分类为 `invalid`/`template`/`incomplete_real`/`ready_real`/`oversized_real`；占位/合成标记或 <50 条永远不判为 `ready_real`。附人工填写模板 `tests/data/real_query_set_template.json`。**边界：仅接入/校验脚手架，绝不伪造真实数据；真实 50-100 条匿名集仍需人工提供，未提供前上一条保持未勾选。**
 - [x] 评测集结构校验工具 v1：`tools/validate_retrieval_suite.py` + `server.validate_retrieval_suite`（校验 id 唯一/query/受支持过滤键/相关性目标/min_authority/format；错误退出非 0、告警不失败；数量不足或占位元数据给告警）——仅为真实集就绪后纳入门禁前的校验工具，不代表真实集已建立
 - [ ] 在真实查询集上用 CLI 扫参校准 BM25 k1/b 与阈值
 - [x] 向量检索与可替换 embedding 管线骨架 v1：**默认关闭**（`VectorEmbedder`/`DeterministicHashEmbedder`/`InProcessVectorIndex`/`VectorPipeline`/`resolve_vector_pipeline`，仅标准库、确定性、进程内、绝不联网/读凭证）；`search_library`/`evaluate_retrieval_cases` 新增 opt-in `vector_config`、HTTP `?vector=` 参数，开启后作为 `vector` RRF 通道并诚实回报状态（`is_real_embedding_model: false`）

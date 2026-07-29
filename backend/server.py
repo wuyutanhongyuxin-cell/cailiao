@@ -5439,6 +5439,209 @@ def build_supply_chain_summary() -> dict[str, Any]:
     }
 
 
+# --- Stage 5: real anonymized query-set intake scaffold v1 --------------------
+
+# Readiness thresholds for a *completed* real anonymized query set.
+REAL_QUERY_SET_MIN_CASES = 50
+REAL_QUERY_SET_MAX_CASES = 100
+
+# Tokens that mark a dataset (or a case) as placeholder/synthetic — rejected in
+# completed-real mode so fabricated data can never masquerade as a real set.
+REAL_QUERY_PLACEHOLDER_TOKENS = (
+    "placeholder", "synthetic", "sample", "example", "template", "dummy", "fake", "todo",
+    "占位", "合成", "样例", "示例", "模板", "虚构",
+)
+
+# Field names that must never carry raw PII / secret-shaped values in an
+# anonymized set. Their presence is an intake error (the set is not anonymized).
+REAL_QUERY_FORBIDDEN_FIELDS = (
+    "name", "full_name", "phone", "mobile", "email", "id_card", "id_number",
+    "身份证", "手机号", "电话", "姓名", "api_key", "secret", "password", "token",
+)
+
+# Deterministic PII-shaped value patterns (mainland-China oriented + generic).
+_REAL_QUERY_PII_PATTERNS = {
+    "id_card": re.compile(r"\b\d{17}[\dXx]\b"),
+    "phone_cn": re.compile(r"\b1[3-9]\d{9}\b"),
+    "email": re.compile(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}"),
+}
+
+
+def load_real_query_set(path: str | Path) -> dict[str, Any]:
+    """Load a real anonymized query-set JSON ({metadata, cases}) into a dict.
+
+    Stdlib only. Raises ValueError on a non-object payload or a missing cases
+    list so callers can distinguish a load failure from a validation failure.
+    """
+    p = Path(path)
+    with p.open("r", encoding="utf-8") as f:
+        dataset = json.load(f)
+    if not isinstance(dataset, dict):
+        raise ValueError(f"query set must be a JSON object, got {type(dataset).__name__}")
+    if not isinstance(dataset.get("cases"), list):
+        raise ValueError("query set is missing a 'cases' list")
+    return dataset
+
+
+def _real_query_placeholder_hits(text: str) -> list[str]:
+    low = (text or "").lower()
+    return [tok for tok in REAL_QUERY_PLACEHOLDER_TOKENS if tok in low]
+
+
+def _real_query_pii_hits(text: str) -> list[str]:
+    hits: list[str] = []
+    for kind, pattern in _REAL_QUERY_PII_PATTERNS.items():
+        if pattern.search(text or ""):
+            hits.append(kind)
+    return hits
+
+
+def validate_real_query_set(dataset: Any) -> dict[str, Any]:
+    """Validate a real anonymized query set's shape, anonymization, and provenance.
+
+    Structural rules (always enforced): metadata object; a cases list; each case
+    has a non-empty string id (unique) and a non-empty query; each case declares
+    provenance (source/collected_at/anonymized=true) and at least one relevance
+    target. Anonymization rules (always enforced, even for templates): no
+    forbidden PII/secret field names, and no PII-shaped value in query/notes.
+
+    This does NOT decide real-vs-template readiness — see
+    summarize_real_query_readiness. Deterministic, stdlib only; reads no external
+    data and never emits a raw PII value (only the matched kind). Returns
+    {passed, errors, warnings, case_count, has_placeholder_marker}.
+    """
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    if not isinstance(dataset, dict):
+        return {"passed": False, "errors": [f"dataset must be a JSON object, got {type(dataset).__name__}"],
+                "warnings": [], "case_count": 0, "has_placeholder_marker": False}
+
+    metadata = dataset.get("metadata")
+    if not isinstance(metadata, dict):
+        errors.append("'metadata' must be an object")
+        metadata = {}
+
+    meta_blob = " ".join(str(metadata.get(k, "")) for k in ("name", "version", "description", "kind"))
+    dataset_marked_template = bool(_real_query_placeholder_hits(meta_blob)) or bool(metadata.get("is_template"))
+
+    cases = dataset.get("cases")
+    if not isinstance(cases, list) or not cases:
+        errors.append("dataset must contain a non-empty 'cases' list")
+        cases = []
+
+    seen_ids: set[str] = set()
+    any_case_placeholder = False
+    for idx, case in enumerate(cases, start=1):
+        where = f"case #{idx}"
+        if not isinstance(case, dict):
+            errors.append(f"{where}: must be an object")
+            continue
+        cid = case.get("id")
+        if not (isinstance(cid, str) and cid.strip()):
+            errors.append(f"{where}: 'id' must be a non-empty string")
+        else:
+            where = f"case '{cid}'"
+            if cid in seen_ids:
+                errors.append(f"{where}: duplicate id")
+            seen_ids.add(cid)
+
+        query = case.get("query")
+        if not (isinstance(query, str) and query.strip()):
+            errors.append(f"{where}: 'query' must be a non-empty string")
+
+        # Anonymization: forbidden field names are a hard error everywhere.
+        leaked_fields = [f for f in REAL_QUERY_FORBIDDEN_FIELDS if f in case]
+        if leaked_fields:
+            errors.append(f"{where}: must not carry PII/secret field(s) {leaked_fields}")
+
+        # Anonymization: PII-shaped values in free text are a hard error (kind only).
+        for field in ("query", "notes", "context"):
+            val = case.get(field)
+            if isinstance(val, str):
+                pii = _real_query_pii_hits(val)
+                if pii:
+                    errors.append(f"{where}: '{field}' contains PII-shaped value(s) {pii}; anonymize before intake")
+                if _real_query_placeholder_hits(val):
+                    any_case_placeholder = True
+
+        # Provenance: real intake requires source + collected_at + anonymized flag.
+        provenance = case.get("provenance", {})
+        if not isinstance(provenance, dict):
+            errors.append(f"{where}: 'provenance' must be an object")
+            provenance = {}
+        for pfield in ("source", "collected_at"):
+            if not (isinstance(provenance.get(pfield), str) and provenance[pfield].strip()):
+                errors.append(f"{where}: provenance '{pfield}' must be a non-empty string")
+        if provenance.get("anonymized") is not True:
+            errors.append(f"{where}: provenance 'anonymized' must be true")
+
+        # At least one relevance target so the case is scorable.
+        has_target = any(
+            isinstance(case.get(t), list) and case.get(t)
+            for t in ("relevant_titles", "relevant_chunk_ids", "relevant_chunk_markers")
+        )
+        if not has_target:
+            errors.append(f"{where}: must declare at least one non-empty relevance target")
+
+    has_placeholder_marker = dataset_marked_template or any_case_placeholder
+    return {
+        "passed": not errors,
+        "errors": errors,
+        "warnings": warnings,
+        "case_count": len(cases),
+        "has_placeholder_marker": has_placeholder_marker,
+    }
+
+
+def summarize_real_query_readiness(dataset: Any) -> dict[str, Any]:
+    """Report readiness of a query set as a template vs a completed real set.
+
+    Deterministic classification (stdlib only):
+      - "invalid"          : fails structural/anonymization validation.
+      - "template"         : valid shape but carries placeholder/synthetic markers.
+      - "incomplete_real"  : valid, no markers, but < 50 cases.
+      - "ready_real"       : valid, no markers, 50-100 cases with provenance.
+      - "oversized_real"   : valid, no markers, > 100 cases (warn to trim/split).
+    Never fabricates data; a small or marked set can never be "ready_real".
+    Returns {status, ready, case_count, min_cases, max_cases, reasons, validation}.
+    """
+    validation = validate_real_query_set(dataset)
+    count = validation["case_count"]
+    reasons: list[str] = []
+
+    if not validation["passed"]:
+        status = "invalid"
+        reasons.append("failed structural/anonymization validation")
+    elif validation["has_placeholder_marker"]:
+        status = "template"
+        reasons.append("dataset/case carries placeholder or synthetic markers")
+    elif count < REAL_QUERY_SET_MIN_CASES:
+        status = "incomplete_real"
+        reasons.append(f"only {count} cases; a real set needs {REAL_QUERY_SET_MIN_CASES}-{REAL_QUERY_SET_MAX_CASES}")
+    elif count > REAL_QUERY_SET_MAX_CASES:
+        status = "oversized_real"
+        reasons.append(f"{count} cases exceeds {REAL_QUERY_SET_MAX_CASES}; consider trimming or splitting")
+    else:
+        status = "ready_real"
+        reasons.append(f"{count} anonymized cases with provenance in the {REAL_QUERY_SET_MIN_CASES}-{REAL_QUERY_SET_MAX_CASES} range")
+
+    return {
+        "method": "real_query_readiness_v1",
+        "boundary": (
+            "readiness classification only; never fabricates data; a placeholder/"
+            "synthetic or under-50 set can never be classified ready_real"
+        ),
+        "status": status,
+        "ready": status == "ready_real",
+        "case_count": count,
+        "min_cases": REAL_QUERY_SET_MIN_CASES,
+        "max_cases": REAL_QUERY_SET_MAX_CASES,
+        "reasons": reasons,
+        "validation": validation,
+    }
+
+
 def add_evidence(item: dict[str, str]) -> dict[str, str]:
     item_id = str(uuid.uuid4())
     title = item.get("title", "").strip()

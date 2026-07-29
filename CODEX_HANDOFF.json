@@ -1,69 +1,66 @@
 {
   "status": "implemented_by_claude",
-  "task_id": "cailiao-stage6-dependency-sbom-container-v1",
-  "phase": "ROADMAP Stage 6 (final item): dependency inventory / SBOM / optional-container skeleton v1 (stdlib-first, zero runtime deps). Completes the Stage 6 deterministic skeletons.",
-  "baseline": "358932fa3476698449fda509e4b1359cffcdaf0d Add provider risk grading skeleton",
-  "summary": "Added a deterministic, stdlib-only Stage 6 supply-chain skeleton plus repo-local metadata files. build_dependency_inventory declares the project as stdlib-first with zero third-party runtime dependencies; validate_dependency_inventory requires pinned versions and rejects credential fields. build_sbom_document emits a deterministic, timestamp-free CycloneDX-like SBOM of first-party components; validate_sbom_document checks project/version/components. build_container_deploy_plan describes an optional offline-first container (never builds or pushes); validate_container_deploy_plan checks base image/port/steps. build_supply_chain_summary bundles all three. New committed files: requirements.txt (comments only, no third-party pins), docs/sbom.json (kept in sync with the helper, asserted by test), and an optional Containerfile with no RUN/install step. HTTP GET /api/supply-chain/sbom and a 设置 panel status. No dependency install, no image build/push, no network/registry, no credential/.env read.",
+  "task_id": "cailiao-stage5-real-query-intake-v1",
+  "phase": "ROADMAP Stage 5 backfill: real anonymized query-set INTAKE SCAFFOLD v1. The original '50-100 real anonymized query set' item remains UNCHECKED — no real set exists; only the intake/validation scaffold is delivered.",
+  "baseline": "0dc0434ad2141768d5f6d45430ef21fe783e8e54 (Stage 6 supply-chain skeleton head)",
+  "summary": "Added a deterministic, stdlib-only intake scaffold for a real anonymized query set, WITHOUT fabricating any real data. load_real_query_set loads {metadata, cases}; validate_real_query_set enforces structure, anonymization (rejects PII/secret field names and PII-shaped values in free text, reporting only the matched kind — never the raw value), and provenance (source/collected_at/anonymized=true); summarize_real_query_readiness classifies the set as invalid/template/incomplete_real/ready_real/oversized_real, and can NEVER classify a placeholder/synthetic or under-50 set as ready_real. A human-fill template (tests/data/real_query_set_template.json, clearly marked is_template with 2 example rows) and a CLI (tools/validate_real_query_set.py) are included. The original ROADMAP item stays unchecked; a sub-note records the scaffold as done.",
   "changed_files": [
     "backend/server.py",
-    "requirements.txt",
-    "docs/sbom.json",
-    "Containerfile",
-    "frontend/index.html",
-    "frontend/app.js",
-    "tests/test_supply_chain.py",
+    "tools/validate_real_query_set.py",
+    "tests/test_real_query_intake.py",
+    "tests/data/real_query_set_template.json",
     "tools/run_quality_gates.py",
     "README.md",
     "docs/ROADMAP.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "backend/server.py: added PROJECT_NAME/PROJECT_VERSION/PROJECT_PYTHON_REQUIRES, SUPPLY_CHAIN_FORBIDDEN_FIELDS.",
-    "backend/server.py: build_dependency_inventory/validate_dependency_inventory (stdlib-first, zero runtime deps; validator requires pinned name+version and rejects credential fields).",
-    "backend/server.py: build_sbom_document/validate_sbom_document (deterministic, timestamp-free CycloneDX-like first-party SBOM).",
-    "backend/server.py: build_container_deploy_plan/validate_container_deploy_plan (optional offline-first plan; never builds/pushes; port/image/steps checks).",
-    "backend/server.py: build_supply_chain_summary bundling inventory+SBOM+container plan; Handler.do_GET serves GET /api/supply-chain/sbom.",
-    "requirements.txt: comments only (no third-party pins) documenting Python>=3.12 and the pinning rule if a dep is ever added.",
-    "docs/sbom.json: committed deterministic SBOM, asserted by test to equal build_sbom_document() output.",
-    "Containerfile: optional offline-first skeleton with COPY/EXPOSE/CMD and no RUN or pip install (not built or pushed by any gate).",
-    "frontend/index.html + app.js: 设置 panel supply-chain section with #loadSbomBtn/#sbomStatus and loadSbom() calling /api/supply-chain/sbom.",
-    "tests/test_supply_chain.py: 18 tests (inventory deterministic/stdlib-only, unpinned-dep rejection, SBOM validity/determinism/no-timestamp/no-secrets, committed-file-in-sync, container defaults/invalid-port, requirements/Containerfile/no-secret file checks, live HTTP sbom, frontend tokens).",
-    "tools/run_quality_gates.py: py-compile gate now includes tests/test_supply_chain.py.",
-    "README.md and docs/ROADMAP.md document the v1 boundary; the ROADMAP '依赖锁定、软件物料清单和可选容器部署' item is marked done and a Stage 6 skeleton-status note keeps the boundary honest."
+    "backend/server.py: added REAL_QUERY_SET_MIN_CASES(50)/MAX_CASES(100), REAL_QUERY_PLACEHOLDER_TOKENS, REAL_QUERY_FORBIDDEN_FIELDS, _REAL_QUERY_PII_PATTERNS (id_card/phone_cn/email).",
+    "backend/server.py: load_real_query_set(path) (raises ValueError on non-object / missing cases).",
+    "backend/server.py: validate_real_query_set(dataset) enforcing unique case ids, non-empty query, provenance (source/collected_at/anonymized=true), >=1 relevance target, no forbidden PII/secret field names, and no PII-shaped value in query/notes/context (error text carries only the matched kind, never the raw value); returns has_placeholder_marker.",
+    "backend/server.py: summarize_real_query_readiness(dataset) classifying invalid/template/incomplete_real/ready_real/oversized_real; placeholder/synthetic marker or <50 cases can never be ready_real.",
+    "tools/validate_real_query_set.py: CLI (--set/--json) exit 0 only when status==ready_real, else 1, load-error 2; never prints raw PII.",
+    "tests/data/real_query_set_template.json: clearly-marked is_template dataset (2 example rows) with schema docs for humans to fill.",
+    "tests/test_real_query_intake.py: 16 tests (template valid-but-not-ready, 50 clean cases ready, <50 incomplete, >100 oversized, synthetic/placeholder marker blocks ready, PII field/value rejection without leaking value, id-card rejection, missing provenance/anonymized/target, duplicate id, load error, CLI exit 1 on template).",
+    "tools/run_quality_gates.py: py-compile gate now includes tests/test_real_query_intake.py and tools/validate_real_query_set.py.",
+    "README.md documents the scaffold and its honesty boundary; docs/ROADMAP.md keeps the original 50-100 real-set item UNCHECKED and adds a checked sub-note for the intake scaffold only."
   ],
   "not_implemented": [
-    "No dependency install or package-manager invocation; the inventory is declared metadata.",
-    "No container image build, tag, or push; the Containerfile is a skeleton not exercised by any gate.",
-    "No external/transitive dependency scan, registry access, or vulnerability lookup.",
-    "No network, no credential/.env read."
+    "NO real anonymized query set is provided or fabricated; the repo still lacks 50-100 real cases with provenance.",
+    "The original ROADMAP item '人工建立 50-100 条真实匿名查询集' remains unchecked by design.",
+    "No PII de-identification/anonymization is performed for the user; the scaffold only validates that supplied data is already anonymized.",
+    "No network, no model call, no credential/.env read."
   ],
   "test_files": [
-    "tests/test_supply_chain.py"
+    "tests/test_real_query_intake.py"
   ],
   "required_test_commands_for_codex": [
-    "python -m unittest tests.test_supply_chain -v",
+    "python -m unittest tests.test_real_query_intake -v",
     "python -m unittest discover -s tests -v",
+    "python tools/validate_real_query_set.py --set tests/data/real_query_set_template.json --json",
     "python tools/run_quality_gates.py --json",
     "python -m json.tool CODEX_HANDOFF.json",
     "git diff --check"
   ],
   "test_status": [
-    "python -m unittest tests.test_supply_chain -v: 18 tests OK (includes live ThreadingHTTPServer sbom and committed docs/sbom.json in-sync assertion).",
-    "python -m unittest discover -s tests -v: 431 tests OK.",
-    "python tools/run_quality_gates.py --json (default 'python' on PATH): passed=true, all 5 gates passed (secret-scan clean over new files); unittest gate ran 431 tests OK.",
+    "python -m unittest tests.test_real_query_intake -v: 16 tests OK.",
+    "python -m unittest discover -s tests -v: 447 tests OK.",
+    "python tools/validate_real_query_set.py --set tests/data/real_query_set_template.json --json: status=template, ready=false, exit 1 (template is not a completed real set).",
+    "python tools/run_quality_gates.py --json (default 'python' on PATH): passed=true, all 5 gates passed (secret-scan clean over new files); unittest gate ran 447 tests OK.",
     "python -m json.tool CODEX_HANDOFF.json: valid JSON.",
     "git diff --check: no whitespace/conflict issues."
   ],
+  "roadmap_item_status": "UNCHECKED — original '50-100 real anonymized query set' item is NOT marked done because no real set exists; only a checked sub-note for the intake scaffold was added.",
   "risks": [
-    "docs/sbom.json is committed and must stay in sync with build_sbom_document(); a test asserts equality, so bumping PROJECT_VERSION requires regenerating the file or the suite fails (intentional guard).",
-    "The SBOM lists first-party components only; it is not a transitive/vulnerability scan and must not be treated as a security attestation.",
-    "The dependency inventory is declared, not discovered: if a third-party import is added without updating the inventory, validation will not automatically catch it.",
-    "The Containerfile is a skeleton; it is not built or scanned by CI, so image-level correctness/security is unverified here.",
+    "The scaffold validates that supplied data looks anonymized and carries provenance; it cannot prove data is truly real or truly de-identified — a determined submitter could pass shape checks with fabricated-but-clean rows, so ready_real means 'shape/anonymization/provenance OK', not 'audited genuine'.",
+    "PII detection is pattern-based (mainland-China id/phone + generic email) and field-name based; unusual PII formats or PII embedded in unexpected fields could slip past. It is a safety net, not a guarantee.",
+    "Placeholder-marker detection is token-based; a real set that happens to contain a token like '示例' in a legitimate query would be flagged as template (false positive) and must be reworded or the token list revisited.",
+    "Readiness is a mechanical count+marker check; it does not assess query quality, coverage, or representativeness.",
     "Environment note: the local interpreter is python3 (no bare 'python' on PATH); the quality-gate runner honors PYTHON=python3, and a local 'python->python3' PATH shim lets its default-interpreter meta-test pass."
   ],
   "credentials": [
-    "No credentials or .env files were read, created, or modified; inventory/SBOM validators reject credential-shaped fields and a test scans the new files for secret tokens.",
-    "No external network calls, registry access, or dependency installs were used for implementation or local tests.",
+    "No credentials or .env files were read, created, or modified; validators reject api_key/secret/password/token field names and never echo a matched PII value.",
+    "No external network calls or model calls were used for implementation or local tests.",
     "No push performed; commit/push left to the maintainer."
   ]
 }
