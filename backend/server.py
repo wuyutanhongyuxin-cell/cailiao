@@ -3294,6 +3294,240 @@ def summarize_outcome_metrics(log: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+# --- Stage 5: regression evaluation runner skeleton v1 -----------------------
+
+# Trigger kinds a regression run may declare.
+REGRESSION_TRIGGER_KINDS = frozenset({"rules_update", "model_update", "manual"})
+
+# Optional component report kinds a run may aggregate.
+REGRESSION_REPORT_KINDS = frozenset({
+    "benchmark_scoring", "blind_eval", "comparison_matrix",
+    "outcome_metrics", "retrieval_eval",
+})
+
+
+def _regression_reports_list(config: Any) -> list[dict[str, Any]]:
+    """Normalize the reports input into a list of report dicts."""
+    if isinstance(config, dict):
+        raw = config.get("reports", config.get("component_reports", []))
+    else:
+        raw = config
+    if not isinstance(raw, list):
+        return []
+    return [r for r in raw if isinstance(r, dict)]
+
+
+def build_regression_evaluation_run(config: Any) -> dict[str, Any]:
+    """Assemble a deterministic regression-evaluation run record from a config.
+
+    Captures the trigger (rules_update / model_update / manual), baseline and
+    candidate refs, the benchmark suite reference, and any component reports
+    (benchmark scoring, blind eval, comparison matrix, outcome metrics, retrieval
+    eval). Each report is normalized to {name, kind, status, counts, metrics}
+    where metrics may carry baseline/candidate numeric pairs.
+
+    Deterministic and stdlib only. No model call, no network. This assembles and
+    normalizes an already-produced set of component reports; it does not execute
+    the underlying evaluations.
+    """
+    cfg = config if isinstance(config, dict) else {}
+    trigger = str(cfg.get("trigger_kind") or cfg.get("trigger") or "").strip()
+
+    reports_out: list[dict[str, Any]] = []
+    for idx, report in enumerate(_regression_reports_list(cfg), start=1):
+        name = str(report.get("name") or report.get("kind") or f"report_{idx}").strip()
+        kind = str(report.get("kind") or "").strip()
+        status = str(report.get("status") or "").strip()
+        counts = report.get("counts") if isinstance(report.get("counts"), dict) else {}
+        norm_counts = {
+            key: int(counts[key]) for key in ("passed", "failed", "warnings")
+            if isinstance(counts.get(key), (int, float))
+        }
+        metrics = report.get("metrics") if isinstance(report.get("metrics"), dict) else {}
+        norm_metrics: dict[str, Any] = {}
+        for mkey, mval in metrics.items():
+            if isinstance(mval, dict):
+                pair = {
+                    side: float(mval[side]) for side in ("baseline", "candidate")
+                    if isinstance(mval.get(side), (int, float))
+                }
+                if pair:
+                    norm_metrics[str(mkey)] = pair
+            elif isinstance(mval, (int, float)):
+                norm_metrics[str(mkey)] = {"candidate": float(mval)}
+        reports_out.append({
+            "name": name,
+            "kind": kind,
+            "status": status,
+            "counts": norm_counts,
+            "metrics": norm_metrics,
+        })
+
+    return {
+        "method": "regression_evaluation_run_v1",
+        "boundary": (
+            "local regression-run assembly skeleton only; normalizes already-produced "
+            "component reports, does not execute evaluations, invoke a model, or schedule CI"
+        ),
+        "metadata": {
+            "trigger_kind": trigger,
+            "baseline_ref": str(cfg.get("baseline_ref") or "").strip(),
+            "candidate_ref": str(cfg.get("candidate_ref") or cfg.get("version") or "").strip(),
+            "suite": str(cfg.get("suite") or cfg.get("suite_name") or cfg.get("benchmark_suite") or "").strip(),
+            "report_count": len(reports_out),
+        },
+        "reports": reports_out,
+    }
+
+
+def validate_regression_evaluation_run(run: Any) -> dict[str, Any]:
+    """Validate a regression-evaluation run record's shape.
+
+    Checks: required metadata (trigger_kind, baseline_ref, candidate_ref, suite);
+    supported trigger kind; unique report names; supported report kinds; and
+    well-formed numeric metric deltas (baseline/candidate values numeric). Warns
+    (not fails) when no reports are present or a report omits status/counts.
+    Deterministic, stdlib only. Returns {passed, errors, warnings, report_count, report_names}.
+    """
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    if not isinstance(run, dict):
+        return {"passed": False, "errors": [f"run must be a JSON object, got {type(run).__name__}"],
+                "warnings": [], "report_count": 0, "report_names": []}
+
+    metadata = run.get("metadata")
+    if not isinstance(metadata, dict):
+        errors.append("run 'metadata' must be an object")
+        metadata = {}
+    for field in ("trigger_kind", "baseline_ref", "candidate_ref", "suite"):
+        if not (isinstance(metadata.get(field), str) and metadata[field].strip()):
+            errors.append(f"metadata '{field}' must be a non-empty string")
+    trigger = metadata.get("trigger_kind")
+    if isinstance(trigger, str) and trigger.strip() and trigger not in REGRESSION_TRIGGER_KINDS:
+        errors.append(f"metadata 'trigger_kind' unsupported '{trigger}' "
+                      f"(supported: {sorted(REGRESSION_TRIGGER_KINDS)})")
+
+    reports = run.get("reports")
+    if not isinstance(reports, list):
+        errors.append("run 'reports' must be a list")
+        reports = []
+    if not reports:
+        warnings.append("run has no component reports")
+
+    seen_names: set[str] = set()
+    report_names: list[str] = []
+    for idx, report in enumerate(reports, start=1):
+        where = f"report #{idx}"
+        if not isinstance(report, dict):
+            errors.append(f"{where}: must be an object")
+            continue
+        name = report.get("name")
+        if not (isinstance(name, str) and name.strip()):
+            errors.append(f"{where}: 'name' must be a non-empty string")
+        else:
+            where = f"report '{name}'"
+            if name in seen_names:
+                errors.append(f"{where}: duplicate report name")
+            seen_names.add(name)
+            report_names.append(name)
+        kind = report.get("kind")
+        if isinstance(kind, str) and kind.strip() and kind not in REGRESSION_REPORT_KINDS:
+            warnings.append(f"{where}: unknown report kind '{kind}' "
+                            f"(known: {sorted(REGRESSION_REPORT_KINDS)})")
+        if not (isinstance(report.get("status"), str) and report["status"].strip()):
+            warnings.append(f"{where}: no status declared")
+        if not report.get("counts"):
+            warnings.append(f"{where}: no counts declared")
+        metrics = report.get("metrics", {})
+        if metrics and not isinstance(metrics, dict):
+            errors.append(f"{where}: 'metrics' must be an object")
+        elif isinstance(metrics, dict):
+            for mkey, mval in metrics.items():
+                if not isinstance(mval, dict):
+                    errors.append(f"{where}: metric '{mkey}' must be an object of numeric values")
+                    continue
+                for side, sval in mval.items():
+                    if not isinstance(sval, (int, float)):
+                        errors.append(f"{where}: metric '{mkey}.{side}' must be numeric")
+
+    return {
+        "passed": not errors,
+        "errors": errors,
+        "warnings": warnings,
+        "report_count": len(reports),
+        "report_names": report_names,
+    }
+
+
+def summarize_regression_evaluation_run(run: dict[str, Any]) -> dict[str, Any]:
+    """Summarize a regression-evaluation run into an overall status + deltas.
+
+    Aggregates each report's pass/fail/warn counts, folds in each report's own
+    status, and computes candidate-minus-baseline deltas for any metric that
+    supplies both sides. Overall status is deterministic:
+      - "failed" if any report status is "failed" or any report has failed>0;
+      - else "needs_review" if any report status is "needs_review"/"warn", any
+        warnings exist, or any metric delta is present;
+      - else "passed".
+    No model invocation. Stdlib only.
+    """
+    reports = run.get("reports", []) if isinstance(run.get("reports"), list) else []
+    totals = {"passed": 0, "failed": 0, "warnings": 0}
+    report_rows: list[dict[str, Any]] = []
+    any_failed = False
+    any_review = False
+
+    for report in reports:
+        if not isinstance(report, dict):
+            continue
+        counts = report.get("counts", {}) if isinstance(report.get("counts"), dict) else {}
+        for key in totals:
+            val = counts.get(key)
+            if isinstance(val, (int, float)):
+                totals[key] += int(val)
+        status = str(report.get("status") or "").strip().lower()
+        if status == "failed" or (isinstance(counts.get("failed"), (int, float)) and counts["failed"] > 0):
+            any_failed = True
+        if status in ("needs_review", "warn", "warning"):
+            any_review = True
+
+        deltas: dict[str, Any] = {}
+        metrics = report.get("metrics", {}) if isinstance(report.get("metrics"), dict) else {}
+        for mkey, mval in metrics.items():
+            if isinstance(mval, dict) and isinstance(mval.get("baseline"), (int, float)) \
+                    and isinstance(mval.get("candidate"), (int, float)):
+                deltas[str(mkey)] = round(float(mval["candidate"]) - float(mval["baseline"]), 4)
+        report_rows.append({
+            "name": report.get("name", ""),
+            "kind": report.get("kind", ""),
+            "status": report.get("status", ""),
+            "counts": counts,
+            "metric_deltas": deltas,
+        })
+
+    has_deltas = any(row["metric_deltas"] for row in report_rows)
+    if any_failed:
+        overall = "failed"
+    elif any_review or totals["warnings"] > 0 or has_deltas:
+        overall = "needs_review"
+    else:
+        overall = "passed"
+
+    return {
+        "method": "regression_evaluation_summary_v1",
+        "boundary": (
+            "deterministic aggregation of supplied component reports only; no model "
+            "invoked, no evaluation executed, and no CI scheduling"
+        ),
+        "trigger_kind": run.get("metadata", {}).get("trigger_kind", "") if isinstance(run.get("metadata"), dict) else "",
+        "status": overall,
+        "report_count": len(report_rows),
+        "totals": totals,
+        "reports": report_rows,
+    }
+
+
 def run_retrieval_eval_suite(suite: dict[str, Any], k: int | None = None,
                              db_path: str | Path | None = None,
                              bm25_params: dict[str, Any] | None = None) -> dict[str, Any]:

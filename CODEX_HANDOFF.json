@@ -1,62 +1,60 @@
 {
   "status": "implemented_by_claude",
-  "task_id": "cailiao-stage5-outcome-metrics-v1",
-  "phase": "ROADMAP Stage 5: outcome metrics logging + summary skeleton v1 (adoption rate, edit distance, completion time, rework rounds; synthetic fixture only)",
-  "baseline": "b60895afbd8b5a9890a6f06dacad6d59f708bc87 Add comparison baseline matrix",
-  "summary": "Added a deterministic, stdlib-only Stage 5 outcome-metrics skeleton. load_outcome_metrics_log loads a {metadata, rows} log; validate_outcome_metrics_log checks per case_id/arm_id identity, numeric ranges, and ISO-like timestamps when duration is absent (missing optional metrics warn, malformed required identity errors); summarize_outcome_metrics derives adoption_rate (accepted bool or accepted_sections/total_sections), edit_distance (stdlib Levenshtein when draft/final text supplied, else supplied numeric), duration_seconds (supplied or completed_at-started_at), and rework_rounds, then aggregates per arm and overall. A CLI tools/validate_outcome_metrics.py validates and optionally summarizes. Synthetic fixture only; no persistence, no real data, no model call, no network.",
+  "task_id": "cailiao-stage5-regression-runner-v1",
+  "phase": "ROADMAP Stage 5 (final item): regression evaluation runner skeleton v1 (assemble/validate/summarize already-produced component reports; synthetic fixture only). Completes the Stage 5 deterministic skeletons.",
+  "baseline": "6e44a57ad82dcfa7f87f459a40fc4f1fda36edaa Add outcome metrics summary",
+  "summary": "Added a deterministic, stdlib-only Stage 5 regression-evaluation runner skeleton. build_regression_evaluation_run normalizes a config (trigger_kind rules_update/model_update/manual, baseline_ref, candidate_ref, suite, and component reports) into a run record with normalized report counts and baseline/candidate metric pairs. validate_regression_evaluation_run checks required metadata, supported trigger kind, unique report names, known report kinds (warn), and well-formed numeric metric values. summarize_regression_evaluation_run aggregates pass/fail/warn totals, computes candidate-minus-baseline metric deltas, and returns a deterministic overall status (failed / needs_review / passed). A CLI tools/run_regression_evaluation.py assembles+validates+summarizes. It normalizes already-produced reports only; it does not execute evaluations, invoke a model, hit the network, or schedule CI.",
   "changed_files": [
     "backend/server.py",
-    "tools/validate_outcome_metrics.py",
-    "tests/test_outcome_metrics.py",
-    "tests/data/outcome_metrics_sample.json",
+    "tools/run_regression_evaluation.py",
+    "tests/test_regression_evaluation.py",
+    "tests/data/regression_run_sample.json",
     "tools/run_quality_gates.py",
     "README.md",
     "docs/ROADMAP.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "backend/server.py: added load_outcome_metrics_log(path) (raises ValueError on non-object / missing rows).",
-    "backend/server.py: added _levenshtein(a, b) stdlib edit distance, _parse_iso_timestamp(value) (handles trailing Z), and _outcome_row_metrics(row) deriving adoption_rate/edit_distance/duration_seconds/rework_rounds.",
-    "backend/server.py: added validate_outcome_metrics_log(log) returning {passed, errors, warnings, row_count, arm_ids}; enforces case_id/arm_id identity + uniqueness, accepted/section/edit/duration/rework types and ranges, and ISO-like timestamps (completed >= started) when duration absent; warns on missing optional metrics.",
-    "backend/server.py: added summarize_outcome_metrics(log) with method=outcome_metrics_summary_v1; per-row metrics plus per-arm and overall means (only present metrics contribute; None when absent).",
-    "tools/validate_outcome_metrics.py: CLI (--log/--json, optional --summary) delegating to the server helpers; exit 0/1/2.",
-    "tests/data/outcome_metrics_sample.json: synthetic 4-row fixture exercising accepted-bool, section-ratio, computed vs supplied edit distance, and timestamp vs supplied duration modes.",
-    "tests/test_outcome_metrics.py: 15 tests across validation, summary, Levenshtein, and the CLI.",
-    "tools/run_quality_gates.py: py-compile gate now includes tests/test_outcome_metrics.py and tools/validate_outcome_metrics.py.",
-    "README.md and docs/ROADMAP.md document the v1 boundary; only the ROADMAP '记录采纳率、修改距离、完成时间、返工轮次' item is marked done (regression-run automation untouched)."
+    "backend/server.py: added REGRESSION_TRIGGER_KINDS, REGRESSION_REPORT_KINDS, _regression_reports_list.",
+    "backend/server.py: added build_regression_evaluation_run(config) with method=regression_evaluation_run_v1; normalized metadata + reports (name/kind/status/counts/metrics), metric values coerced to float baseline/candidate pairs (bare numeric -> candidate-only).",
+    "backend/server.py: added validate_regression_evaluation_run(run) returning {passed, errors, warnings, report_count, report_names}; enforces required metadata, supported trigger_kind, unique report names, numeric metric values; warns on unknown report kind, missing status/counts, or no reports.",
+    "backend/server.py: added summarize_regression_evaluation_run(run) with method=regression_evaluation_summary_v1; pass/fail/warn totals, per-report candidate-minus-baseline metric deltas, and overall status (failed if any report failed/failed>0; else needs_review if warnings/deltas/needs_review; else passed).",
+    "tools/run_regression_evaluation.py: CLI (--config/--json) delegating to the server helpers; exit 0/1/2.",
+    "tests/data/regression_run_sample.json: synthetic rules_update run with 3 component reports carrying baseline/candidate metric pairs.",
+    "tests/test_regression_evaluation.py: 17 tests across build, validation, summary, and the CLI.",
+    "tools/run_quality_gates.py: py-compile gate now includes tests/test_regression_evaluation.py and tools/run_regression_evaluation.py.",
+    "README.md and docs/ROADMAP.md document the v1 boundary; the ROADMAP '每次规则或模型更新运行回归评测' item is marked done and a Stage 5 skeleton-status note states all evaluation items are deterministic v1 skeletons while real data/providers/CI remain outstanding."
   ],
   "not_implemented": [
-    "No persistence DB or UI; the log is a request-local JSON document.",
-    "No real human/model usage data; the fixture is synthetic placeholder data.",
-    "No regression-run automation (that Stage 5 item remains unchecked).",
-    "No causal, significance, or reviewer-agreement analysis; means only. No model call or network."
+    "Does not execute any underlying evaluation; it only assembles/normalizes already-produced component reports.",
+    "No scheduling or CI integration beyond the CLI.",
+    "No real benchmark data or model execution; the fixture is synthetic placeholder data.",
+    "No model call or network. No Stage 6 work started."
   ],
   "test_files": [
-    "tests/test_outcome_metrics.py"
+    "tests/test_regression_evaluation.py"
   ],
   "required_test_commands_for_codex": [
-    "python -m unittest tests.test_outcome_metrics -v",
+    "python -m unittest tests.test_regression_evaluation -v",
     "python -m unittest discover -s tests -v",
-    "python tools/validate_outcome_metrics.py --log tests/data/outcome_metrics_sample.json --json",
-    "python tools/validate_outcome_metrics.py --log tests/data/outcome_metrics_sample.json --json --summary",
+    "python tools/run_regression_evaluation.py --config tests/data/regression_run_sample.json --json",
     "python tools/run_quality_gates.py --json",
     "python -m json.tool CODEX_HANDOFF.json",
     "git diff --check"
   ],
   "test_status": [
-    "python -m unittest tests.test_outcome_metrics -v: 15 tests OK.",
-    "python -m unittest discover -s tests -v: 304 tests OK.",
-    "python tools/validate_outcome_metrics.py --log ... --json: passed=true, 4 rows, arm_ids=[human, model_x], with expected missing-optional-metric warnings.",
-    "python tools/validate_outcome_metrics.py --log ... --json --summary: per-arm human adoption 0.875 / duration 960.0s, model_x adoption 0.5 / duration 1350.0s; overall adoption 0.6875, edit_distance 6.0, duration 1155.0s, rework 1.0.",
-    "python tools/run_quality_gates.py --json (default 'python' on PATH): passed=true, all 5 gates passed; unittest gate ran 304 tests OK.",
+    "python -m unittest tests.test_regression_evaluation -v: 17 tests OK.",
+    "python -m unittest discover -s tests -v: 321 tests OK.",
+    "python tools/run_regression_evaluation.py --config tests/data/regression_run_sample.json --json: passed=true, status=needs_review, totals passed=11/failed=0/warnings=1, deltas overall=+0.08, best_arm_mean=+0.1667, adoption_rate=+0.0875.",
+    "python tools/run_quality_gates.py --json (default 'python' on PATH): passed=true, all 5 gates passed; unittest gate ran 321 tests OK.",
     "python -m json.tool CODEX_HANDOFF.json: valid JSON.",
     "git diff --check: no whitespace/conflict issues."
   ],
   "risks": [
-    "Edit distance is character-level Levenshtein; it is O(len(draft)*len(final)) and scales poorly for very large documents (fine for the skeleton's short texts). It measures literal edits, not semantic change.",
-    "Duration from timestamps assumes started_at/completed_at share a timezone context; naive (no-offset) timestamps are treated as-is, so a caller mixing naive and aware timestamps could mis-measure.",
-    "Aggregates are simple means over present values only; a metric absent on some rows still averages the rows that have it, which can bias per-arm comparisons.",
-    "Fixtures are synthetic placeholder data and must not be mistaken for real usage telemetry.",
+    "Overall status is a coarse deterministic rollup: any metric delta (in either direction) forces needs_review, so a purely improving candidate is still flagged for a human to look at rather than auto-passed.",
+    "The runner trusts caller-supplied component report statuses/counts; it does not re-run or cross-check the underlying evaluations, so a wrong input report yields a wrong summary.",
+    "Metric deltas are raw candidate-minus-baseline with no thresholds, regression-direction awareness (higher-is-better vs lower-is-better), or significance testing.",
+    "Fixtures are synthetic placeholder data; a green run here does not indicate real evaluation coverage.",
     "Environment note: the local interpreter is python3 (no bare 'python' on PATH); the quality-gate runner honors PYTHON=python3, and a local 'python->python3' PATH shim lets its default-interpreter meta-test pass."
   ],
   "credentials": [

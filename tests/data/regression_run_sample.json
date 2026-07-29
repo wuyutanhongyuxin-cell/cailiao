@@ -1,0 +1,29 @@
+{
+  "trigger_kind": "rules_update",
+  "baseline_ref": "rules-v1",
+  "candidate_ref": "rules-v2",
+  "suite": "benchmark placeholder sample",
+  "reports": [
+    {
+      "name": "benchmark_scoring",
+      "kind": "benchmark_scoring",
+      "status": "passed",
+      "counts": {"passed": 3, "failed": 0, "warnings": 0},
+      "metrics": {"overall": {"baseline": 0.82, "candidate": 0.9}}
+    },
+    {
+      "name": "comparison_matrix",
+      "kind": "comparison_matrix",
+      "status": "passed",
+      "counts": {"passed": 4, "failed": 0, "warnings": 1},
+      "metrics": {"best_arm_mean": {"baseline": 4.5, "candidate": 4.6667}}
+    },
+    {
+      "name": "outcome_metrics",
+      "kind": "outcome_metrics",
+      "status": "passed",
+      "counts": {"passed": 4, "failed": 0, "warnings": 0},
+      "metrics": {"adoption_rate": {"baseline": 0.6, "candidate": 0.6875}}
+    }
+  ]
+}
