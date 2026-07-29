@@ -230,6 +230,23 @@
         <p class="muted">离线模式与仅提示词模式绝不进行任何网络或模型调用，也不读取 .env 或任何凭据；在线模式仅在服务端已配置 MATERIAL_LLM_* 时才会联网，否则自动回退为仅提示词。</p>
         <div id="configStatus" class="muted"></div>
         <pre id="configLog"></pre>
+
+        <div class="block">
+          <label for="accessRole">角色（演示，最小权限）</label>
+          <select id="accessRole">
+            <option value="viewer">viewer（只读，默认）</option>
+            <option value="reviewer">reviewer（只读+审稿）</option>
+            <option value="editor">editor（起草/审稿/导出/资料库）</option>
+            <option value="admin">admin（含用户/配置管理）</option>
+            <option value="owner">owner（全部权限）</option>
+          </select>
+        </div>
+        <div class="exportActions">
+          <button id="applyRoleBtn">预览该角色权限</button>
+        </div>
+        <p class="muted">这是确定性 RBAC/项目空间骨架：无登录、无密码/会话、无鉴权供应商，仅演示当前用户在某角色下的允许操作与项目空间隔离，不代表生产级访问控制。</p>
+        <div id="accessStatus" class="muted"></div>
+        <div id="accessActions" class="muted"></div>
       </section>
     </main>
   </div>

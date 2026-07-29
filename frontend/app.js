@@ -109,6 +109,7 @@ async function init() {
   renderGenreFields();
   renderEvidence();
   loadConfig();
+  loadAccessContext();
 }
 
 document.querySelectorAll('.nav').forEach((btn) => btn.addEventListener('click', () => setPanel(btn.dataset.panel)));
@@ -201,6 +202,32 @@ async function applyConfig() {
 }
 
 if ($('applyConfigBtn')) $('applyConfigBtn').addEventListener('click', applyConfig);
+
+// --- Stage 6: RBAC / workspaces (demo, minimum-permission) -----------------
+
+async function loadAccessContext(role) {
+  try {
+    const q = role ? `?role=${encodeURIComponent(role)}` : '';
+    const ctx = await fetch(`/api/access/context${q}`).then((r) => r.json());
+    renderAccessContext(ctx);
+  } catch (e) {
+    if ($('accessStatus')) $('accessStatus').textContent = '无法读取访问上下文。';
+  }
+}
+
+function renderAccessContext(ctx) {
+  if (!ctx || !ctx.user) return;
+  if ($('accessStatus')) {
+    $('accessStatus').textContent =
+      `演示用户 ${ctx.user.display_name}｜角色 ${ctx.user.role}｜项目空间 ${ctx.workspace.name}（${ctx.workspace.id}）`;
+  }
+  if ($('accessActions')) {
+    $('accessActions').textContent = `允许操作：${(ctx.allowed_actions || []).join('、') || '（无）'}`;
+  }
+  if ($('accessRole')) $('accessRole').value = ctx.user.role;
+}
+
+if ($('applyRoleBtn')) $('applyRoleBtn').addEventListener('click', () => loadAccessContext($('accessRole').value));
 
 // --- Phase 1: trusted evidence library UI -----------------------------------
 

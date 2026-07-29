@@ -4539,6 +4539,165 @@ def call_llm(prompt: str, config: dict[str, Any] | None = None) -> dict[str, Any
         return {"mode": "error", "draft": "", "prompt": prompt, "network_used": True, "error": str(exc)}
 
 
+# --- Stage 6: RBAC / workspaces / minimum-permission skeleton v1 --------------
+
+# Roles ordered from most to least privileged. Least privilege is the default.
+RBAC_ROLES = ("owner", "admin", "editor", "reviewer", "viewer")
+
+# Actions the permission matrix governs.
+RBAC_ACTIONS = (
+    "read", "generate", "review", "export",
+    "manage_library", "manage_users", "manage_config",
+)
+
+# Deterministic role -> allowed-actions matrix. A role grants exactly this set;
+# there is no implicit inheritance (kept explicit so the policy is auditable).
+RBAC_PERMISSIONS: dict[str, frozenset[str]] = {
+    "owner": frozenset(RBAC_ACTIONS),
+    "admin": frozenset({"read", "generate", "review", "export",
+                        "manage_library", "manage_users", "manage_config"}),
+    "editor": frozenset({"read", "generate", "review", "export", "manage_library"}),
+    "reviewer": frozenset({"read", "review"}),
+    "viewer": frozenset({"read"}),
+}
+
+# The default role assigned when none is supplied: least privilege.
+RBAC_DEFAULT_ROLE = "viewer"
+
+
+def build_access_context(user: dict[str, Any] | None = None,
+                         workspace: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Build a deterministic access context for the current demo user + workspace.
+
+    There is no auth provider: the caller supplies a demo/current user descriptor
+    (id, display_name, role) and a workspace descriptor (id, name). An unknown or
+    missing role falls back to the least-privileged default (viewer). The returned
+    context lists the exact allowed actions for the role. Stdlib only; reads no
+    credentials, session, or .env.
+    """
+    raw_user = user if isinstance(user, dict) else {}
+    raw_ws = workspace if isinstance(workspace, dict) else {}
+    role = str(raw_user.get("role") or "").strip()
+    if role not in RBAC_PERMISSIONS:
+        role = RBAC_DEFAULT_ROLE
+    allowed = sorted(RBAC_PERMISSIONS[role])
+    return {
+        "method": "access_context_v1",
+        "auth": "none",
+        "boundary": (
+            "deterministic RBAC/workspace policy skeleton only; no auth provider, "
+            "no password/session, no persistence, and not a production access control"
+        ),
+        "user": {
+            "id": str(raw_user.get("id") or "demo-user"),
+            "display_name": str(raw_user.get("display_name") or raw_user.get("name") or "演示用户"),
+            "role": role,
+        },
+        "workspace": {
+            "id": str(raw_ws.get("id") or "default"),
+            "name": str(raw_ws.get("name") or "默认项目空间"),
+        },
+        "allowed_actions": allowed,
+        "is_demo": True,
+    }
+
+
+def check_permission(context: Any, action: str,
+                     resource: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Check whether an access context may perform ``action`` on an optional resource.
+
+    Deterministic least-privilege check: the action must be a known action allowed
+    for the context's role. When ``resource`` declares a ``workspace_id`` it must
+    match the context's workspace (workspace isolation) or access is denied.
+    Returns {allowed, reason, action, role, workspace_id}. Stdlib only.
+    """
+    if not isinstance(context, dict):
+        return {"allowed": False, "reason": "invalid_context", "action": action,
+                "role": None, "workspace_id": None}
+    role = context.get("user", {}).get("role") if isinstance(context.get("user"), dict) else None
+    ws_id = context.get("workspace", {}).get("id") if isinstance(context.get("workspace"), dict) else None
+
+    if action not in RBAC_ACTIONS:
+        return {"allowed": False, "reason": "unknown_action", "action": action,
+                "role": role, "workspace_id": ws_id}
+    if role not in RBAC_PERMISSIONS:
+        return {"allowed": False, "reason": "unknown_role", "action": action,
+                "role": role, "workspace_id": ws_id}
+
+    # Workspace isolation: a resource in another workspace is out of scope.
+    if isinstance(resource, dict) and resource.get("workspace_id") is not None:
+        if str(resource.get("workspace_id")) != str(ws_id):
+            return {"allowed": False, "reason": "workspace_mismatch", "action": action,
+                    "role": role, "workspace_id": ws_id}
+
+    if action in RBAC_PERMISSIONS[role]:
+        return {"allowed": True, "reason": "granted", "action": action,
+                "role": role, "workspace_id": ws_id}
+    return {"allowed": False, "reason": "role_not_permitted", "action": action,
+            "role": role, "workspace_id": ws_id}
+
+
+def validate_access_policy(policy_or_context: Any) -> dict[str, Any]:
+    """Validate an access context / policy's shape and role/workspace integrity.
+
+    Checks a user role is supported, a workspace id is present, and (if an
+    ``allowed_actions`` list is present) it matches the role's canonical matrix
+    exactly and contains only known actions. Deterministic, stdlib only.
+    Returns {passed, errors, warnings, role, workspace_id}.
+    """
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    if not isinstance(policy_or_context, dict):
+        return {"passed": False, "errors": [f"policy must be a JSON object, got {type(policy_or_context).__name__}"],
+                "warnings": [], "role": None, "workspace_id": None}
+
+    user = policy_or_context.get("user")
+    role = None
+    if not isinstance(user, dict):
+        errors.append("'user' must be an object")
+    else:
+        role = user.get("role")
+        if not (isinstance(role, str) and role.strip()):
+            errors.append("user 'role' must be a non-empty string")
+            role = None
+        elif role not in RBAC_PERMISSIONS:
+            errors.append(f"unsupported role '{role}' (supported: {list(RBAC_ROLES)})")
+            role = None
+
+    workspace = policy_or_context.get("workspace")
+    ws_id = None
+    if not isinstance(workspace, dict):
+        errors.append("'workspace' must be an object")
+    else:
+        ws_id = workspace.get("id")
+        if not (isinstance(ws_id, str) and ws_id.strip()):
+            errors.append("workspace 'id' must be a non-empty string")
+            ws_id = None
+
+    allowed = policy_or_context.get("allowed_actions")
+    if allowed is not None:
+        if not isinstance(allowed, list):
+            errors.append("'allowed_actions' must be a list when present")
+        else:
+            unknown = [a for a in allowed if a not in RBAC_ACTIONS]
+            if unknown:
+                errors.append(f"allowed_actions contains unknown action(s) {unknown}")
+            if role is not None and not unknown and set(allowed) != set(RBAC_PERMISSIONS[role]):
+                errors.append(f"allowed_actions do not match the canonical matrix for role '{role}'")
+
+    if role == "viewer":
+        warnings.append("role 'viewer' is read-only (least privilege)")
+
+    return {
+        "passed": not errors,
+        "errors": errors,
+        "warnings": warnings,
+        "role": role,
+        "workspace_id": ws_id,
+    }
+
+
 def add_evidence(item: dict[str, str]) -> dict[str, str]:
     item_id = str(uuid.uuid4())
     title = item.get("title", "").strip()
@@ -5223,6 +5382,12 @@ class Handler(SimpleHTTPRequestHandler):
         if self.path.startswith("/api/config"):
             self.json_response(build_local_config({}))
             return
+        if self.path.startswith("/api/access/context"):
+            # No auth provider: expose a deterministic demo context. A role query
+            # param lets the demo UI preview a different role's allowed actions.
+            role = self._query_param("role")
+            self.json_response(build_access_context({"role": role} if role else None))
+            return
         if self.path.startswith("/api/evidence/search"):
             q = self.path.split("q=", 1)[1] if "q=" in self.path else ""
             self.json_response({"items": search_evidence(q)})
@@ -5287,6 +5452,12 @@ class Handler(SimpleHTTPRequestHandler):
             elif self.path == "/api/config/validate":
                 report = validate_local_config(payload)
                 self.json_response(report, 200 if report["passed"] else HTTPStatus.UNPROCESSABLE_ENTITY)
+            elif self.path == "/api/access/validate":
+                report = validate_access_policy(payload)
+                self.json_response(report, 200 if report["passed"] else HTTPStatus.UNPROCESSABLE_ENTITY)
+            elif self.path == "/api/access/check":
+                context = payload.get("context") or build_access_context(payload.get("user"), payload.get("workspace"))
+                self.json_response(check_permission(context, str(payload.get("action", "")), payload.get("resource")))
             elif self.path == "/api/evidence":
                 self.json_response(add_evidence(payload), HTTPStatus.CREATED)
             elif self.path == "/api/library/import":

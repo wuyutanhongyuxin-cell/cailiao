@@ -1,62 +1,64 @@
 {
   "status": "implemented_by_claude",
-  "task_id": "cailiao-stage6-local-config-offline-model-v1",
-  "phase": "ROADMAP Stage 6 (first item): local configuration + offline model option skeleton v1 (offline / prompt_only / openai_compatible modes; offline is default and makes no network call)",
-  "baseline": "ab3dc6b09ed84d1e9f02fb16354c04cd818c0272 Add regression evaluation runner",
-  "summary": "Added a deterministic, stdlib-only Stage 6 local-config + offline-model skeleton. build_local_config returns a safe default (model_mode=offline, allow_network=false) and normalizes an optional override; provider configuration is surfaced only as a boolean derived via bool(os.getenv(...)), never reading credential values or .env. validate_local_config checks the mode and preference types and warns when openai_compatible is chosen without a configured provider. call_llm is now mode-aware: offline returns a local placeholder draft, prompt_only returns the strict prompt, and only openai_compatible may reach the network (degrading to prompt_only when unconfigured); offline/prompt_only hard-guarantee network_used=false. New HTTP endpoints GET /api/config and POST /api/config/validate, and /api/generate now threads payload.config into call_llm. A front-end 设置 panel exposes the model-mode selector and offline boundary. No dependency install, no local inference engine, no network/model call, no secret/.env read.",
+  "task_id": "cailiao-stage6-rbac-workspaces-v1",
+  "phase": "ROADMAP Stage 6 (second item): RBAC / workspaces / minimum-permission policy skeleton v1 (owner/admin/editor/reviewer/viewer roles, deterministic demo context, no auth provider)",
+  "baseline": "84bd16866025f9c4c75f6c8d517620dd00b23fb0 Add local offline configuration",
+  "summary": "Added a deterministic, stdlib-only Stage 6 RBAC/workspace skeleton. build_access_context returns a demo current-user + workspace context whose allowed_actions come from an explicit role->actions matrix (owner/admin/editor/reviewer/viewer), defaulting to least-privilege viewer for unknown/missing roles. check_permission enforces known-action + role-permitted + workspace isolation (a resource in another workspace is denied). validate_access_policy checks the role, workspace id, and that any allowed_actions list matches the role's canonical matrix. New HTTP endpoints GET /api/access/context (with optional ?role= preview), POST /api/access/validate, and POST /api/access/check. A front-end 设置 panel section shows role/workspace/allowed-actions with an explicit no-login boundary. No auth provider, no password/session, no persistence, no network, no secret/.env read.",
   "changed_files": [
     "backend/server.py",
     "frontend/index.html",
     "frontend/app.js",
-    "tests/test_local_config.py",
+    "tests/test_rbac_workspaces.py",
     "tools/run_quality_gates.py",
     "README.md",
     "docs/ROADMAP.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "backend/server.py: added MODEL_MODES, OFFLINE_MODEL_MODES, build_local_config(overrides=None) (method=local_config_v1, default offline, provider_configured as bool only), validate_local_config(config), build_offline_placeholder_draft(prompt).",
-    "backend/server.py: call_llm(prompt, config=None) is now mode-aware; offline/prompt_only make no network call and return network_used=false; openai_compatible keeps the existing remote path and returns network_used=true (or degrades to prompt_only when unconfigured).",
-    "backend/server.py: Handler.do_GET serves GET /api/config (build_local_config); do_POST serves POST /api/config/validate (422 on invalid) and passes payload.config into call_llm for /api/generate.",
-    "frontend/index.html: added a 设置 nav button and #settings panel with #modelMode selector, #applyConfigBtn, offline boundary text, #configStatus and #configLog.",
-    "frontend/app.js: added state.config, loadConfig()/renderConfigStatus()/applyConfig() wired to /api/config and /api/config/validate, persists mws_model_mode in localStorage, and threads {config:{model_mode}} into /api/generate.",
-    "tests/test_local_config.py: 18 tests (config defaults, validation, offline no-network guarantee incl. a urlopen monkeypatch, live HTTP GET/POST config + offline generate, and frontend settings-panel assertions).",
-    "tools/run_quality_gates.py: py-compile gate now includes tests/test_local_config.py.",
-    "README.md and docs/ROADMAP.md document the v1 boundary; only the ROADMAP '本地配置页面和完全离线模型选项' item is marked done (other Stage 6 items untouched)."
+    "backend/server.py: added RBAC_ROLES, RBAC_ACTIONS, RBAC_PERMISSIONS matrix, RBAC_DEFAULT_ROLE (viewer).",
+    "backend/server.py: added build_access_context(user=None, workspace=None) (method=access_context_v1, auth=none, is_demo=true; unknown role -> viewer; allowed_actions from the matrix).",
+    "backend/server.py: added check_permission(context, action, resource=None) returning {allowed, reason, action, role, workspace_id}; reasons include unknown_action, unknown_role, workspace_mismatch, role_not_permitted, granted, invalid_context.",
+    "backend/server.py: added validate_access_policy(policy_or_context) returning {passed, errors, warnings, role, workspace_id}; validates role, workspace id, and allowed_actions consistency with the canonical matrix.",
+    "backend/server.py: Handler.do_GET serves GET /api/access/context (optional ?role= demo preview); do_POST serves POST /api/access/validate (422 on invalid) and POST /api/access/check.",
+    "frontend/index.html: added an access section in the 设置 panel with #accessRole selector, #applyRoleBtn, #accessStatus, #accessActions and an explicit no-login boundary note.",
+    "frontend/app.js: added loadAccessContext()/renderAccessContext() wired to /api/access/context, and a role-preview button; called from init().",
+    "tests/test_rbac_workspaces.py: 24 tests (context defaults/least-privilege, per-role permission checks, workspace isolation, invalid role/action denial, policy validation incl. tampered allowed_actions, live HTTP context/validate/check, and frontend token assertions).",
+    "tools/run_quality_gates.py: py-compile gate now includes tests/test_rbac_workspaces.py.",
+    "README.md and docs/ROADMAP.md document the v1 boundary; only the ROADMAP '多用户角色、项目空间、最小权限' item is marked done (encryption/backup/audit-log/provider-risk/SBOM untouched)."
   ],
   "not_implemented": [
-    "No bundled or real local inference engine; offline mode returns a deterministic placeholder draft plus the strict prompt.",
-    "No dependency install, no container/packaging work.",
-    "No multi-user roles, encryption/backup, provider data-flow risk grading, or dependency locking (other Stage 6 items remain unchecked).",
-    "No network/model call in offline or prompt_only modes; no credential or .env read in any mode."
+    "No authentication provider, password, session, or login flow; the current user is a deterministic demo identity.",
+    "No persistence DB for users/workspaces/roles; context is request-local.",
+    "No encryption/backup/recovery, audit logging, provider data-flow risk grading, or SBOM/dependency-locking (later Stage 6 items).",
+    "No network, no secret or .env read."
   ],
   "test_files": [
-    "tests/test_local_config.py"
+    "tests/test_rbac_workspaces.py"
   ],
   "required_test_commands_for_codex": [
-    "python -m unittest tests.test_local_config -v",
+    "python -m unittest tests.test_rbac_workspaces -v",
     "python -m unittest discover -s tests -v",
     "python tools/run_quality_gates.py --json",
     "python -m json.tool CODEX_HANDOFF.json",
     "git diff --check"
   ],
   "test_status": [
-    "python -m unittest tests.test_local_config -v: 18 tests OK (includes live ThreadingHTTPServer GET/POST and a urlopen monkeypatch proving offline makes no network call).",
-    "python -m unittest discover -s tests -v: 339 tests OK.",
-    "python tools/run_quality_gates.py --json (default 'python' on PATH): passed=true, all 5 gates passed; unittest gate ran 339 tests OK.",
+    "python -m unittest tests.test_rbac_workspaces -v: 24 tests OK (includes live ThreadingHTTPServer context/validate/check).",
+    "python -m unittest discover -s tests -v: 363 tests OK.",
+    "python tools/run_quality_gates.py --json (default 'python' on PATH): passed=true, all 5 gates passed; unittest gate ran 363 tests OK.",
     "python -m json.tool CODEX_HANDOFF.json: valid JSON.",
     "git diff --check: no whitespace/conflict issues."
   ],
   "risks": [
-    "call_llm gained an optional config arg; existing callers that omit it now get offline behavior (no network) rather than the old auto-remote-if-configured behavior. The HTTP /api/generate path passes payload.config, defaulting to offline when absent — a deliberate safe default, but a behavior change for any caller that relied on implicit remote calls.",
-    "Offline placeholder draft is a fixed template plus the prompt; it is not model output and must not be mistaken for a generated draft.",
-    "provider_configured only reflects presence of MATERIAL_LLM_BASE_URL and MATERIAL_LLM_API_KEY via bool(); it does not validate that the endpoint actually works.",
-    "The settings panel persists the chosen mode in browser localStorage only; there is no server-side or multi-user persistence (out of scope for v1).",
+    "This is a policy skeleton, not enforcement: existing endpoints (generate/export/library/config) are NOT yet gated by check_permission, so the matrix is advisory until wired into each handler. It must not be mistaken for real access control.",
+    "The current user is a caller-supplied demo identity with no authentication; anyone can request any role via the demo context, which is intentional for v1 but unsafe for production.",
+    "Workspace isolation is enforced only when a resource explicitly carries a workspace_id; resources without one are not workspace-scoped.",
+    "Role->action matrix is explicit with no inheritance; adding an action requires updating each role deliberately (auditable but manual).",
     "Environment note: the local interpreter is python3 (no bare 'python' on PATH); the quality-gate runner honors PYTHON=python3, and a local 'python->python3' PATH shim lets its default-interpreter meta-test pass."
   ],
   "credentials": [
-    "No credentials or .env files were read, created, or modified; provider settings are surfaced only as booleans via bool(os.getenv(...)).",
-    "No external network calls were used for implementation or local tests; offline/prompt_only modes are proven to make no network call.",
+    "No credentials or .env files were read, created, or modified.",
+    "No external network calls were used for implementation or local tests.",
     "No push performed; commit/push left to the maintainer."
   ]
 }
