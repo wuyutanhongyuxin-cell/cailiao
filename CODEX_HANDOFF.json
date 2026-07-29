@@ -1,55 +1,52 @@
 {
-  "status": "implemented_by_claude",
-  "task_id": "cailiao-stage4-font-fallback-preflight-v1",
-  "phase": "ROADMAP Stage 4: deterministic DOCX font fallback / known-font detection and pre-export preflight report v1",
-  "baseline": "3107af4502343a08db74aef5822d8564a1ee8e4c Add DOCX structured fields",
-  "summary": "Added deterministic, stdlib-only DOCX font fallback and export preflight helpers. build_font_fallback_plan reports, per role (body/title/heading/latin), the requested font, whether it is in a conservative built-in known-font list, and an ordered de-duplicated fallback candidate chain, plus advisory warnings for unknown fonts. build_export_preflight_report aggregates method/version, the font fallback plan, the layout plan summary, the structured field summary, and export boundary warnings. Both helpers reuse build_docx_style_profile and are additive: export_docx output is unchanged.",
+  "status": "docs_reworked_by_claude",
+  "task_id": "cailiao-stage4-docx-render-regression-v1",
+  "phase": "ROADMAP Stage 4: deterministic DOCX render/layout regression v1 (structural/markup regression over the generated OOXML package; visual screenshots remain future work). Docs-finalization rework pass; implementation unchanged.",
+  "baseline": "054cd7b6c34d3bdf33d070be2a31fe47bf686666 Add DOCX font preflight",
+  "summary": "Added a deterministic, stdlib-only DOCX render/layout regression slice. inspect_docx_package_layout opens a generated DOCX byte package and reports which parts are present (document/styles/footer), the distinct paragraph style ids referenced, footer PAGE-field presence, and the page size / margins declared in the section properties. build_docx_layout_regression_report exports a DOCX in-memory, inspects it, and cross-checks against the style profile and existing preflight helpers (table / attachment / unknown-font counts), emitting an ordered list of named pass/fail checks plus a rollup summary. No real renderer is bundled or invoked; visual screenshot / pixel layout regression is explicitly documented as future work. export_docx behavior is unchanged.",
   "changed_files": [
     "backend/server.py",
-    "tests/test_docx_font_preflight.py",
+    "tests/test_docx_layout_regression.py",
     "tools/run_quality_gates.py",
     "README.md",
     "docs/ROADMAP.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "backend/server.py: added _KNOWN_DOCX_FONTS (conservative built-in known-font list) and _DOCX_FONT_FALLBACKS (per-role fallback chains).",
-    "backend/server.py: added build_font_fallback_plan(style_profile=None) returning method=docx_font_fallback_plan_v1, known_font_list_size, per-role {requested,is_known,fallback_candidates}, warnings, and summary counts.",
-    "backend/server.py: added build_export_preflight_report(title, body, style_profile=None) returning method/version=docx_export_preflight_v1, font_fallback_plan, layout_plan_summary, structured_field_summary, export_boundary_warnings, and summary counts.",
-    "tests/test_docx_font_preflight.py: 10 unit tests covering known/unknown fonts, fallback de-dup, JSON serializability, preflight aggregation, and the additive export_docx guarantee.",
-    "tools/run_quality_gates.py: py-compile gate now includes tests/test_docx_font_preflight.py.",
-    "README.md and docs/ROADMAP.md document the v1 boundary; ROADMAP items for font detection/fallback and pre-export preflight report are marked done."
+    "backend/server.py: added inspect_docx_package_layout(raw_docx) returning method=docx_package_layout_inspector_v1, readable_zip, parts, has_document/has_styles/has_footer, footer_has_page_field, style_references, and page size/margins parsed from the section properties.",
+    "backend/server.py: added build_docx_layout_regression_report(title, body, style_profile=None) returning method=docx_layout_regression_v1, passed, package_size_bytes, inspection, an ordered checks[] list (zip_readable, document_present, styles_present, footer_matches_page_number, footer_has_page_field, {title,heading,body}_style_referenced, page_size_present, margins_present), failed_checks, and a summary with table/attachment/unknown-font/paragraph counts.",
+    "tests/test_docx_layout_regression.py: 9 unit tests covering the inspector (parts, footer on/off, style references, invalid bytes) and the regression report (all-pass default, structured/font counts, footer flag tracking, JSON serializability).",
+    "tools/run_quality_gates.py: py-compile gate now includes tests/test_docx_layout_regression.py.",
+    "README.md and docs/ROADMAP.md document the v1 boundary; the ROADMAP 'DOCX 渲染截图与版式回归' item is marked done as structural regression v1 with visual screenshots noted as future work."
   ],
   "not_implemented": [
-    "No font embedding, font downloading, or host-installed-font inspection.",
-    "No automatic font substitution in the exported DOCX (fonts are still written as requested).",
-    "No rendered screenshot, layout regression, model call, network call, frontend UI, or persistence.",
-    "export_docx output is unchanged; the helpers are advisory metadata only."
+    "No real renderer, rasterization, screenshot, or pixel-level layout verification.",
+    "No network install of any rendering engine (LibreOffice, headless Word, etc.).",
+    "No frontend UI, persistence, model call, or network call.",
+    "export_docx output is unchanged; the helpers are additive inspectors."
   ],
   "test_files": [
-    "tests/test_docx_font_preflight.py"
+    "tests/test_docx_layout_regression.py"
   ],
   "required_test_commands_for_codex": [
-    "python -m unittest tests.test_docx_font_preflight -v",
+    "python -m unittest tests.test_docx_layout_regression -v",
     "python -m unittest discover -s tests -v",
-    "python tools/validate_retrieval_suite.py --suite tests/data/retrieval_eval_suite.json --json",
     "python tools/run_quality_gates.py --json",
     "python -m json.tool CODEX_HANDOFF.json",
     "git diff --check"
   ],
   "test_status": [
-    "python3 -m unittest tests.test_docx_font_preflight -v: 10 tests OK.",
-    "python3 -m unittest discover -s tests -v: 233 tests OK.",
-    "python3 tools/validate_retrieval_suite.py --suite tests/data/retrieval_eval_suite.json --json: passed=true with expected placeholder/<50-case warnings.",
-    "python tools/run_quality_gates.py --json (default 'python' on PATH): passed=true, all 5 gates passed (py-compile, unittest, eval-retrieval, git-diff, secret-scan); unittest gate ran 233 tests OK.",
-    "python3 -m json.tool CODEX_HANDOFF.json: valid JSON.",
+    "python -m unittest tests.test_docx_layout_regression -v: 9 tests OK.",
+    "python -m unittest discover -s tests -v: 242 tests OK.",
+    "python tools/run_quality_gates.py --json (default 'python' on PATH): passed=true, all 5 gates passed (py-compile, unittest, eval-retrieval, git-diff, secret-scan); unittest gate ran 242 tests OK.",
+    "python -m json.tool CODEX_HANDOFF.json: valid JSON.",
     "git diff --check: no whitespace/conflict issues."
   ],
   "risks": [
-    "The known-font list is intentionally conservative; a real but uncommon font can be flagged as unknown (advisory only, export still proceeds).",
-    "Fallback candidate chains are static suggestions for a downstream renderer, not verified against any host system.",
-    "Preflight is request-local metadata and is not wired into an HTTP endpoint in this slice.",
-    "Environment note: the local interpreter is python3 (no bare 'python' on PATH); the quality-gate runner honors PYTHON=python3."
+    "The inspector matches the section properties via a fixed regex over the known export template; if export_docx's sectPr markup changes, the regex would need updating (a regression test would surface this).",
+    "This is structural/markup regression only: it can confirm parts, style references, page size, and margins exist and match the profile, but cannot detect visual rendering defects.",
+    "Style-reference checks are conditional on a role actually appearing in the layout plan, so an all-body document does not assert title/heading references.",
+    "Environment note: the local interpreter is python3 (no bare 'python' on PATH); the quality-gate runner honors PYTHON=python3, and a local 'python->python3' PATH shim lets its default-interpreter meta-test pass."
   ],
   "credentials": [
     "No credentials or .env files were read, created, or modified.",

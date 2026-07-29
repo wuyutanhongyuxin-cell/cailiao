@@ -134,7 +134,7 @@
 - [x] 表格、附件说明、文号、签发人、主送机关等结构化字段 v1：确定性 `build_docx_structured_fields(options=None)` 与 `docx_table_xml(table, style_id)`；通过 `style_profile` 支持 `document_number`、`issuer`、`recipient`、`attachments`（字符串或 `title`/`name` 结构）和简单 `tables`（`headers`/`rows`），导出时文号/签发人/主送机关靠前插入，附件说明和基础 OOXML `w:tbl` 表格追加在正文后、落款/版记前；字段输出稳定归一化并给出 counts。**边界：基础字段段落和简单表格 XML，不做复杂表格样式、附件分页、正式版记排版、不加 UI/持久化。**
 - [x] 字体缺失检测和替代策略 v1：确定性 `build_font_fallback_plan(style_profile=None)`，基于 `build_docx_style_profile` 逐角色（body/title/heading/latin）报告请求字体、是否在保守内置已知字体列表 `_KNOWN_DOCX_FONTS` 中、按角色的回退候选链（去重且排除请求字体本身），并对未知字体给出告警；输出 `method=docx_font_fallback_plan_v1` 与 counts。**边界：仅建议性元数据，不替换/嵌入/下载字体，不读取宿主已安装字体，不改动 `export_docx` 输出。**
 - [x] 导出前格式预检报告 v1：确定性 `build_export_preflight_report(title, body, style_profile=None)`，汇总 `method`/`version`、字体回退计划、布局计划摘要、结构化字段摘要与导出边界告警（含未知字体告警），输出 `method=docx_export_preflight_v1` 与 summary counts。**边界：仅检查请求本地输入，不写文件、不调用模型、不访问网络，不是正式排版认证。**
-- [ ] DOCX 渲染截图与版式回归
+- [x] DOCX 版式回归（结构/标记）v1：确定性 `inspect_docx_package_layout(raw_docx)` 与 `build_docx_layout_regression_report(title, body, style_profile=None)`；导出后打开 OOXML 包，校验 `word/document.xml`/`word/styles.xml` 是否存在、启用页码时是否含 `word/footer1.xml` 与 PAGE 字段、标题/正文/层级样式引用、页面尺寸与页边距，并复用既有 helper 汇总表格/附件/未知字体计数，输出命名的通过/失败检查项与 `method=docx_layout_regression_v1`。**边界：仅对生成的 OOXML 包做结构/标记回归，不内置或调用真实渲染器；视觉渲染截图与像素级版式回归仍为后续工作。**
 
 验收：Word/WPS 打开无修复提示；关键版式自动检查通过；多页材料无异常分页或溢出；模板由熟悉公文格式的人员验收。
 

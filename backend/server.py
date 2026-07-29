@@ -3730,6 +3730,150 @@ def export_docx(title: str, body: str, style_profile: dict[str, Any] | None = No
     return buf.getvalue()
 
 
+def inspect_docx_package_layout(raw_docx: bytes) -> dict[str, Any]:
+    """Inspect a generated DOCX byte package for structural layout invariants.
+
+    Deterministic, stdlib-only. Opens the OOXML zip and reports which parts are
+    present, which paragraph style ids the document references, and the page
+    size / margin values declared in the section properties. This is a package
+    and markup inspector, not a visual renderer: it does not rasterize or
+    verify on-screen appearance.
+    """
+    result: dict[str, Any] = {
+        "method": "docx_package_layout_inspector_v1",
+        "boundary": (
+            "OOXML package/markup inspection only; not a visual renderer and not "
+            "a screenshot or pixel-level layout verification"
+        ),
+        "readable_zip": False,
+        "parts": [],
+        "has_document": False,
+        "has_styles": False,
+        "has_footer": False,
+        "footer_has_page_field": False,
+        "style_references": [],
+        "page": {"width_twips": None, "height_twips": None, "has_margins": False, "margins_twips": {}},
+    }
+    try:
+        with zipfile.ZipFile(io.BytesIO(raw_docx)) as z:
+            names = z.namelist()
+            result["readable_zip"] = True
+            result["parts"] = sorted(names)
+            result["has_document"] = "word/document.xml" in names
+            result["has_styles"] = "word/styles.xml" in names
+            result["has_footer"] = "word/footer1.xml" in names
+            document = z.read("word/document.xml").decode("utf-8") if result["has_document"] else ""
+            footer = z.read("word/footer1.xml").decode("utf-8") if result["has_footer"] else ""
+    except (zipfile.BadZipFile, KeyError, OSError, UnicodeDecodeError):
+        return result
+
+    # Distinct pStyle references, in first-seen order (deterministic).
+    seen: list[str] = []
+    for match in re.findall(r'<w:pStyle w:val="([^"]+)"/>', document):
+        if match not in seen:
+            seen.append(match)
+    result["style_references"] = seen
+
+    size_match = re.search(r'<w:pgSz w:w="(\d+)" w:h="(\d+)"/>', document)
+    if size_match:
+        result["page"]["width_twips"] = int(size_match.group(1))
+        result["page"]["height_twips"] = int(size_match.group(2))
+    margin_match = re.search(
+        r'<w:pgMar w:top="(-?\d+)" w:right="(-?\d+)" w:bottom="(-?\d+)" '
+        r'w:left="(-?\d+)" w:header="(-?\d+)" w:footer="(-?\d+)" w:gutter="(-?\d+)"/>',
+        document,
+    )
+    if margin_match:
+        keys = ("top", "right", "bottom", "left", "header", "footer", "gutter")
+        result["page"]["margins_twips"] = {k: int(v) for k, v in zip(keys, margin_match.groups())}
+        result["page"]["has_margins"] = True
+
+    result["footer_has_page_field"] = bool(footer) and "PAGE" in footer
+    return result
+
+
+def build_docx_layout_regression_report(
+    title: str,
+    body: str,
+    style_profile: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Build a deterministic DOCX render/layout regression report.
+
+    Exports a DOCX in-memory, inspects its package layout, and cross-checks the
+    result against the declared style profile and the existing preflight helpers
+    (table / attachment / unknown-font counts). Emits an ordered list of named
+    pass/fail checks plus a rollup summary so a regression suite can assert on
+    stable structural invariants without a real renderer.
+
+    Boundary: structural/markup regression only. Visual screenshot and pixel
+    layout regression remain future work — no renderer is bundled or invoked.
+    """
+    profile = build_docx_style_profile(style_profile or {})
+    style_ids = profile["style_ids"]
+    footer_enabled = bool(profile.get("footer", {}).get("page_number"))
+
+    layout_plan = build_docx_layout_plan(title, body, {"style_profile": style_profile or {}})
+    structured_fields = build_docx_structured_fields(style_profile or {})
+    font_plan = build_font_fallback_plan(style_profile or {})
+
+    raw = export_docx(title, body, style_profile or {})
+    inspection = inspect_docx_package_layout(raw)
+
+    roles_present = {entry["role"] for entry in layout_plan["paragraphs"]}
+    refs = set(inspection["style_references"])
+    checks: list[dict[str, Any]] = []
+
+    def add_check(name: str, passed: bool, detail: str) -> None:
+        checks.append({"name": name, "passed": bool(passed), "detail": detail})
+
+    add_check("zip_readable", inspection["readable_zip"], "package opens as a valid zip")
+    add_check("document_present", inspection["has_document"], "word/document.xml exists")
+    add_check("styles_present", inspection["has_styles"], "word/styles.xml exists")
+    add_check(
+        "footer_matches_page_number",
+        inspection["has_footer"] == footer_enabled,
+        f"footer part present={inspection['has_footer']}, page_number={footer_enabled}",
+    )
+    if footer_enabled:
+        add_check("footer_has_page_field", inspection["footer_has_page_field"],
+                  "footer declares a PAGE field")
+    for role in ("title", "heading", "body"):
+        if role in roles_present:
+            add_check(f"{role}_style_referenced", style_ids[role] in refs,
+                      f"style id {style_ids[role]} referenced for role {role}")
+    add_check(
+        "page_size_present",
+        inspection["page"]["width_twips"] == profile["page"]["width_twips"]
+        and inspection["page"]["height_twips"] == profile["page"]["height_twips"],
+        "pgSz width/height match style profile",
+    )
+    add_check("margins_present", inspection["page"]["has_margins"],
+              "pgMar margins declared in section properties")
+
+    summary = {
+        "check_count": len(checks),
+        "passed_count": sum(1 for c in checks if c["passed"]),
+        "failed_count": sum(1 for c in checks if not c["passed"]),
+        "table_count": structured_fields["summary"]["table_count"],
+        "attachment_count": structured_fields["summary"]["attachment_count"],
+        "unknown_font_count": font_plan["summary"]["unknown_count"],
+        "paragraph_count": layout_plan["summary"]["paragraph_count"],
+    }
+    return {
+        "method": "docx_layout_regression_v1",
+        "boundary": (
+            "deterministic structural/markup regression over the generated OOXML "
+            "package; visual screenshot and pixel layout regression remain future work"
+        ),
+        "passed": summary["failed_count"] == 0,
+        "package_size_bytes": len(raw),
+        "inspection": inspection,
+        "checks": checks,
+        "failed_checks": [c["name"] for c in checks if not c["passed"]],
+        "summary": summary,
+    }
+
+
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, directory=str(FRONTEND), **kwargs)
