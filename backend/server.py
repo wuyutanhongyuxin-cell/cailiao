@@ -3238,18 +3238,164 @@ def search_evidence(q: str) -> list[dict[str, str]]:
     return [dict(zip(["id", "title", "source", "url", "body", "created_at"], row)) for row in rows]
 
 
-def export_docx(title: str, body: str) -> bytes:
+def _bounded_int(raw: Any, default: int, minimum: int, maximum: int) -> int:
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        return default
+    return min(max(value, minimum), maximum)
+
+
+def build_docx_style_profile(payload_or_options: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Return deterministic DOCX style defaults inspired by GB/T 9704-2012.
+
+    This is a local export profile, not a certification that the resulting file
+    fully satisfies the national standard. It uses stdlib-only OOXML generation.
+    """
+    raw = payload_or_options or {}
+    if not isinstance(raw, dict):
+        raw = {}
+    options = raw.get("style_profile") if isinstance(raw.get("style_profile"), dict) else raw
+    if not isinstance(options, dict):
+        options = {}
+
+    default_margins = {
+        "top": 2126,
+        "right": 1984,
+        "bottom": 1984,
+        "left": 1984,
+        "header": 851,
+        "footer": 992,
+        "gutter": 0,
+    }
+    raw_margins = options.get("margins_twips") or options.get("margins") or {}
+    if not isinstance(raw_margins, dict):
+        raw_margins = {}
+    margins = {
+        key: _bounded_int(raw_margins.get(key), default, 0, 4320)
+        for key, default in default_margins.items()
+    }
+
+    font_family = str(options.get("font_family") or options.get("body_font") or "FangSong").strip() or "FangSong"
+    title_font = str(options.get("title_font") or "SimHei").strip() or "SimHei"
+    heading_font = str(options.get("heading_font") or "SimHei").strip() or "SimHei"
+    latin_font = str(options.get("latin_font") or "Times New Roman").strip() or "Times New Roman"
+
+    return {
+        "method": "docx_style_profile_v1",
+        "standard": "GB/T 9704-2012-inspired",
+        "boundary": "deterministic OOXML style profile only; not full formal layout certification",
+        "page": {
+            "size": "A4",
+            "width_twips": 11906,
+            "height_twips": 16838,
+            "margins_twips": margins,
+        },
+        "fonts": {
+            "body": font_family,
+            "title": title_font,
+            "heading": heading_font,
+            "latin": latin_font,
+        },
+        "paragraph": {
+            "first_line_indent_twips": _bounded_int(options.get("first_line_indent_twips"), 640, 0, 1440),
+            "line_spacing_twips": _bounded_int(options.get("line_spacing_twips"), 560, 240, 960),
+            "body_alignment": str(options.get("body_alignment") or "both"),
+            "title_alignment": str(options.get("title_alignment") or "center"),
+        },
+        "font_size_half_points": {
+            "title": _bounded_int(options.get("title_font_size_half_points"), 44, 18, 72),
+            "heading": _bounded_int(options.get("heading_font_size_half_points"), 32, 18, 56),
+            "body": _bounded_int(options.get("body_font_size_half_points"), 32, 18, 56),
+        },
+        "style_ids": {
+            "title": "MaterialTitle",
+            "heading": "MaterialHeading",
+            "body": "MaterialBody",
+        },
+        "footer": {
+            "page_number": bool(options.get("page_number", True)),
+            "alignment": str(options.get("footer_alignment") or "center"),
+        },
+    }
+
+
+def _docx_rfonts(profile: dict[str, Any], role: str) -> str:
+    fonts = profile["fonts"]
+    east_asia = escape(str(fonts.get(role) or fonts["body"]))
+    latin = escape(str(fonts.get("latin") or "Times New Roman"))
+    return f'<w:rFonts w:ascii="{latin}" w:hAnsi="{latin}" w:eastAsia="{east_asia}"/>'
+
+
+def docx_style_xml(profile: dict[str, Any]) -> str:
+    style_ids = profile["style_ids"]
+    sizes = profile["font_size_half_points"]
+    paragraph = profile["paragraph"]
+    body_id = escape(str(style_ids["body"]))
+    title_id = escape(str(style_ids["title"]))
+    heading_id = escape(str(style_ids["heading"]))
+    body_size = str(sizes["body"])
+    title_size = str(sizes["title"])
+    heading_size = str(sizes["heading"])
+    first_line = str(paragraph["first_line_indent_twips"])
+    line_spacing = str(paragraph["line_spacing_twips"])
+    body_alignment = escape(str(paragraph["body_alignment"]))
+    title_alignment = escape(str(paragraph["title_alignment"]))
+    return f'''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:style w:type="paragraph" w:default="1" w:styleId="Normal">
+    <w:name w:val="Normal"/>
+    <w:qFormat/>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="{title_id}">
+    <w:name w:val="Material Title"/>
+    <w:basedOn w:val="Normal"/>
+    <w:qFormat/>
+    <w:pPr><w:jc w:val="{title_alignment}"/><w:spacing w:after="240"/></w:pPr>
+    <w:rPr>{_docx_rfonts(profile, "title")}<w:b/><w:sz w:val="{title_size}"/></w:rPr>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="{heading_id}">
+    <w:name w:val="Material Heading"/>
+    <w:basedOn w:val="Normal"/>
+    <w:qFormat/>
+    <w:pPr><w:spacing w:before="240" w:after="120" w:line="{line_spacing}" w:lineRule="exact"/></w:pPr>
+    <w:rPr>{_docx_rfonts(profile, "heading")}<w:b/><w:sz w:val="{heading_size}"/></w:rPr>
+  </w:style>
+  <w:style w:type="paragraph" w:styleId="{body_id}">
+    <w:name w:val="Material Body"/>
+    <w:basedOn w:val="Normal"/>
+    <w:qFormat/>
+    <w:pPr><w:jc w:val="{body_alignment}"/><w:ind w:firstLine="{first_line}"/><w:spacing w:line="{line_spacing}" w:lineRule="exact"/></w:pPr>
+    <w:rPr>{_docx_rfonts(profile, "body")}<w:sz w:val="{body_size}"/></w:rPr>
+  </w:style>
+</w:styles>'''
+
+
+def _docx_paragraph(text: str, style_id: str) -> str:
+    return f'<w:p><w:pPr><w:pStyle w:val="{escape(style_id)}"/></w:pPr><w:r><w:t>{escape(text)}</w:t></w:r></w:p>'
+
+
+def export_docx(title: str, body: str, style_profile: dict[str, Any] | None = None) -> bytes:
+    profile = build_docx_style_profile(style_profile or {})
+    style_ids = profile["style_ids"]
+    margins = profile["page"]["margins_twips"]
     paras = [title] + split_paragraphs(body)
-    document = "".join(f"<w:p><w:r><w:t>{escape(p)}</w:t></w:r></w:p>" for p in paras)
-    content_types = '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>'
+    document = "".join(
+        _docx_paragraph(p, style_ids["title"] if idx == 0 else style_ids["body"])
+        for idx, p in enumerate(paras)
+    )
+    content_types = '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>'
     rels = '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>'
-    doc = f'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>{document}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/></w:sectPr></w:body></w:document>'
+    doc_rels = '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'
+    doc = f'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>{document}<w:sectPr><w:pgSz w:w="{profile["page"]["width_twips"]}" w:h="{profile["page"]["height_twips"]}"/><w:pgMar w:top="{margins["top"]}" w:right="{margins["right"]}" w:bottom="{margins["bottom"]}" w:left="{margins["left"]}" w:header="{margins["header"]}" w:footer="{margins["footer"]}" w:gutter="{margins["gutter"]}"/></w:sectPr></w:body></w:document>'
     import io
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr("[Content_Types].xml", content_types)
         z.writestr("_rels/.rels", rels)
+        z.writestr("word/_rels/document.xml.rels", doc_rels)
         z.writestr("word/document.xml", doc)
+        z.writestr("word/styles.xml", docx_style_xml(profile))
     return buf.getvalue()
 
 
@@ -3352,7 +3498,8 @@ class Handler(SimpleHTTPRequestHandler):
             elif self.path == "/api/library/evaluate-retrieval":
                 self.json_response(evaluate_retrieval_cases(payload.get("cases", []) or [], k=int(payload.get("k", 10) or 10)))
             elif self.path == "/api/export/docx":
-                raw = export_docx(payload.get("title", "材料草稿"), payload.get("body", ""))
+                raw = export_docx(payload.get("title", "材料草稿"), payload.get("body", ""),
+                                  payload.get("style_profile"))
                 self.send_response(200)
                 self.send_header("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
                 self.send_header("Content-Disposition", "attachment; filename=material-draft.docx")

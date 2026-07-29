@@ -129,7 +129,7 @@
 
 优先级：高
 
-- [ ] 按 GB/T 9704-2012 建立可配置样式
+- [x] 按 GB/T 9704-2012 建立可配置样式 v1：确定性 `build_docx_style_profile(payload_or_options=None)` 与 `docx_style_xml(profile)`，为 DOCX 导出提供 GB/T 9704-2012-inspired 的 A4 页面、页边距、标题/正文/层级样式、字体、字号、首行缩进、行距和页脚页码元数据；`export_docx(title, body, style_profile=None)` 保持旧调用兼容，并写入 `word/styles.xml`、styles content type 和 document relationship。**边界：stdlib OOXML 样式骨架，不是完整国标排版认证；不加前端 UI、不持久化、不调用模型、不引入第三方依赖。**
 - [ ] 页面、版心、标题、正文、层级标题、落款、页码和版记
 - [ ] 表格、附件说明、文号、签发人、主送机关等结构化字段
 - [ ] 字体缺失检测和替代策略
