@@ -3037,6 +3037,263 @@ def summarize_comparison_baseline_scores(matrix: dict[str, Any],
     }
 
 
+# --- Stage 5: outcome metrics logging + summary skeleton v1 -------------------
+
+
+def load_outcome_metrics_log(path: str | Path) -> dict[str, Any]:
+    """Load an outcome-metrics log JSON (metadata + rows) into a dict.
+
+    Stdlib only. Raises ValueError on a non-object payload or a missing rows list
+    so callers can distinguish a load failure from a validation failure.
+    """
+    p = Path(path)
+    with p.open("r", encoding="utf-8") as f:
+        log = json.load(f)
+    if not isinstance(log, dict):
+        raise ValueError(f"outcome metrics log must be a JSON object, got {type(log).__name__}")
+    if not isinstance(log.get("rows"), list):
+        raise ValueError("outcome metrics log is missing a 'rows' list")
+    return log
+
+
+def _levenshtein(a: str, b: str) -> int:
+    """Deterministic stdlib Levenshtein edit distance between two strings."""
+    if a == b:
+        return 0
+    if not a:
+        return len(b)
+    if not b:
+        return len(a)
+    previous = list(range(len(b) + 1))
+    for i, ca in enumerate(a, start=1):
+        current = [i]
+        for j, cb in enumerate(b, start=1):
+            insert = current[j - 1] + 1
+            delete = previous[j] + 1
+            substitute = previous[j - 1] + (0 if ca == cb else 1)
+            current.append(min(insert, delete, substitute))
+        previous = current
+    return previous[-1]
+
+
+def _parse_iso_timestamp(value: Any) -> datetime | None:
+    """Parse an ISO-like timestamp via stdlib; return None if unparseable."""
+    if not isinstance(value, str) or not value.strip():
+        return None
+    text = value.strip()
+    if text.endswith("Z"):
+        text = text[:-1] + "+00:00"
+    try:
+        return datetime.fromisoformat(text)
+    except ValueError:
+        return None
+
+
+def _outcome_row_metrics(row: dict[str, Any]) -> dict[str, Any]:
+    """Compute deterministic per-row metrics (adoption/edit distance/duration/rework)."""
+    metrics: dict[str, Any] = {
+        "adoption_rate": None,
+        "edit_distance": None,
+        "duration_seconds": None,
+        "rework_rounds": None,
+    }
+
+    # Adoption: explicit accepted bool, or accepted_sections / total_sections.
+    total_sections = row.get("total_sections")
+    accepted_sections = row.get("accepted_sections")
+    if isinstance(total_sections, (int, float)) and total_sections:
+        try:
+            metrics["adoption_rate"] = round(float(accepted_sections or 0) / float(total_sections), 4)
+        except (TypeError, ValueError):
+            metrics["adoption_rate"] = None
+    elif isinstance(row.get("accepted"), bool):
+        metrics["adoption_rate"] = 1.0 if row["accepted"] else 0.0
+
+    # Edit distance: computed from texts when both supplied, else supplied numeric.
+    draft = row.get("draft_text")
+    final = row.get("final_text")
+    if isinstance(draft, str) and isinstance(final, str):
+        metrics["edit_distance"] = _levenshtein(draft, final)
+    elif isinstance(row.get("edit_distance"), (int, float)):
+        metrics["edit_distance"] = row["edit_distance"]
+
+    # Duration: supplied numeric, else completed_at - started_at.
+    if isinstance(row.get("duration_seconds"), (int, float)):
+        metrics["duration_seconds"] = round(float(row["duration_seconds"]), 3)
+    else:
+        started = _parse_iso_timestamp(row.get("started_at"))
+        completed = _parse_iso_timestamp(row.get("completed_at"))
+        if started and completed:
+            metrics["duration_seconds"] = round((completed - started).total_seconds(), 3)
+
+    # Rework rounds: revision_rounds or rework_rounds.
+    for key in ("rework_rounds", "revision_rounds"):
+        if isinstance(row.get(key), (int, float)):
+            metrics["rework_rounds"] = int(row[key])
+            break
+
+    return metrics
+
+
+def validate_outcome_metrics_log(log: Any) -> dict[str, Any]:
+    """Validate an outcome-metrics log's shape without any model or network call.
+
+    Schema (v1): {metadata{}, rows[]} where each row has case_id + arm_id (a
+    stable identity) plus optional accepted/accepted_sections/total_sections,
+    draft_text/final_text or edit_distance, started_at/completed_at or
+    duration_seconds, and revision_rounds/rework_rounds.
+
+    Errors: malformed/duplicate identity, non-numeric where numeric required,
+    out-of-range values, unparseable timestamps when duration is absent. Warnings:
+    missing optional metrics. Deterministic, stdlib only. Returns
+    {passed, errors, warnings, row_count, arm_ids}.
+    """
+    errors: list[str] = []
+    warnings: list[str] = []
+    arm_ids: set[str] = set()
+
+    if not isinstance(log, dict):
+        return {"passed": False, "errors": [f"log must be a JSON object, got {type(log).__name__}"],
+                "warnings": [], "row_count": 0, "arm_ids": []}
+
+    rows = log.get("rows")
+    if not isinstance(rows, list) or not rows:
+        errors.append("log must contain a non-empty 'rows' list")
+        rows = []
+
+    seen_identity: set[tuple[str, str]] = set()
+    for idx, row in enumerate(rows, start=1):
+        where = f"row #{idx}"
+        if not isinstance(row, dict):
+            errors.append(f"{where}: must be an object")
+            continue
+        cid = row.get("case_id")
+        aid = row.get("arm_id")
+        if not (isinstance(cid, str) and cid.strip()):
+            errors.append(f"{where}: 'case_id' must be a non-empty string")
+            cid = None
+        if not (isinstance(aid, str) and aid.strip()):
+            errors.append(f"{where}: 'arm_id' must be a non-empty string")
+            aid = None
+        if cid and aid:
+            where = f"row '{cid}/{aid}'"
+            key = (cid, aid)
+            if key in seen_identity:
+                errors.append(f"{where}: duplicate case_id/arm_id identity")
+            seen_identity.add(key)
+            arm_ids.add(aid)
+
+        # Adoption inputs.
+        if "accepted" in row and not isinstance(row["accepted"], bool):
+            errors.append(f"{where}: 'accepted' must be a boolean when present")
+        for key in ("accepted_sections", "total_sections"):
+            if key in row and not isinstance(row[key], (int, float)):
+                errors.append(f"{where}: '{key}' must be numeric when present")
+        ts = row.get("total_sections")
+        if isinstance(ts, (int, float)):
+            if ts < 0:
+                errors.append(f"{where}: 'total_sections' must be >= 0")
+            acc = row.get("accepted_sections")
+            if isinstance(acc, (int, float)) and (acc < 0 or acc > ts):
+                errors.append(f"{where}: 'accepted_sections' must be within [0, total_sections]")
+
+        # Edit-distance inputs.
+        has_texts = isinstance(row.get("draft_text"), str) and isinstance(row.get("final_text"), str)
+        if "edit_distance" in row:
+            if not isinstance(row["edit_distance"], (int, float)):
+                errors.append(f"{where}: 'edit_distance' must be numeric when present")
+            elif row["edit_distance"] < 0:
+                errors.append(f"{where}: 'edit_distance' must be >= 0")
+
+        # Duration inputs.
+        has_duration = isinstance(row.get("duration_seconds"), (int, float))
+        if has_duration and row["duration_seconds"] < 0:
+            errors.append(f"{where}: 'duration_seconds' must be >= 0")
+        started_raw = row.get("started_at")
+        completed_raw = row.get("completed_at")
+        if not has_duration and (started_raw is not None or completed_raw is not None):
+            started = _parse_iso_timestamp(started_raw)
+            completed = _parse_iso_timestamp(completed_raw)
+            if started is None or completed is None:
+                errors.append(f"{where}: 'started_at'/'completed_at' must be ISO-like timestamps "
+                              "when 'duration_seconds' is absent")
+            elif completed < started:
+                errors.append(f"{where}: 'completed_at' must not precede 'started_at'")
+
+        # Rework inputs.
+        for key in ("rework_rounds", "revision_rounds"):
+            if key in row and not isinstance(row[key], (int, float)):
+                errors.append(f"{where}: '{key}' must be numeric when present")
+            elif isinstance(row.get(key), (int, float)) and row[key] < 0:
+                errors.append(f"{where}: '{key}' must be >= 0")
+
+        # Warn on absent optional metrics (do not fail).
+        computed = _outcome_row_metrics(row) if isinstance(row, dict) else {}
+        for metric, label in (("adoption_rate", "adoption"), ("edit_distance", "edit distance"),
+                              ("duration_seconds", "duration"), ("rework_rounds", "rework rounds")):
+            if computed.get(metric) is None:
+                warnings.append(f"{where}: no {label} metric available")
+
+    return {
+        "passed": not errors,
+        "errors": errors,
+        "warnings": warnings,
+        "row_count": len(rows),
+        "arm_ids": sorted(arm_ids),
+    }
+
+
+def _mean(values: list[float]) -> float | None:
+    return round(sum(values) / len(values), 4) if values else None
+
+
+def summarize_outcome_metrics(log: dict[str, Any]) -> dict[str, Any]:
+    """Aggregate deterministic outcome metrics per arm and overall.
+
+    For each row computes adoption_rate, edit_distance, duration_seconds and
+    rework_rounds (see _outcome_row_metrics), then averages each metric per arm
+    and across all rows. Only present metrics contribute to a mean; a metric with
+    no data reports None. Deterministic, stdlib only. No model call, no network.
+    """
+    rows = log.get("rows", []) if isinstance(log.get("rows"), list) else []
+    metric_keys = ("adoption_rate", "edit_distance", "duration_seconds", "rework_rounds")
+
+    per_row: list[dict[str, Any]] = []
+    by_arm: dict[str, dict[str, list[float]]] = {}
+    overall: dict[str, list[float]] = {k: [] for k in metric_keys}
+
+    for idx, row in enumerate(rows, start=1):
+        if not isinstance(row, dict):
+            continue
+        cid = row.get("case_id") or f"case-{idx}"
+        aid = row.get("arm_id") or "unknown"
+        metrics = _outcome_row_metrics(row)
+        per_row.append({"case_id": cid, "arm_id": aid, "metrics": metrics})
+        bucket = by_arm.setdefault(aid, {k: [] for k in metric_keys})
+        for k in metric_keys:
+            if metrics[k] is not None:
+                bucket[k].append(float(metrics[k]))
+                overall[k].append(float(metrics[k]))
+
+    per_arm = [
+        {"arm_id": aid, "row_count": sum(1 for r in per_row if r["arm_id"] == aid),
+         "metrics": {k: _mean(buckets[k]) for k in metric_keys}}
+        for aid, buckets in sorted(by_arm.items())
+    ]
+
+    return {
+        "method": "outcome_metrics_summary_v1",
+        "boundary": (
+            "deterministic aggregation of supplied/derived outcome metrics only; "
+            "no model invoked, no persistence, and not a causal or significance analysis"
+        ),
+        "row_count": len(per_row),
+        "per_row": per_row,
+        "per_arm": per_arm,
+        "overall": {k: _mean(overall[k]) for k in metric_keys},
+    }
+
+
 def run_retrieval_eval_suite(suite: dict[str, Any], k: int | None = None,
                              db_path: str | Path | None = None,
                              bm25_params: dict[str, Any] | None = None) -> dict[str, Any]:

@@ -1,63 +1,62 @@
 {
   "status": "implemented_by_claude",
-  "task_id": "cailiao-stage5-comparison-baselines-v1",
-  "phase": "ROADMAP Stage 5: comparison-baseline matrix + aggregate skeleton v1 (human / generic-prompt / project-prompt / model arms from offline outputs; synthetic fixtures only)",
-  "baseline": "b00acf6778afcd49e191e5d19c5fb9b99584cda8 Add blind evaluation pack",
-  "summary": "Added a deterministic, stdlib-only Stage 5 comparison-baseline skeleton. build_comparison_baseline_matrix joins suite case ids to each offline arm's output (human writing, generic-prompt, project-prompt, and model/version arms), exposing evaluator-safe arm descriptors (arm_id, arm_type, label, optional blind_id) while keeping provider/model/version in a separate identity_map; missing outputs become empty strings. validate_comparison_baseline_matrix checks unique case/arm ids, matching arm-id sets per case, supported arm_type values, and no identity leak, and warns (not fails) on empty outputs. summarize_comparison_baseline_scores aggregates supplied numeric case scores into per-arm means without inventing scores, and accepts the blind-reveal cases_scored shape. A CLI tools/validate_comparison_baselines.py builds+validates and optionally summarizes. Synthetic fixtures only; no real human/model data, no model call, no network.",
+  "task_id": "cailiao-stage5-outcome-metrics-v1",
+  "phase": "ROADMAP Stage 5: outcome metrics logging + summary skeleton v1 (adoption rate, edit distance, completion time, rework rounds; synthetic fixture only)",
+  "baseline": "b60895afbd8b5a9890a6f06dacad6d59f708bc87 Add comparison baseline matrix",
+  "summary": "Added a deterministic, stdlib-only Stage 5 outcome-metrics skeleton. load_outcome_metrics_log loads a {metadata, rows} log; validate_outcome_metrics_log checks per case_id/arm_id identity, numeric ranges, and ISO-like timestamps when duration is absent (missing optional metrics warn, malformed required identity errors); summarize_outcome_metrics derives adoption_rate (accepted bool or accepted_sections/total_sections), edit_distance (stdlib Levenshtein when draft/final text supplied, else supplied numeric), duration_seconds (supplied or completed_at-started_at), and rework_rounds, then aggregates per arm and overall. A CLI tools/validate_outcome_metrics.py validates and optionally summarizes. Synthetic fixture only; no persistence, no real data, no model call, no network.",
   "changed_files": [
     "backend/server.py",
-    "tools/validate_comparison_baselines.py",
-    "tests/test_comparison_baselines.py",
-    "tests/data/comparison_baselines_sample.json",
-    "tests/data/comparison_baseline_scores_sample.json",
+    "tools/validate_outcome_metrics.py",
+    "tests/test_outcome_metrics.py",
+    "tests/data/outcome_metrics_sample.json",
     "tools/run_quality_gates.py",
     "README.md",
     "docs/ROADMAP.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "backend/server.py: added COMPARISON_ARM_TYPES, COMPARISON_IDENTITY_FIELDS, _comparison_arms_list.",
-    "backend/server.py: added build_comparison_baseline_matrix(suite, candidate_outputs) with method=comparison_baseline_matrix_v1; evaluator-safe arms + identity_map + per-case arm outputs; missing outputs default to empty strings so every case exposes the same arm ids.",
-    "backend/server.py: added validate_comparison_baseline_matrix(matrix) returning {passed, errors, warnings, case_count, arm_ids, arm_types}; enforces metadata, unique arm/case ids, supported arm_type, per-case arm-id equality, and no identity-field leak; empty outputs are warnings.",
-    "backend/server.py: added summarize_comparison_baseline_scores(matrix, scoring_results=None) with method=comparison_baseline_summary_v1; aggregates numeric case scores per arm (mean_score=None when absent), joins identity, reports best_arm_id, and accepts the reveal_blind_evaluation_results cases_scored shape.",
-    "tools/validate_comparison_baselines.py: CLI (--suite/--outputs/--json, optional --scores) delegating to the server helpers; exit 0/1/2.",
-    "tests/data/comparison_baselines_sample.json and tests/data/comparison_baseline_scores_sample.json: synthetic 4-arm fixtures keyed to the benchmark sample's bench-001/002/003 case ids.",
-    "tests/test_comparison_baselines.py: 19 tests across matrix build, validation, summary, and the CLI.",
-    "tools/run_quality_gates.py: py-compile gate now includes tests/test_comparison_baselines.py and tools/validate_comparison_baselines.py.",
-    "README.md and docs/ROADMAP.md document the v1 boundary; only the ROADMAP '与人工写作、通用提示词和不同模型对照' item is marked done (adoption/edit-distance/time/regression-run items untouched)."
+    "backend/server.py: added load_outcome_metrics_log(path) (raises ValueError on non-object / missing rows).",
+    "backend/server.py: added _levenshtein(a, b) stdlib edit distance, _parse_iso_timestamp(value) (handles trailing Z), and _outcome_row_metrics(row) deriving adoption_rate/edit_distance/duration_seconds/rework_rounds.",
+    "backend/server.py: added validate_outcome_metrics_log(log) returning {passed, errors, warnings, row_count, arm_ids}; enforces case_id/arm_id identity + uniqueness, accepted/section/edit/duration/rework types and ranges, and ISO-like timestamps (completed >= started) when duration absent; warns on missing optional metrics.",
+    "backend/server.py: added summarize_outcome_metrics(log) with method=outcome_metrics_summary_v1; per-row metrics plus per-arm and overall means (only present metrics contribute; None when absent).",
+    "tools/validate_outcome_metrics.py: CLI (--log/--json, optional --summary) delegating to the server helpers; exit 0/1/2.",
+    "tests/data/outcome_metrics_sample.json: synthetic 4-row fixture exercising accepted-bool, section-ratio, computed vs supplied edit distance, and timestamp vs supplied duration modes.",
+    "tests/test_outcome_metrics.py: 15 tests across validation, summary, Levenshtein, and the CLI.",
+    "tools/run_quality_gates.py: py-compile gate now includes tests/test_outcome_metrics.py and tools/validate_outcome_metrics.py.",
+    "README.md and docs/ROADMAP.md document the v1 boundary; only the ROADMAP '记录采纳率、修改距离、完成时间、返工轮次' item is marked done (regression-run automation untouched)."
   ],
   "not_implemented": [
-    "No real human or model output; fixtures are synthetic placeholder data.",
-    "No LLM/model invocation or scoring model; scores must be supplied by the caller.",
-    "No adoption-rate, edit-distance, completion-time, or regression-run automation (those Stage 5 items remain unchecked).",
-    "No statistical significance / reviewer-agreement analysis. No UI, persistence, or network call."
+    "No persistence DB or UI; the log is a request-local JSON document.",
+    "No real human/model usage data; the fixture is synthetic placeholder data.",
+    "No regression-run automation (that Stage 5 item remains unchecked).",
+    "No causal, significance, or reviewer-agreement analysis; means only. No model call or network."
   ],
   "test_files": [
-    "tests/test_comparison_baselines.py"
+    "tests/test_outcome_metrics.py"
   ],
   "required_test_commands_for_codex": [
-    "python -m unittest tests.test_comparison_baselines -v",
+    "python -m unittest tests.test_outcome_metrics -v",
     "python -m unittest discover -s tests -v",
-    "python tools/validate_comparison_baselines.py --suite tests/data/benchmark_suite_sample.json --outputs tests/data/comparison_baselines_sample.json --json",
-    "python tools/validate_comparison_baselines.py --suite tests/data/benchmark_suite_sample.json --outputs tests/data/comparison_baselines_sample.json --scores tests/data/comparison_baseline_scores_sample.json --json",
+    "python tools/validate_outcome_metrics.py --log tests/data/outcome_metrics_sample.json --json",
+    "python tools/validate_outcome_metrics.py --log tests/data/outcome_metrics_sample.json --json --summary",
     "python tools/run_quality_gates.py --json",
     "python -m json.tool CODEX_HANDOFF.json",
     "git diff --check"
   ],
   "test_status": [
-    "python -m unittest tests.test_comparison_baselines -v: 19 tests OK.",
-    "python -m unittest discover -s tests -v: 289 tests OK.",
-    "python tools/validate_comparison_baselines.py --suite ... --outputs ... --json: passed=true, 3 cases, arm_ids=[generic, human, model_x, project], arm_types=[generic_prompt, human, model, project_prompt].",
-    "python tools/validate_comparison_baselines.py --suite ... --outputs ... --scores ... --json: passed=true; best_arm_id=human; means human=5.0, generic=2.0, project=3.3333, model_x=3.6667 (identity example-model-x).",
-    "python tools/run_quality_gates.py --json (default 'python' on PATH): passed=true, all 5 gates passed; unittest gate ran 289 tests OK.",
+    "python -m unittest tests.test_outcome_metrics -v: 15 tests OK.",
+    "python -m unittest discover -s tests -v: 304 tests OK.",
+    "python tools/validate_outcome_metrics.py --log ... --json: passed=true, 4 rows, arm_ids=[human, model_x], with expected missing-optional-metric warnings.",
+    "python tools/validate_outcome_metrics.py --log ... --json --summary: per-arm human adoption 0.875 / duration 960.0s, model_x adoption 0.5 / duration 1350.0s; overall adoption 0.6875, edit_distance 6.0, duration 1155.0s, rework 1.0.",
+    "python tools/run_quality_gates.py --json (default 'python' on PATH): passed=true, all 5 gates passed; unittest gate ran 304 tests OK.",
     "python -m json.tool CODEX_HANDOFF.json: valid JSON.",
     "git diff --check: no whitespace/conflict issues."
   ],
   "risks": [
-    "Identity-leak detection is a fixed field-name denylist (provider/model/version/vendor); an identity embedded in free-text output or an unusual field name would not be caught.",
-    "Summary aggregates only values that parse as floats; non-numeric reviews are counted but not averaged, and best_arm_id is a raw mean argmax with no significance test or tie-breaking beyond first-max.",
-    "The matrix trusts caller-supplied arm ordering and arm_ids; a caller that mislabels an arm_type mislabels the comparison (validation only checks the value is supported, not that it is correct).",
-    "Fixtures are synthetic placeholder data and must not be mistaken for real human/model output.",
+    "Edit distance is character-level Levenshtein; it is O(len(draft)*len(final)) and scales poorly for very large documents (fine for the skeleton's short texts). It measures literal edits, not semantic change.",
+    "Duration from timestamps assumes started_at/completed_at share a timezone context; naive (no-offset) timestamps are treated as-is, so a caller mixing naive and aware timestamps could mis-measure.",
+    "Aggregates are simple means over present values only; a metric absent on some rows still averages the rows that have it, which can bias per-arm comparisons.",
+    "Fixtures are synthetic placeholder data and must not be mistaken for real usage telemetry.",
     "Environment note: the local interpreter is python3 (no bare 'python' on PATH); the quality-gate runner honors PYTHON=python3, and a local 'python->python3' PATH shim lets its default-interpreter meta-test pass."
   ],
   "credentials": [

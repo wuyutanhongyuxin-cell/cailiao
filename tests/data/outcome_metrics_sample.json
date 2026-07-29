@@ -1,0 +1,46 @@
+{
+  "metadata": {
+    "name": "outcome metrics sample",
+    "version": "v1",
+    "note": "Synthetic outcome-metrics log for the Stage 5 skeleton. Not real human/model usage data."
+  },
+  "rows": [
+    {
+      "case_id": "bench-001",
+      "arm_id": "human",
+      "accepted_sections": 4,
+      "total_sections": 4,
+      "draft_text": "示例草稿一。",
+      "final_text": "示例草稿一。",
+      "started_at": "2026-07-01T09:00:00Z",
+      "completed_at": "2026-07-01T09:12:00Z",
+      "rework_rounds": 0
+    },
+    {
+      "case_id": "bench-001",
+      "arm_id": "model_x",
+      "accepted": false,
+      "draft_text": "示例草稿二。",
+      "final_text": "修改后的示例草稿二内容。",
+      "duration_seconds": 1800,
+      "revision_rounds": 2
+    },
+    {
+      "case_id": "bench-002",
+      "arm_id": "human",
+      "accepted_sections": 3,
+      "total_sections": 4,
+      "edit_distance": 12,
+      "started_at": "2026-07-01T10:00:00",
+      "completed_at": "2026-07-01T10:20:00",
+      "rework_rounds": 1
+    },
+    {
+      "case_id": "bench-002",
+      "arm_id": "model_x",
+      "accepted": true,
+      "duration_seconds": 900,
+      "rework_rounds": 1
+    }
+  ]
+}
