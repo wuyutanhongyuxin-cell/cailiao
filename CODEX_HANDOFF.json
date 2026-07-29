@@ -1,65 +1,63 @@
 {
   "status": "implemented_by_claude",
-  "task_id": "cailiao-stage5-real-query-intake-v1",
-  "phase": "ROADMAP Stage 5 backfill: real anonymized query-set INTAKE SCAFFOLD v1. The original '50-100 real anonymized query set' item remains UNCHECKED — no real set exists; only the intake/validation scaffold is delivered.",
-  "baseline": "0dc0434ad2141768d5f6d45430ef21fe783e8e54 (Stage 6 supply-chain skeleton head)",
-  "summary": "Added a deterministic, stdlib-only intake scaffold for a real anonymized query set, WITHOUT fabricating any real data. load_real_query_set loads {metadata, cases}; validate_real_query_set enforces structure, anonymization (rejects PII/secret field names and PII-shaped values in free text, reporting only the matched kind — never the raw value), and provenance (source/collected_at/anonymized=true); summarize_real_query_readiness classifies the set as invalid/template/incomplete_real/ready_real/oversized_real, and can NEVER classify a placeholder/synthetic or under-50 set as ready_real. A human-fill template (tests/data/real_query_set_template.json, clearly marked is_template with 2 example rows) and a CLI (tools/validate_real_query_set.py) are included. The original ROADMAP item stays unchecked; a sub-note records the scaffold as done.",
+  "task_id": "cailiao-stage5-real-query-bm25-sweep-v1",
+  "phase": "ROADMAP Stage 5 backfill: GATED BM25 sweep calibration SCAFFOLD v1. The original 'calibrate BM25 k1/b on the real query set via CLI' item remains UNCHECKED — no ready_real set exists and no real calibration was run; only the readiness-gated scaffold is delivered.",
+  "baseline": "8f1d31a211d3dd84d82438a07cd31273b62de871 (real query intake scaffold head)",
+  "summary": "Added a deterministic, stdlib-only BM25 sweep calibration scaffold that is HARD-GATED on summarize_real_query_readiness(dataset).status == 'ready_real'. build_bm25_sweep_grid/validate_bm25_sweep_config build and check a small (k1,b,threshold) grid. run_bm25_sweep_on_real_query_set refuses any template/incomplete/synthetic/invalid set, and also refuses a ready_real set that lacks a 'corpus'; only when both gates pass does it run a deterministic sweep (reusing the existing isolated-DB evaluate_retrieval harness), reporting per-combination title/chunk recall + MRR + miss and selecting the best by recall then fewest misses. A CLI tools/sweep_bm25_real_queries.py exits nonzero unless a real calibration actually ran. No real calibration result is fabricated; the original ROADMAP item stays unchecked with a checked sub-note for the scaffold.",
   "changed_files": [
     "backend/server.py",
-    "tools/validate_real_query_set.py",
-    "tests/test_real_query_intake.py",
-    "tests/data/real_query_set_template.json",
+    "tools/sweep_bm25_real_queries.py",
+    "tests/test_bm25_real_sweep.py",
     "tools/run_quality_gates.py",
     "README.md",
     "docs/ROADMAP.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "backend/server.py: added REAL_QUERY_SET_MIN_CASES(50)/MAX_CASES(100), REAL_QUERY_PLACEHOLDER_TOKENS, REAL_QUERY_FORBIDDEN_FIELDS, _REAL_QUERY_PII_PATTERNS (id_card/phone_cn/email).",
-    "backend/server.py: load_real_query_set(path) (raises ValueError on non-object / missing cases).",
-    "backend/server.py: validate_real_query_set(dataset) enforcing unique case ids, non-empty query, provenance (source/collected_at/anonymized=true), >=1 relevance target, no forbidden PII/secret field names, and no PII-shaped value in query/notes/context (error text carries only the matched kind, never the raw value); returns has_placeholder_marker.",
-    "backend/server.py: summarize_real_query_readiness(dataset) classifying invalid/template/incomplete_real/ready_real/oversized_real; placeholder/synthetic marker or <50 cases can never be ready_real.",
-    "tools/validate_real_query_set.py: CLI (--set/--json) exit 0 only when status==ready_real, else 1, load-error 2; never prints raw PII.",
-    "tests/data/real_query_set_template.json: clearly-marked is_template dataset (2 example rows) with schema docs for humans to fill.",
-    "tests/test_real_query_intake.py: 16 tests (template valid-but-not-ready, 50 clean cases ready, <50 incomplete, >100 oversized, synthetic/placeholder marker blocks ready, PII field/value rejection without leaking value, id-card rejection, missing provenance/anonymized/target, duplicate id, load error, CLI exit 1 on template).",
-    "tools/run_quality_gates.py: py-compile gate now includes tests/test_real_query_intake.py and tools/validate_real_query_set.py.",
-    "README.md documents the scaffold and its honesty boundary; docs/ROADMAP.md keeps the original 50-100 real-set item UNCHECKED and adds a checked sub-note for the intake scaffold only."
+    "backend/server.py: added BM25_REAL_SWEEP_K1/B/THRESHOLDS defaults.",
+    "backend/server.py: build_bm25_sweep_grid(options=None) (cleans/dedups/sorts k1>=0, 0<=b<=1, threshold>=0; reports combination_count).",
+    "backend/server.py: validate_bm25_sweep_config(grid) (non-empty numeric in-range k1/b/thresholds).",
+    "backend/server.py: run_bm25_sweep_on_real_query_set(dataset, config=None) hard-gated on readiness=='ready_real' AND presence of a corpus; refuses otherwise without running; on pass, runs a deterministic (k1,b) sweep via run_retrieval_eval_suite, records threshold candidates, and selects best by (title_recall, chunk_recall, -miss, ...).",
+    "tools/sweep_bm25_real_queries.py: CLI (--set/--json); exit 0 only when a sweep actually ran, 1 when refused, 2 on load error; no network/model call.",
+    "tests/test_bm25_real_sweep.py: 12 tests (grid determinism/override-cleaning/invalid-grid; gate refuses template/incomplete/no-corpus/synthetic; ready_real+corpus runs 36-combo deterministic sweep with metric fields; decision determinism; JSON serializable; CLI refuses template nonzero and runs on an in-memory ready_real set).",
+    "tools/run_quality_gates.py: py-compile gate now includes tests/test_bm25_real_sweep.py and tools/sweep_bm25_real_queries.py.",
+    "README.md documents the gated scaffold and its honesty boundary; docs/ROADMAP.md keeps the original BM25-calibration item UNCHECKED and adds a checked sub-note for the guarded scaffold only."
   ],
   "not_implemented": [
-    "NO real anonymized query set is provided or fabricated; the repo still lacks 50-100 real cases with provenance.",
-    "The original ROADMAP item '人工建立 50-100 条真实匿名查询集' remains unchecked by design.",
-    "No PII de-identification/anonymization is performed for the user; the scaffold only validates that supplied data is already anonymized.",
+    "NO real BM25 calibration was run; no ready_real 50-100 case set with a corpus exists in the repo.",
+    "The original ROADMAP item '在真实查询集上用 CLI 扫参校准 BM25 k1/b 与阈值' remains unchecked by design.",
+    "Threshold candidates are recorded but not yet applied as a live cut-off in production search (calibration output only).",
     "No network, no model call, no credential/.env read."
   ],
   "test_files": [
-    "tests/test_real_query_intake.py"
+    "tests/test_bm25_real_sweep.py"
   ],
   "required_test_commands_for_codex": [
-    "python -m unittest tests.test_real_query_intake -v",
+    "python -m unittest tests.test_bm25_real_sweep -v",
     "python -m unittest discover -s tests -v",
-    "python tools/validate_real_query_set.py --set tests/data/real_query_set_template.json --json",
+    "python tools/sweep_bm25_real_queries.py --set tests/data/real_query_set_template.json --json",
     "python tools/run_quality_gates.py --json",
     "python -m json.tool CODEX_HANDOFF.json",
     "git diff --check"
   ],
   "test_status": [
-    "python -m unittest tests.test_real_query_intake -v: 16 tests OK.",
-    "python -m unittest discover -s tests -v: 447 tests OK.",
-    "python tools/validate_real_query_set.py --set tests/data/real_query_set_template.json --json: status=template, ready=false, exit 1 (template is not a completed real set).",
-    "python tools/run_quality_gates.py --json (default 'python' on PATH): passed=true, all 5 gates passed (secret-scan clean over new files); unittest gate ran 447 tests OK.",
+    "python -m unittest tests.test_bm25_real_sweep -v: 12 tests OK (~35s; runs genuine 36-combo sweeps over a 50-doc in-memory corpus).",
+    "python -m unittest discover -s tests -v: 459 tests OK.",
+    "python tools/sweep_bm25_real_queries.py --set tests/data/real_query_set_template.json --json: REFUSED (status template, not ready_real), exit 1.",
+    "python tools/run_quality_gates.py --json (default 'python' on PATH): passed=true, all 5 gates passed; unittest gate ran 459 tests OK.",
     "python -m json.tool CODEX_HANDOFF.json: valid JSON.",
     "git diff --check: no whitespace/conflict issues."
   ],
-  "roadmap_item_status": "UNCHECKED — original '50-100 real anonymized query set' item is NOT marked done because no real set exists; only a checked sub-note for the intake scaffold was added.",
+  "roadmap_item_status": "UNCHECKED — 'calibrate BM25 k1/b on the real query set via CLI' is NOT marked done; no ready_real set exists and no real calibration ran. A checked sub-note for the gated sweep scaffold was added.",
   "risks": [
-    "The scaffold validates that supplied data looks anonymized and carries provenance; it cannot prove data is truly real or truly de-identified — a determined submitter could pass shape checks with fabricated-but-clean rows, so ready_real means 'shape/anonymization/provenance OK', not 'audited genuine'.",
-    "PII detection is pattern-based (mainland-China id/phone + generic email) and field-name based; unusual PII formats or PII embedded in unexpected fields could slip past. It is a safety net, not a guarantee.",
-    "Placeholder-marker detection is token-based; a real set that happens to contain a token like '示例' in a legitimate query would be flagged as template (false positive) and must be reworded or the token list revisited.",
-    "Readiness is a mechanical count+marker check; it does not assess query quality, coverage, or representativeness.",
+    "The sweep result's title_mrr can jitter across runs on documents with tied retrieval scores (tie-break ordering in the retrieval layer across fresh temp DBs); the calibration DECISION fields (k1/b/threshold, recall, miss_count) are deterministic and MRR is excluded from best-selection, but MRR should not be treated as bit-stable.",
+    "The scaffold reuses run_retrieval_eval_suite which imports the corpus into a throwaway SQLite DB per (k1,b); a large real corpus will make the full grid slow (it is a calibration tool, not a hot path).",
+    "Threshold values are swept and reported but not yet wired as an enforced score cut-off in search; applying them is a deliberate later step.",
+    "Gate correctness depends on summarize_real_query_readiness; if that classifier is loosened, this gate loosens with it — they are intentionally coupled.",
     "Environment note: the local interpreter is python3 (no bare 'python' on PATH); the quality-gate runner honors PYTHON=python3, and a local 'python->python3' PATH shim lets its default-interpreter meta-test pass."
   ],
   "credentials": [
-    "No credentials or .env files were read, created, or modified; validators reject api_key/secret/password/token field names and never echo a matched PII value.",
+    "No credentials or .env files were read, created, or modified.",
     "No external network calls or model calls were used for implementation or local tests.",
     "No push performed; commit/push left to the maintainer."
   ]

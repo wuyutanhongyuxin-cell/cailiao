@@ -5642,6 +5642,141 @@ def summarize_real_query_readiness(dataset: Any) -> dict[str, Any]:
     }
 
 
+# --- Stage 5: BM25 sweep calibration scaffold (gated on ready_real) v1 --------
+
+# Default sweep grid for real-query BM25 calibration (deterministic, small).
+BM25_REAL_SWEEP_K1 = [0.9, 1.2, 1.5, 1.8]
+BM25_REAL_SWEEP_B = [0.5, 0.75, 1.0]
+BM25_REAL_SWEEP_THRESHOLDS = [0.0, 0.1, 0.2]
+
+
+def build_bm25_sweep_grid(options: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Build a deterministic BM25 (k1, b, threshold) sweep grid.
+
+    ``options`` may override the ``k1`` / ``b`` / ``thresholds`` lists; values are
+    filtered to sane ranges (k1>=0, 0<=b<=1, threshold>=0), de-duplicated, and
+    sorted for determinism. Stdlib only.
+    """
+    raw = options if isinstance(options, dict) else {}
+
+    def _clean(values, default, lo, hi):
+        out = []
+        for v in (values if isinstance(values, list) else default):
+            try:
+                fv = float(v)
+            except (TypeError, ValueError):
+                continue
+            if fv < lo or (hi is not None and fv > hi):
+                continue
+            if fv not in out:
+                out.append(fv)
+        return sorted(out) if out else list(default)
+
+    k1 = _clean(raw.get("k1"), BM25_REAL_SWEEP_K1, 0.0, None)
+    b = _clean(raw.get("b"), BM25_REAL_SWEEP_B, 0.0, 1.0)
+    thresholds = _clean(raw.get("thresholds"), BM25_REAL_SWEEP_THRESHOLDS, 0.0, None)
+    return {
+        "method": "bm25_sweep_grid_v1",
+        "k1": k1,
+        "b": b,
+        "thresholds": thresholds,
+        "combination_count": len(k1) * len(b) * len(thresholds),
+    }
+
+
+def validate_bm25_sweep_config(grid: Any) -> dict[str, Any]:
+    """Validate a BM25 sweep grid's shape (non-empty numeric k1/b/thresholds)."""
+    errors: list[str] = []
+    if not isinstance(grid, dict):
+        return {"passed": False, "errors": [f"grid must be a JSON object, got {type(grid).__name__}"],
+                "warnings": [], "combination_count": 0}
+    for key, lo, hi in (("k1", 0.0, None), ("b", 0.0, 1.0), ("thresholds", 0.0, None)):
+        vals = grid.get(key)
+        if not isinstance(vals, list) or not vals:
+            errors.append(f"'{key}' must be a non-empty list")
+            continue
+        for v in vals:
+            if not isinstance(v, (int, float)) or isinstance(v, bool):
+                errors.append(f"'{key}' values must be numeric")
+                break
+            if v < lo or (hi is not None and v > hi):
+                errors.append(f"'{key}' value {v} out of range")
+                break
+    count = 0
+    if not errors:
+        count = len(grid["k1"]) * len(grid["b"]) * len(grid["thresholds"])
+    return {"passed": not errors, "errors": errors, "warnings": [], "combination_count": count}
+
+
+def run_bm25_sweep_on_real_query_set(dataset: Any, config: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Run a deterministic BM25 k1/b/threshold sweep — ONLY on a ready_real set.
+
+    Hard gate: refuses unless summarize_real_query_readiness(dataset).status ==
+    "ready_real" (template/incomplete/synthetic/invalid sets are rejected without
+    running anything). The dataset must also carry a ``corpus`` so retrieval has
+    documents; a ready_real set without a corpus is refused. For each (k1, b) the
+    suite is evaluated via the existing isolated-DB harness; thresholds are
+    recorded as candidate cut-offs on the fused score. Returns the per-combination
+    results plus the best (highest title recall, then chunk recall, then fewest
+    misses). No network, no model call. Stdlib only.
+    """
+    readiness = summarize_real_query_readiness(dataset)
+    if readiness["status"] != "ready_real":
+        return {
+            "method": "bm25_real_sweep_v1",
+            "ran": False,
+            "refused": True,
+            "reason": f"dataset is not ready_real (status={readiness['status']}); calibration refused",
+            "readiness": readiness,
+        }
+    if not (isinstance(dataset.get("corpus"), list) and dataset["corpus"]):
+        return {
+            "method": "bm25_real_sweep_v1",
+            "ran": False,
+            "refused": True,
+            "reason": "ready_real dataset has no 'corpus'; cannot run retrieval calibration",
+            "readiness": readiness,
+        }
+
+    grid = build_bm25_sweep_grid(config or {})
+    grid_check = validate_bm25_sweep_config(grid)
+    if not grid_check["passed"]:
+        return {"method": "bm25_real_sweep_v1", "ran": False, "refused": True,
+                "reason": "invalid sweep grid", "errors": grid_check["errors"]}
+
+    suite = {"suite": dataset.get("metadata", {}).get("name", "real-query-set"),
+             "corpus": dataset["corpus"], "cases": dataset["cases"]}
+    results: list[dict[str, Any]] = []
+    for k1 in grid["k1"]:
+        for b in grid["b"]:
+            rep = run_retrieval_eval_suite(suite, bm25_params={"k1": k1, "b": b})
+            for threshold in grid["thresholds"]:
+                results.append({
+                    "k1": k1, "b": b, "threshold": threshold,
+                    "title_recall_at_k": rep.get("title_recall_at_k", 0.0),
+                    "chunk_recall_at_k": rep.get("chunk_recall_at_k", 0.0),
+                    "title_mrr": rep.get("title_mrr", 0.0),
+                    "miss_count": rep.get("miss_count", 0),
+                })
+    best = max(results, key=lambda e: (e["title_recall_at_k"], e["chunk_recall_at_k"],
+                                       -e["miss_count"], -e["k1"], -e["b"], -e["threshold"]))
+    return {
+        "method": "bm25_real_sweep_v1",
+        "boundary": (
+            "deterministic BM25 calibration over a ready_real anonymized set only; "
+            "gated on readiness, no network/model call, no fabricated data"
+        ),
+        "ran": True,
+        "refused": False,
+        "suite": suite["suite"],
+        "grid": {"k1": grid["k1"], "b": grid["b"], "thresholds": grid["thresholds"]},
+        "candidate_count": len(results),
+        "results": results,
+        "best": best,
+        "readiness": readiness,
+    }
+
+
 def add_evidence(item: dict[str, str]) -> dict[str, str]:
     item_id = str(uuid.uuid4())
     title = item.get("title", "").strip()

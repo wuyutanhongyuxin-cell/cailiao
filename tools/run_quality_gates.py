@@ -193,6 +193,7 @@ def _gate_py_compile() -> tuple[str, str, int]:
                              "tests/test_provider_risk.py",
                              "tests/test_supply_chain.py",
                              "tests/test_real_query_intake.py",
+                             "tests/test_bm25_real_sweep.py",
                              "tests/test_vector_pipeline.py",
                              "tests/test_reranker_pipeline.py",
                              "tools/evaluate_retrieval.py", "tools/run_quality_gates.py",
@@ -201,7 +202,8 @@ def _gate_py_compile() -> tuple[str, str, int]:
                              "tools/validate_comparison_baselines.py",
                              "tools/validate_outcome_metrics.py",
                              "tools/run_regression_evaluation.py",
-                             "tools/validate_real_query_set.py"],
+                             "tools/validate_real_query_set.py",
+                             "tools/sweep_bm25_real_queries.py"],
                             env={"PYTHONPYCACHEPREFIX": pycache})
     return ("passed" if rc == 0 else "failed",
             "byte-compiled backend/tests/tools" if rc == 0 else tail, rc)
