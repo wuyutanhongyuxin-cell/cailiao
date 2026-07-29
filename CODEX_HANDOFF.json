@@ -1,37 +1,36 @@
 {
   "status": "verified_by_codex",
-  "task_id": "cailiao-stage4-gbt-style-profile-v1",
-  "phase": "ROADMAP Stage 4: GB/T 9704-2012-inspired configurable DOCX style profile v1",
-  "baseline": "Release repo main 0390c36161272bdaceecb52f11f65d6ca8b4e6fd Clarify handoff publish boundary. Codex wrote the task file and attempted to send it through the without_human UIA bridge, but the script could not find a Claude Code window, so no Claude report or WSL diff was produced. Codex implemented this deterministic slice directly to keep the stage moving.",
-  "summary": "Added a deterministic DOCX style profile and OOXML styles.xml generation for export_docx. The export remains backwards compatible while supporting an optional style_profile override and now writes word/styles.xml, the styles content type, and a document relationship to the styles part. This is a stdlib-only GB/T 9704-2012-inspired style skeleton, not full formal layout certification.",
+  "task_id": "cailiao-stage4-docx-layout-roles-v1",
+  "phase": "ROADMAP Stage 4: deterministic DOCX layout roles, footer, signature, and imprint metadata v1",
+  "baseline": "Release repo main 20d44a2607195e450b04266e9fd038f156f230ef Add DOCX style profile. Codex wrote the task file and attempted to send it through the without_human UIA bridge, but the script could not find a Claude Code window, so no Claude report or WSL diff was produced. Codex implemented this deterministic slice directly to keep the stage moving.",
+  "summary": "Added deterministic DOCX layout role planning on top of the existing style profile. export_docx now maps title/body text into title, heading, body, signature, and imprint roles, styles simple Chinese/numbered headings with MaterialHeading, appends optional signature/imprint paragraphs, and writes a default PAGE footer part/relationship that can be disabled with page_number=false. This is still stdlib-only OOXML structure, not full formal pagination or GB/T certification.",
   "changed_files": [
     "backend/server.py",
-    "tests/test_docx_style_profile.py",
+    "tests/test_docx_layout_roles.py",
     "tools/run_quality_gates.py",
     "README.md",
     "docs/ROADMAP.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "backend/server.py: added _bounded_int(raw, default, minimum, maximum) for conservative numeric style normalization.",
-    "backend/server.py: added build_docx_style_profile(payload_or_options=None), returning method=docx_style_profile_v1 with A4 page, margins, font hints, paragraph settings, style IDs, and footer page-number metadata.",
-    "backend/server.py: added docx_style_xml(profile) and supporting OOXML paragraph helpers.",
-    "export_docx(title, body, style_profile=None) remains compatible with old two-argument calls and now writes styled title/body paragraphs, word/styles.xml, content type override, and word/_rels/document.xml.rels.",
-    "/api/export/docx now forwards optional payload['style_profile'] to export_docx.",
-    "tools/run_quality_gates.py py-compile gate now includes tests/test_docx_style_profile.py.",
+    "backend/server.py: added _is_docx_heading(text) for deterministic lexical heading detection.",
+    "backend/server.py: added build_docx_layout_plan(title, body, options=None), returning method=docx_layout_plan_v1, role-indexed paragraphs, signature/imprint flags, and role counts.",
+    "backend/server.py: added docx_footer_xml(profile, layout_plan), generating a PAGE field footer using stdlib XML strings.",
+    "export_docx now uses the layout plan to style title, heading, body, signature, and imprint paragraphs, adds footer content type/relationship/reference when page numbers are enabled, and preserves backwards-compatible calls.",
+    "tools/run_quality_gates.py py-compile gate now includes tests/test_docx_layout_roles.py.",
     "README.md and docs/ROADMAP.md document the v1 boundary."
   ],
   "not_implemented": [
-    "No frontend controls for style editing.",
-    "No persistent style profiles or database schema.",
-    "No full GB/T 9704-2012 certification,版记 generation, table/attachment layout, or section-aware heading detection.",
-    "No third-party DOCX library, model call, or network call."
+    "No formal pagination, rendered layout certification, or visual regression screenshots.",
+    "No semantic heading detection beyond simple lexical Chinese/numbered prefixes.",
+    "No full 版记 layout, table/attachment/document-number fields, or frontend style controls.",
+    "No persistence, third-party DOCX library, model call, or network call."
   ],
   "test_files": [
-    "tests/test_docx_style_profile.py"
+    "tests/test_docx_layout_roles.py"
   ],
   "required_test_commands_for_codex": [
-    "python -m unittest tests.test_docx_style_profile -v",
+    "python -m unittest tests.test_docx_layout_roles -v",
     "python -m unittest discover -s tests -v",
     "python tools/validate_retrieval_suite.py --suite tests/data/retrieval_eval_suite.json --json",
     "python tools/run_quality_gates.py --json",
@@ -39,17 +38,17 @@
     "git diff --check"
   ],
   "test_status": [
-    "python -m unittest tests.test_docx_style_profile -v: 6 tests OK.",
-    "python tools/run_quality_gates.py --json: passed=true, 5 gates passed, unittest gate ran 210 tests OK.",
-    "python -m unittest discover -s tests -v: 210 tests OK.",
+    "python -m unittest tests.test_docx_layout_roles -v: 6 tests OK.",
+    "python tools/run_quality_gates.py --json: passed=true, 5 gates passed, unittest gate ran 216 tests OK.",
+    "python -m unittest discover -s tests -v: 216 tests OK.",
     "python tools/validate_retrieval_suite.py --suite tests/data/retrieval_eval_suite.json --json: passed=true, with expected placeholder/<50-case warnings.",
     "python -m json.tool CODEX_HANDOFF.json: passed.",
     "git diff --check: passed."
   ],
   "risks": [
-    "The style profile is a deterministic OOXML skeleton only; formal official-document layout still needs later slices for page furniture, headings, tables, attachments, seals/signatures, and visual validation.",
-    "Body paragraphs are styled uniformly as MaterialBody in v1; semantic section/heading detection is intentionally deferred.",
-    "Font names are hints in OOXML and final rendering depends on fonts installed on the user's system.",
+    "Heading detection is intentionally lexical and conservative; unusual headings stay as body paragraphs until a later structured-field slice.",
+    "Footer PAGE fields depend on Word-compatible field rendering; the XML part is present but not visually regression-tested yet.",
+    "Signature and imprint are plain paragraphs in v1, not a final official-document 版记 layout.",
     "Claude Code did not consume this task because no Claude Code window was discoverable through the UIA bridge; WSL should be resynced after Codex publishes this slice."
   ],
   "credentials": [

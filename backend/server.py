@@ -3371,23 +3371,107 @@ def docx_style_xml(profile: dict[str, Any]) -> str:
 </w:styles>'''
 
 
+def _is_docx_heading(text: str) -> bool:
+    stripped = text.strip()
+    return bool(re.match(r"^([一二三四五六七八九十]+、|（[一二三四五六七八九十]+）|\d+[.．、])\S+", stripped))
+
+
+def _first_nonempty_string(raw: Any) -> str:
+    if isinstance(raw, list):
+        return "\n".join(str(item or "").strip() for item in raw if str(item or "").strip())
+    return str(raw or "").strip()
+
+
+def build_docx_layout_plan(title: str, body: str, options: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Build deterministic paragraph roles for stdlib DOCX export.
+
+    This maps plain text to simple export roles only. It does not infer legal
+    document semantics, paginate, or certify a formal GB/T layout.
+    """
+    raw_options = options or {}
+    if not isinstance(raw_options, dict):
+        raw_options = {}
+    style_profile = raw_options.get("style_profile") if isinstance(raw_options.get("style_profile"), dict) else {}
+    signature = _first_nonempty_string(raw_options.get("signature") or style_profile.get("signature"))
+    imprint_raw = raw_options.get("imprint") if raw_options.get("imprint") is not None else style_profile.get("imprint")
+    imprint = _first_nonempty_string(imprint_raw)
+
+    paragraphs: list[dict[str, Any]] = []
+    clean_title = str(title or "").strip()
+    if clean_title:
+        paragraphs.append({"index": len(paragraphs) + 1, "role": "title", "text": clean_title})
+    for paragraph in split_paragraphs(body):
+        role = "heading" if _is_docx_heading(paragraph) else "body"
+        paragraphs.append({"index": len(paragraphs) + 1, "role": role, "text": paragraph})
+    if signature:
+        paragraphs.append({"index": len(paragraphs) + 1, "role": "signature", "text": signature})
+    if imprint:
+        paragraphs.append({"index": len(paragraphs) + 1, "role": "imprint", "text": imprint})
+
+    counts = Counter(entry["role"] for entry in paragraphs)
+    return {
+        "method": "docx_layout_plan_v1",
+        "paragraphs": paragraphs,
+        "signature_enabled": bool(signature),
+        "imprint_enabled": bool(imprint),
+        "summary": {
+            "paragraph_count": len(paragraphs),
+            "title_count": counts.get("title", 0),
+            "heading_count": counts.get("heading", 0),
+            "body_count": counts.get("body", 0),
+            "signature_count": counts.get("signature", 0),
+            "imprint_count": counts.get("imprint", 0),
+        },
+    }
+
+
 def _docx_paragraph(text: str, style_id: str) -> str:
     return f'<w:p><w:pPr><w:pStyle w:val="{escape(style_id)}"/></w:pPr><w:r><w:t>{escape(text)}</w:t></w:r></w:p>'
+
+
+def docx_footer_xml(profile: dict[str, Any], layout_plan: dict[str, Any]) -> str:
+    alignment = escape(str(profile.get("footer", {}).get("alignment") or "center"))
+    return f'''<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:p>
+    <w:pPr><w:jc w:val="{alignment}"/></w:pPr>
+    <w:r><w:fldChar w:fldCharType="begin"/></w:r>
+    <w:r><w:instrText xml:space="preserve"> PAGE </w:instrText></w:r>
+    <w:r><w:fldChar w:fldCharType="end"/></w:r>
+  </w:p>
+</w:ftr>'''
 
 
 def export_docx(title: str, body: str, style_profile: dict[str, Any] | None = None) -> bytes:
     profile = build_docx_style_profile(style_profile or {})
     style_ids = profile["style_ids"]
     margins = profile["page"]["margins_twips"]
-    paras = [title] + split_paragraphs(body)
+    layout_plan = build_docx_layout_plan(title, body, {"style_profile": style_profile or {}})
+    role_styles = {
+        "title": style_ids["title"],
+        "heading": style_ids["heading"],
+        "body": style_ids["body"],
+        "signature": style_ids["body"],
+        "imprint": style_ids["body"],
+    }
     document = "".join(
-        _docx_paragraph(p, style_ids["title"] if idx == 0 else style_ids["body"])
-        for idx, p in enumerate(paras)
+        _docx_paragraph(entry["text"], role_styles.get(entry["role"], style_ids["body"]))
+        for entry in layout_plan["paragraphs"]
     )
     content_types = '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>'
     rels = '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>'
-    doc_rels = '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'
-    doc = f'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>{document}<w:sectPr><w:pgSz w:w="{profile["page"]["width_twips"]}" w:h="{profile["page"]["height_twips"]}"/><w:pgMar w:top="{margins["top"]}" w:right="{margins["right"]}" w:bottom="{margins["bottom"]}" w:left="{margins["left"]}" w:header="{margins["header"]}" w:footer="{margins["footer"]}" w:gutter="{margins["gutter"]}"/></w:sectPr></w:body></w:document>'
+    rel_entries = ['<Relationship Id="rIdStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>']
+    footer_ref = ""
+    footer_enabled = bool(profile.get("footer", {}).get("page_number"))
+    if footer_enabled:
+        content_types = content_types.replace(
+            "</Types>",
+            '<Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/></Types>',
+        )
+        rel_entries.append('<Relationship Id="rIdFooter1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/>')
+        footer_ref = '<w:footerReference w:type="default" r:id="rIdFooter1"/>'
+    doc_rels = f'<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">{"".join(rel_entries)}</Relationships>'
+    doc = f'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body>{document}<w:sectPr>{footer_ref}<w:pgSz w:w="{profile["page"]["width_twips"]}" w:h="{profile["page"]["height_twips"]}"/><w:pgMar w:top="{margins["top"]}" w:right="{margins["right"]}" w:bottom="{margins["bottom"]}" w:left="{margins["left"]}" w:header="{margins["header"]}" w:footer="{margins["footer"]}" w:gutter="{margins["gutter"]}"/></w:sectPr></w:body></w:document>'
     import io
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
@@ -3396,6 +3480,8 @@ def export_docx(title: str, body: str, style_profile: dict[str, Any] | None = No
         z.writestr("word/_rels/document.xml.rels", doc_rels)
         z.writestr("word/document.xml", doc)
         z.writestr("word/styles.xml", docx_style_xml(profile))
+        if footer_enabled:
+            z.writestr("word/footer1.xml", docx_footer_xml(profile, layout_plan))
     return buf.getvalue()
 
 
