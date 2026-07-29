@@ -4698,6 +4698,334 @@ def validate_access_policy(policy_or_context: Any) -> dict[str, Any]:
     }
 
 
+# --- Stage 6: governance (encryption metadata / backup / retention / audit) v1 -
+
+# Recognized (metadata-only) encryption algorithm labels and key sources. These
+# are descriptors for a governance policy, NOT an encryption implementation.
+GOVERNANCE_ENC_ALGORITHMS = frozenset({"none", "aes-256-gcm", "aes-128-gcm", "chacha20-poly1305"})
+GOVERNANCE_KEY_SOURCES = frozenset({"none", "local_keyring", "os_keychain", "kms", "operator_supplied"})
+
+# Audit actions and results this skeleton recognizes (open-ended but validated).
+GOVERNANCE_AUDIT_RESULTS = frozenset({"success", "denied", "error"})
+
+# Artifact types a retention policy may cover.
+GOVERNANCE_ARTIFACT_TYPES = ("draft", "evidence", "library_document", "audit_log", "backup")
+
+# Fields that must never appear on an encryption-policy descriptor (no key values).
+GOVERNANCE_FORBIDDEN_KEY_FIELDS = ("key", "key_value", "secret", "password", "private_key", "passphrase")
+
+
+def build_encryption_policy(options: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Return encryption *policy metadata* — never key material.
+
+    Describes the declared algorithm, at-rest/in-transit status, and an abstract
+    key_source label. This is a governance descriptor only; it neither encrypts
+    anything nor reads/stores a key value. Stdlib only.
+    """
+    raw = options if isinstance(options, dict) else {}
+    algorithm = str(raw.get("algorithm") or "none").strip().lower()
+    if algorithm not in GOVERNANCE_ENC_ALGORITHMS:
+        algorithm = "none"
+    key_source = str(raw.get("key_source") or "none").strip().lower()
+    if key_source not in GOVERNANCE_KEY_SOURCES:
+        key_source = "none"
+    at_rest = bool(raw.get("at_rest", algorithm != "none"))
+    in_transit = bool(raw.get("in_transit", False))
+    return {
+        "method": "encryption_policy_v1",
+        "boundary": (
+            "encryption policy metadata only; no cipher is implemented and no key "
+            "value is read, stored, or returned"
+        ),
+        "algorithm": algorithm,
+        "key_source": key_source,
+        "at_rest_enabled": at_rest,
+        "in_transit_enabled": in_transit,
+        "status": "declared" if algorithm != "none" else "disabled",
+        "note": "此为治理策略元数据，不含任何密钥值，也未实现真实加密。",
+    }
+
+
+def validate_encryption_policy(policy: Any) -> dict[str, Any]:
+    """Validate an encryption-policy descriptor and reject any key-material leak."""
+    errors: list[str] = []
+    warnings: list[str] = []
+    if not isinstance(policy, dict):
+        return {"passed": False, "errors": [f"policy must be a JSON object, got {type(policy).__name__}"],
+                "warnings": []}
+    leaked = [f for f in GOVERNANCE_FORBIDDEN_KEY_FIELDS if f in policy]
+    if leaked:
+        errors.append(f"encryption policy must not carry key material field(s) {leaked}")
+    algorithm = policy.get("algorithm")
+    if not (isinstance(algorithm, str) and algorithm.strip()):
+        errors.append("'algorithm' must be a non-empty string")
+    elif algorithm not in GOVERNANCE_ENC_ALGORITHMS:
+        errors.append(f"unsupported algorithm '{algorithm}' (supported: {sorted(GOVERNANCE_ENC_ALGORITHMS)})")
+    key_source = policy.get("key_source")
+    if key_source is not None and key_source not in GOVERNANCE_KEY_SOURCES:
+        errors.append(f"unsupported key_source '{key_source}' (supported: {sorted(GOVERNANCE_KEY_SOURCES)})")
+    if isinstance(algorithm, str) and algorithm == "none":
+        warnings.append("algorithm 'none' means no at-rest encryption is declared")
+    return {"passed": not errors, "errors": errors, "warnings": warnings}
+
+
+def _governance_checksum(content: Any) -> str:
+    """Deterministic sha256 over provided content/metadata (stdlib only)."""
+    if isinstance(content, (dict, list)):
+        blob = json.dumps(content, ensure_ascii=False, sort_keys=True)
+    else:
+        blob = str(content if content is not None else "")
+    return "sha256:" + hashlib.sha256(blob.encode("utf-8")).hexdigest()
+
+
+def build_backup_manifest(entries: Any, options: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Build a deterministic backup manifest over provided logical entries.
+
+    Each entry is {name, kind (file|logical_store), content|checksum, [size]}. When
+    ``content`` is provided a deterministic sha256 checksum is computed over it;
+    otherwise a supplied ``checksum`` string is kept. No filesystem copy is made —
+    this is a manifest/metadata builder only. Stdlib only.
+    """
+    raw = options if isinstance(options, dict) else {}
+    created_at = str(raw.get("created_at") or "").strip() or datetime.now().isoformat(timespec="seconds")
+    items: list[dict[str, Any]] = []
+    for idx, entry in enumerate(entries if isinstance(entries, list) else [], start=1):
+        if not isinstance(entry, dict):
+            continue
+        name = str(entry.get("name") or f"entry-{idx}").strip()
+        kind = str(entry.get("kind") or "logical_store").strip()
+        if "content" in entry:
+            checksum = _governance_checksum(entry.get("content"))
+        else:
+            checksum = str(entry.get("checksum") or "").strip()
+        items.append({"name": name, "kind": kind, "checksum": checksum,
+                      "size": entry.get("size") if isinstance(entry.get("size"), int) else None})
+    manifest_checksum = _governance_checksum([{"name": i["name"], "checksum": i["checksum"]} for i in items])
+    return {
+        "method": "backup_manifest_v1",
+        "boundary": "manifest/metadata only; no filesystem backup copy is performed",
+        "created_at": created_at,
+        "entry_count": len(items),
+        "entries": items,
+        "manifest_checksum": manifest_checksum,
+    }
+
+
+def validate_backup_manifest(manifest: Any) -> dict[str, Any]:
+    """Validate a backup manifest's shape and per-entry checksums."""
+    errors: list[str] = []
+    warnings: list[str] = []
+    if not isinstance(manifest, dict):
+        return {"passed": False, "errors": [f"manifest must be a JSON object, got {type(manifest).__name__}"],
+                "warnings": [], "entry_count": 0}
+    if not (isinstance(manifest.get("created_at"), str) and manifest["created_at"].strip()):
+        errors.append("'created_at' must be a non-empty string")
+    entries = manifest.get("entries")
+    if not isinstance(entries, list) or not entries:
+        errors.append("manifest must contain a non-empty 'entries' list")
+        entries = []
+    seen: set[str] = set()
+    for idx, entry in enumerate(entries, start=1):
+        where = f"entry #{idx}"
+        if not isinstance(entry, dict):
+            errors.append(f"{where}: must be an object")
+            continue
+        name = entry.get("name")
+        if not (isinstance(name, str) and name.strip()):
+            errors.append(f"{where}: 'name' must be a non-empty string")
+        elif name in seen:
+            errors.append(f"entry '{name}': duplicate name")
+        else:
+            seen.add(name)
+        checksum = entry.get("checksum")
+        if not (isinstance(checksum, str) and checksum.startswith("sha256:") and len(checksum) > 12):
+            warnings.append(f"{where}: missing or non-sha256 checksum")
+    return {"passed": not errors, "errors": errors, "warnings": warnings, "entry_count": len(entries)}
+
+
+def build_restore_plan(manifest: Any, options: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Derive a deterministic restore plan (ordered steps + warnings) from a manifest.
+
+    Produces one restore step per manifest entry plus warnings for entries with a
+    missing/weak checksum. This plans a restore; it does NOT execute any restore or
+    touch the filesystem. Stdlib only.
+    """
+    raw = options if isinstance(options, dict) else {}
+    dry_run = bool(raw.get("dry_run", True))
+    entries = manifest.get("entries", []) if isinstance(manifest, dict) else []
+    steps: list[dict[str, Any]] = []
+    warnings: list[str] = []
+    for idx, entry in enumerate(entries if isinstance(entries, list) else [], start=1):
+        if not isinstance(entry, dict):
+            continue
+        name = str(entry.get("name") or f"entry-{idx}")
+        checksum = entry.get("checksum")
+        verify = isinstance(checksum, str) and checksum.startswith("sha256:")
+        if not verify:
+            warnings.append(f"entry '{name}': no verifiable checksum; restore integrity cannot be confirmed")
+        steps.append({
+            "order": len(steps) + 1,
+            "name": name,
+            "kind": str(entry.get("kind") or "logical_store"),
+            "action": "verify_and_restore" if verify else "restore_unverified",
+            "checksum": checksum if isinstance(checksum, str) else "",
+        })
+    if not steps:
+        warnings.append("no restorable entries found in manifest")
+    return {
+        "method": "restore_plan_v1",
+        "boundary": "restore planning only; no restore is executed and no filesystem is modified",
+        "dry_run": dry_run,
+        "step_count": len(steps),
+        "steps": steps,
+        "warnings": warnings,
+    }
+
+
+def validate_restore_plan(plan: Any) -> dict[str, Any]:
+    """Validate a restore plan's shape (ordered steps with names/actions)."""
+    errors: list[str] = []
+    if not isinstance(plan, dict):
+        return {"passed": False, "errors": [f"plan must be a JSON object, got {type(plan).__name__}"],
+                "warnings": [], "step_count": 0}
+    steps = plan.get("steps")
+    if not isinstance(steps, list):
+        errors.append("'steps' must be a list")
+        steps = []
+    expected_order = 1
+    for idx, step in enumerate(steps, start=1):
+        where = f"step #{idx}"
+        if not isinstance(step, dict):
+            errors.append(f"{where}: must be an object")
+            continue
+        if not (isinstance(step.get("name"), str) and step["name"].strip()):
+            errors.append(f"{where}: 'name' must be a non-empty string")
+        if step.get("action") not in ("verify_and_restore", "restore_unverified"):
+            errors.append(f"{where}: unsupported action '{step.get('action')}'")
+        if step.get("order") != expected_order:
+            errors.append(f"{where}: 'order' must be sequential ({expected_order} expected)")
+        expected_order += 1
+    return {"passed": not errors, "errors": errors,
+            "warnings": list(plan.get("warnings", []) or []), "step_count": len(steps)}
+
+
+def build_retention_policy(options: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Build a retention policy: retention days per artifact type + deletion report.
+
+    ``options`` may set ``days`` (a mapping of artifact type -> int days) and
+    ``artifacts`` (a list of {type, id, age_days}); artifacts whose age exceeds the
+    retention window are reported as deletion *candidates* (never deleted here).
+    Stdlib only; no destructive action.
+    """
+    raw = options if isinstance(options, dict) else {}
+    default_days = {"draft": 90, "evidence": 365, "library_document": 730,
+                    "audit_log": 365, "backup": 180}
+    raw_days = raw.get("days") if isinstance(raw.get("days"), dict) else {}
+    days = {}
+    for atype in GOVERNANCE_ARTIFACT_TYPES:
+        val = raw_days.get(atype, default_days[atype])
+        days[atype] = int(val) if isinstance(val, (int, float)) and val >= 0 else default_days[atype]
+
+    candidates: list[dict[str, Any]] = []
+    for idx, art in enumerate(raw.get("artifacts", []) or [], start=1):
+        if not isinstance(art, dict):
+            continue
+        atype = str(art.get("type") or "").strip()
+        age = art.get("age_days")
+        if atype in days and isinstance(age, (int, float)) and age > days[atype]:
+            candidates.append({
+                "id": str(art.get("id") or f"artifact-{idx}"),
+                "type": atype,
+                "age_days": int(age),
+                "retention_days": days[atype],
+                "over_by_days": int(age) - days[atype],
+            })
+    return {
+        "method": "retention_policy_v1",
+        "boundary": "retention policy + deletion-candidate report only; nothing is deleted",
+        "retention_days": days,
+        "deletion_candidate_count": len(candidates),
+        "deletion_candidates": candidates,
+    }
+
+
+def validate_retention_policy(policy: Any) -> dict[str, Any]:
+    """Validate a retention policy's shape (non-negative integer day windows)."""
+    errors: list[str] = []
+    if not isinstance(policy, dict):
+        return {"passed": False, "errors": [f"policy must be a JSON object, got {type(policy).__name__}"],
+                "warnings": []}
+    days = policy.get("retention_days")
+    if not isinstance(days, dict) or not days:
+        errors.append("'retention_days' must be a non-empty object")
+    else:
+        for atype, val in days.items():
+            if not isinstance(val, int) or isinstance(val, bool) or val < 0:
+                errors.append(f"retention_days['{atype}'] must be a non-negative integer")
+    return {"passed": not errors, "errors": errors, "warnings": []}
+
+
+def build_audit_record(event: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Build a normalized audit-log record from an event descriptor.
+
+    Fields: timestamp, actor, action, workspace_id, resource, result, reason. A
+    missing timestamp is filled deterministically at build time. This records an
+    event; it does not persist it. Stdlib only; no credential/.env read.
+    """
+    raw = event if isinstance(event, dict) else {}
+    result = str(raw.get("result") or "success").strip()
+    if result not in GOVERNANCE_AUDIT_RESULTS:
+        result = "success"
+    return {
+        "method": "audit_record_v1",
+        "timestamp": str(raw.get("timestamp") or "").strip() or datetime.now().isoformat(timespec="seconds"),
+        "actor": str(raw.get("actor") or "").strip(),
+        "action": str(raw.get("action") or "").strip(),
+        "workspace_id": str(raw.get("workspace_id") or "").strip(),
+        "resource": str(raw.get("resource") or "").strip(),
+        "result": result,
+        "reason": str(raw.get("reason") or "").strip(),
+    }
+
+
+def validate_audit_record(record: Any) -> dict[str, Any]:
+    """Validate an audit record: actor and action required; result must be known."""
+    errors: list[str] = []
+    warnings: list[str] = []
+    if not isinstance(record, dict):
+        return {"passed": False, "errors": [f"record must be a JSON object, got {type(record).__name__}"],
+                "warnings": []}
+    for field in ("actor", "action"):
+        if not (isinstance(record.get(field), str) and record[field].strip()):
+            errors.append(f"'{field}' must be a non-empty string")
+    if not (isinstance(record.get("timestamp"), str) and record["timestamp"].strip()):
+        errors.append("'timestamp' must be a non-empty string")
+    result = record.get("result")
+    if result is not None and result not in GOVERNANCE_AUDIT_RESULTS:
+        errors.append(f"unsupported result '{result}' (supported: {sorted(GOVERNANCE_AUDIT_RESULTS)})")
+    if not (isinstance(record.get("workspace_id"), str) and record.get("workspace_id", "").strip()):
+        warnings.append("no workspace_id on audit record")
+    leaked = [f for f in GOVERNANCE_FORBIDDEN_KEY_FIELDS if f in record]
+    if leaked:
+        errors.append(f"audit record must not carry secret field(s) {leaked}")
+    return {"passed": not errors, "errors": errors, "warnings": warnings}
+
+
+def build_governance_policy() -> dict[str, Any]:
+    """Assemble the deterministic default governance policy summary (metadata only)."""
+    return {
+        "method": "governance_policy_v1",
+        "boundary": (
+            "governance metadata/manifest/audit skeleton only; no real encryption, "
+            "no destructive delete, no backup copy/restore execution, no credential/.env read"
+        ),
+        "encryption": build_encryption_policy({}),
+        "retention": build_retention_policy({}),
+        "audit_results": sorted(GOVERNANCE_AUDIT_RESULTS),
+        "artifact_types": list(GOVERNANCE_ARTIFACT_TYPES),
+    }
+
+
 def add_evidence(item: dict[str, str]) -> dict[str, str]:
     item_id = str(uuid.uuid4())
     title = item.get("title", "").strip()
@@ -5388,6 +5716,9 @@ class Handler(SimpleHTTPRequestHandler):
             role = self._query_param("role")
             self.json_response(build_access_context({"role": role} if role else None))
             return
+        if self.path.startswith("/api/governance/policy"):
+            self.json_response(build_governance_policy())
+            return
         if self.path.startswith("/api/evidence/search"):
             q = self.path.split("q=", 1)[1] if "q=" in self.path else ""
             self.json_response({"items": search_evidence(q)})
@@ -5458,6 +5789,9 @@ class Handler(SimpleHTTPRequestHandler):
             elif self.path == "/api/access/check":
                 context = payload.get("context") or build_access_context(payload.get("user"), payload.get("workspace"))
                 self.json_response(check_permission(context, str(payload.get("action", "")), payload.get("resource")))
+            elif self.path == "/api/governance/audit/validate":
+                report = validate_audit_record(payload)
+                self.json_response(report, 200 if report["passed"] else HTTPStatus.UNPROCESSABLE_ENTITY)
             elif self.path == "/api/evidence":
                 self.json_response(add_evidence(payload), HTTPStatus.CREATED)
             elif self.path == "/api/library/import":

@@ -247,6 +247,12 @@
         <p class="muted">这是确定性 RBAC/项目空间骨架：无登录、无密码/会话、无鉴权供应商，仅演示当前用户在某角色下的允许操作与项目空间隔离，不代表生产级访问控制。</p>
         <div id="accessStatus" class="muted"></div>
         <div id="accessActions" class="muted"></div>
+
+        <div class="exportActions">
+          <button id="loadGovernanceBtn">查看治理策略</button>
+        </div>
+        <p class="muted">治理策略为元数据骨架：加密仅记录算法/密钥来源标签（绝不含密钥值），备份/恢复仅生成清单与计划、保留期仅列出删除候选，均不执行真实加密、备份或删除。</p>
+        <div id="governanceStatus" class="muted"></div>
       </section>
     </main>
   </div>

@@ -229,6 +229,25 @@ function renderAccessContext(ctx) {
 
 if ($('applyRoleBtn')) $('applyRoleBtn').addEventListener('click', () => loadAccessContext($('accessRole').value));
 
+// --- Stage 6: governance policy (metadata only) ----------------------------
+
+async function loadGovernancePolicy() {
+  try {
+    const p = await fetch('/api/governance/policy').then((r) => r.json());
+    const enc = p.encryption || {};
+    const ret = p.retention || {};
+    if ($('governanceStatus')) {
+      $('governanceStatus').textContent =
+        `加密：${enc.algorithm}（${enc.status}，密钥来源 ${enc.key_source}，不含密钥值）｜` +
+        `保留期(天)：${Object.entries(ret.retention_days || {}).map(([k, v]) => `${k}=${v}`).join('、')}`;
+    }
+  } catch (e) {
+    if ($('governanceStatus')) $('governanceStatus').textContent = '无法读取治理策略。';
+  }
+}
+
+if ($('loadGovernanceBtn')) $('loadGovernanceBtn').addEventListener('click', loadGovernancePolicy);
+
 // --- Phase 1: trusted evidence library UI -----------------------------------
 
 const STATUS_LABEL = {
