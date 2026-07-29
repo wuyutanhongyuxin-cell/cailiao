@@ -1,66 +1,65 @@
 {
   "status": "implemented_by_claude",
-  "task_id": "cailiao-stage6-governance-backup-audit-v1",
-  "phase": "ROADMAP Stage 6 (third item): governance skeleton v1 — encryption metadata, backup/restore manifests, retention policy, and audit-log records (no real crypto/backup/delete)",
-  "baseline": "4b2461f0c88d6690a705b2d8403a348cba97d0b0 Add RBAC workspace policy",
-  "summary": "Added a deterministic, stdlib-only Stage 6 governance skeleton. build_encryption_policy records algorithm/key_source/status metadata and never key material (validator rejects key/secret/password/private_key/passphrase fields). build_backup_manifest computes deterministic sha256 checksums (sort_keys) over provided content with a per-manifest checksum; build_restore_plan derives ordered verify/unverified steps plus warnings without executing a restore. build_retention_policy lists deletion CANDIDATES by artifact-type age windows but deletes nothing. build_audit_record normalizes timestamp/actor/action/workspace_id/resource/result/reason; validator requires actor+action and rejects secret fields. build_governance_policy summarizes the defaults. HTTP GET /api/governance/policy and POST /api/governance/audit/validate; a front-end 设置 panel section surfaces the policy. No real encryption, no destructive delete, no backup/restore execution, no network, no credential/.env read.",
+  "task_id": "cailiao-stage6-provider-risk-v1",
+  "phase": "ROADMAP Stage 6 (fourth item): model-provider data-flow disclosure + risk grading skeleton v1 (offline low, external escalates by data-flow flags; no real provider integration)",
+  "baseline": "7071ffc07c408c3f728db61313d5cb21880b269a Add governance backup audit skeleton",
+  "summary": "Added a deterministic, stdlib-only Stage 6 provider data-flow disclosure + risk grading skeleton. build_provider_profile records provider_id/mode/endpoint_type/data categories/storage/training/residency/retention metadata (local modes send nothing off-machine) and never stores an api key, token, or endpoint URL. build_provider_disclosure produces user-facing text/structured object explaining what may be sent before model use. grade_provider_risk deterministically rates low/medium/high/blocked from flags (local=low, unknown mode=blocked, external escalates by external egress, sensitive categories, storage, training, and unknown residency). validate_provider_profile rejects credential-shaped fields and unsupported mode/categories. build_provider_risk_summary bundles profile+disclosure+risk. HTTP GET /api/providers/risk and POST /api/providers/risk/grade; a front-end 设置 panel section surfaces the disclosure + grade. No real provider integration, no network, no credential/.env read.",
   "changed_files": [
     "backend/server.py",
     "frontend/index.html",
     "frontend/app.js",
-    "tests/test_governance.py",
+    "tests/test_provider_risk.py",
     "tools/run_quality_gates.py",
     "README.md",
     "docs/ROADMAP.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "backend/server.py: added GOVERNANCE_ENC_ALGORITHMS, GOVERNANCE_KEY_SOURCES, GOVERNANCE_AUDIT_RESULTS, GOVERNANCE_ARTIFACT_TYPES, GOVERNANCE_FORBIDDEN_KEY_FIELDS, and _governance_checksum (sha256 over sort_keys JSON).",
-    "backend/server.py: build_encryption_policy/validate_encryption_policy (metadata only; validator rejects key-material fields and unknown algorithms).",
-    "backend/server.py: build_backup_manifest/validate_backup_manifest (deterministic per-entry + manifest sha256 checksums; duplicate-name and empty-list checks).",
-    "backend/server.py: build_restore_plan/validate_restore_plan (ordered steps, verify_and_restore vs restore_unverified, warnings; no execution).",
-    "backend/server.py: build_retention_policy/validate_retention_policy (per-type day windows + deletion-candidate report; non-negative-int validation; deletes nothing).",
-    "backend/server.py: build_audit_record/validate_audit_record (auto timestamp; actor+action required; known result; rejects secret fields; warns on missing workspace_id).",
-    "backend/server.py: build_governance_policy summary; HTTP GET /api/governance/policy and POST /api/governance/audit/validate (422 on invalid).",
-    "frontend/index.html + app.js: 设置 panel governance section with #loadGovernanceBtn/#governanceStatus and loadGovernancePolicy() calling /api/governance/policy.",
-    "tests/test_governance.py: 26 tests (encryption no-key-leak, deterministic backup checksum, restore warnings, retention candidates, audit required-fields, live HTTP policy/audit-validate, frontend tokens).",
-    "tools/run_quality_gates.py: py-compile gate now includes tests/test_governance.py.",
-    "README.md and docs/ROADMAP.md document the v1 boundary; only the ROADMAP '加密、备份、恢复、保留期和审计日志' item is marked done (provider-risk/SBOM untouched)."
+    "backend/server.py: added PROVIDER_MODES, PROVIDER_MODES_LOCAL, PROVIDER_ENDPOINT_TYPES, PROVIDER_DATA_CATEGORIES, PROVIDER_SENSITIVE_CATEGORIES, PROVIDER_RISK_LEVELS, PROVIDER_FORBIDDEN_FIELDS.",
+    "backend/server.py: build_provider_profile(options=None) (method=provider_profile_v1; local modes drop all off-machine categories/flags; never carries credentials).",
+    "backend/server.py: build_provider_disclosure(profile) (method=provider_disclosure_v1; local vs external user-facing text + structured fields).",
+    "backend/server.py: grade_provider_risk(profile) (deterministic low/medium/high/blocked with score, reasons, factors; invalid/unknown mode -> blocked).",
+    "backend/server.py: validate_provider_profile(profile) (rejects api_key/token/secret/endpoint_url... and unsupported mode/endpoint_type/categories; warns external-without-categories).",
+    "backend/server.py: build_provider_risk_summary(options=None) bundling profile+disclosure+risk.",
+    "backend/server.py: Handler.do_GET serves GET /api/providers/risk; do_POST serves POST /api/providers/risk/grade (422 when the posted profile fails validation).",
+    "frontend/index.html + app.js: 设置 panel provider-risk section with #loadProviderRiskBtn/#providerRiskStatus/#providerDisclosure and loadProviderRisk() calling /api/providers/risk.",
+    "tests/test_provider_risk.py: 24 tests (offline low + no egress, external prompt-only medium, sensitive+store+train high, unknown blocked, no-credential-leak, disclosure content, validation rejections, live HTTP risk/grade, frontend tokens).",
+    "tools/run_quality_gates.py: py-compile gate now includes tests/test_provider_risk.py.",
+    "README.md and docs/ROADMAP.md document the v1 boundary; only the ROADMAP '模型供应商数据流提示与风险分级' item is marked done (dependency-lock/SBOM/container untouched)."
   ],
   "not_implemented": [
-    "No real encryption/decryption engine; encryption is policy metadata only.",
-    "No destructive delete; retention only reports deletion candidates.",
-    "No real backup copy or restore execution; manifests and plans are metadata only.",
-    "No audit-log persistence store; records are built/validated but not stored.",
-    "No model-provider data-flow risk grading or SBOM/dependency-locking (later Stage 6 items). No network, no secret/.env read."
+    "No real model-provider integration or connectivity check; profiles are declarative metadata.",
+    "No API key/token/endpoint-URL handling; those fields are rejected, never stored.",
+    "No dependency locking, SBOM, or container deployment (final Stage 6 item).",
+    "No network, no credential/.env read."
   ],
   "test_files": [
-    "tests/test_governance.py"
+    "tests/test_provider_risk.py"
   ],
   "required_test_commands_for_codex": [
-    "python -m unittest tests.test_governance -v",
+    "python -m unittest tests.test_provider_risk -v",
     "python -m unittest discover -s tests -v",
     "python tools/run_quality_gates.py --json",
     "python -m json.tool CODEX_HANDOFF.json",
     "git diff --check"
   ],
   "test_status": [
-    "python -m unittest tests.test_governance -v: 26 tests OK (includes live ThreadingHTTPServer policy + audit-validate).",
-    "python -m unittest discover -s tests -v: 389 tests OK.",
-    "python tools/run_quality_gates.py --json (default 'python' on PATH): passed=true, all 5 gates passed; unittest gate ran 389 tests OK.",
+    "python -m unittest tests.test_provider_risk -v: 24 tests OK (includes live ThreadingHTTPServer risk + grade).",
+    "python -m unittest discover -s tests -v: 413 tests OK.",
+    "python tools/run_quality_gates.py --json (default 'python' on PATH): passed=true, all 5 gates passed; unittest gate ran 413 tests OK.",
     "python -m json.tool CODEX_HANDOFF.json: valid JSON.",
     "git diff --check: no whitespace/conflict issues."
   ],
   "risks": [
-    "Encryption is declarative metadata only: build_encryption_policy asserts nothing is actually encrypted. A reader must not infer real at-rest protection from status=declared.",
-    "Backup manifests checksum only the content passed in; they do not read the filesystem, so a manifest can be complete yet no bytes are actually backed up.",
-    "Retention reports deletion candidates but performs no deletion and enforces no schedule; acting on candidates is left to a future, deliberately-gated step.",
-    "Audit records are built and validated but not persisted or tamper-evidenced (no hash chain); this is a record schema, not an append-only audit store.",
+    "The risk grade is a deterministic heuristic over declared flags, not a legal/compliance assessment; a provider that lies about storage/training would be under-graded. It informs a human decision, it does not certify safety.",
+    "Risk grading trusts the caller-supplied profile; there is no verification that the declared mode/endpoint/categories match the provider's actual behavior.",
+    "The scoring thresholds (>=5 high, >=2 medium) are fixed and coarse; they are a starting policy, not a calibrated risk model.",
+    "Disclosure text is generated from the profile only; if a category is omitted from the profile it will be omitted from the disclosure (validation warns for external-without-categories).",
     "Environment note: the local interpreter is python3 (no bare 'python' on PATH); the quality-gate runner honors PYTHON=python3, and a local 'python->python3' PATH shim lets its default-interpreter meta-test pass."
   ],
   "credentials": [
-    "No credentials or .env files were read, created, or modified; encryption policy and audit validators explicitly reject key/secret/password fields.",
-    "No external network calls were used for implementation or local tests.",
+    "No credentials or .env files were read, created, or modified; provider profile builder omits and validator rejects api_key/token/secret/password/authorization/endpoint_url.",
+    "No external network calls were used for implementation or local tests; no provider is actually contacted.",
     "No push performed; commit/push left to the maintainer."
   ]
 }

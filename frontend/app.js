@@ -248,6 +248,25 @@ async function loadGovernancePolicy() {
 
 if ($('loadGovernanceBtn')) $('loadGovernanceBtn').addEventListener('click', loadGovernancePolicy);
 
+// --- Stage 6: model-provider data-flow disclosure + risk grade -------------
+
+async function loadProviderRisk() {
+  try {
+    const s = await fetch('/api/providers/risk').then((r) => r.json());
+    const risk = s.risk || {};
+    const disc = s.disclosure || {};
+    if ($('providerRiskStatus')) {
+      $('providerRiskStatus').textContent =
+        `供应商 ${s.profile.provider_id}（${s.profile.mode}）｜风险分级：${risk.level}（score ${risk.score}）｜原因：${(risk.reasons || []).join('、')}`;
+    }
+    if ($('providerDisclosure')) $('providerDisclosure').textContent = disc.disclosure_text || '';
+  } catch (e) {
+    if ($('providerRiskStatus')) $('providerRiskStatus').textContent = '无法读取供应商风险信息。';
+  }
+}
+
+if ($('loadProviderRiskBtn')) $('loadProviderRiskBtn').addEventListener('click', loadProviderRisk);
+
 // --- Phase 1: trusted evidence library UI -----------------------------------
 
 const STATUS_LABEL = {

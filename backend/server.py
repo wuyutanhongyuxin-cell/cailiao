@@ -5026,6 +5026,223 @@ def build_governance_policy() -> dict[str, Any]:
     }
 
 
+# --- Stage 6: model-provider data-flow disclosure + risk grading skeleton v1 --
+
+# Provider modes. offline/local_only never leave the machine; openai_compatible
+# and external_api send data to a remote endpoint.
+PROVIDER_MODES = ("offline", "local_only", "openai_compatible", "external_api")
+PROVIDER_MODES_LOCAL = frozenset({"offline", "local_only"})
+
+# Endpoint types a provider profile may declare.
+PROVIDER_ENDPOINT_TYPES = frozenset({"none", "local_process", "self_hosted", "third_party_cloud"})
+
+# Data categories that may be sent to a provider (ordered; "sensitive" ones escalate risk).
+PROVIDER_DATA_CATEGORIES = (
+    "prompt_text", "draft_text", "evidence_text", "library_documents",
+    "personal_data", "confidential_material",
+)
+PROVIDER_SENSITIVE_CATEGORIES = frozenset({"personal_data", "confidential_material", "library_documents"})
+
+# Risk levels, low to high; "blocked" is a hard stop.
+PROVIDER_RISK_LEVELS = ("low", "medium", "high", "blocked")
+
+# Fields a provider profile must never carry (no credentials / URLs with secrets).
+PROVIDER_FORBIDDEN_FIELDS = ("api_key", "key", "secret", "password", "token", "authorization", "endpoint_url")
+
+
+def build_provider_profile(options: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Build a model-provider data-flow profile (metadata only, never credentials).
+
+    Captures provider_id, mode, endpoint_type, the data categories that may be
+    sent, and storage/training/residency/retention notes. Local modes default to
+    sending nothing off-machine. No API key, token, or endpoint URL is ever stored
+    or returned. Stdlib only.
+    """
+    raw = options if isinstance(options, dict) else {}
+    mode = str(raw.get("mode") or "offline").strip().lower()
+    if mode not in PROVIDER_MODES:
+        mode = "offline"
+    is_local = mode in PROVIDER_MODES_LOCAL
+
+    endpoint_type = str(raw.get("endpoint_type") or ("local_process" if is_local else "third_party_cloud")).strip().lower()
+    if endpoint_type not in PROVIDER_ENDPOINT_TYPES:
+        endpoint_type = "none" if is_local else "third_party_cloud"
+
+    raw_categories = raw.get("data_categories") if isinstance(raw.get("data_categories"), list) else []
+    # Local modes send nothing off-machine regardless of declared categories.
+    if is_local:
+        categories: list[str] = []
+    else:
+        categories = [c for c in PROVIDER_DATA_CATEGORIES if c in {str(x) for x in raw_categories}]
+
+    return {
+        "method": "provider_profile_v1",
+        "boundary": (
+            "provider data-flow metadata only; no credentials, API keys, tokens, or "
+            "endpoint URLs are stored, and no provider is actually contacted"
+        ),
+        "provider_id": str(raw.get("provider_id") or ("local" if is_local else "external")).strip(),
+        "mode": mode,
+        "is_local": is_local,
+        "endpoint_type": endpoint_type,
+        "data_categories_sent": categories,
+        "stores_data": bool(raw.get("stores_data", False)) and not is_local,
+        "trains_on_data": bool(raw.get("trains_on_data", False)) and not is_local,
+        "data_residency": str(raw.get("data_residency") or ("local" if is_local else "unknown")).strip(),
+        "retention_note": str(raw.get("retention_note") or ("不出本机" if is_local else "由供应商条款决定")).strip(),
+    }
+
+
+def build_provider_disclosure(profile: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Build a user-facing data-flow disclosure (structured + text) for a profile.
+
+    Explains, before model use, what data may leave the machine and where it goes.
+    Deterministic, stdlib only; contains no credentials.
+    """
+    prof = profile if isinstance(profile, dict) else build_provider_profile({})
+    is_local = bool(prof.get("is_local"))
+    categories = prof.get("data_categories_sent", []) or []
+    if is_local:
+        text = ("本地/离线模式：不向任何外部供应商发送数据，提示词与草稿不出本机。")
+    else:
+        cat_label = "、".join(categories) if categories else "（未声明具体类别）"
+        text = (
+            f"使用外部供应商 {prof.get('provider_id', 'external')}（{prof.get('endpoint_type')}）前请知悉："
+            f"可能发送以下数据类别：{cat_label}；"
+            f"存储：{'是' if prof.get('stores_data') else '否'}，"
+            f"用于训练：{'是' if prof.get('trains_on_data') else '否'}，"
+            f"数据驻留：{prof.get('data_residency')}，保留：{prof.get('retention_note')}。"
+        )
+    return {
+        "method": "provider_disclosure_v1",
+        "boundary": "disclosure text/metadata only; shown before model use, contains no credentials",
+        "is_local": is_local,
+        "data_categories_sent": list(categories),
+        "sends_data_externally": not is_local and bool(categories or prof.get("mode") not in PROVIDER_MODES_LOCAL),
+        "disclosure_text": text,
+    }
+
+
+def grade_provider_risk(profile: Any) -> dict[str, Any]:
+    """Deterministically grade a provider profile as low/medium/high/blocked.
+
+    Rules (deterministic):
+      - invalid profile or unknown/unsupported mode -> blocked.
+      - local modes (offline/local_only) -> low (no data leaves the machine).
+      - external modes: start at low, then escalate by flags —
+          +1 for any external data category, +2 if a sensitive category is sent,
+          +2 if stores_data, +2 if trains_on_data, +1 if data_residency == "unknown".
+        score >= 5 -> high; 2..4 -> medium; else low.
+    Returns {level, score, reasons, factors}. Stdlib only.
+    """
+    if not isinstance(profile, dict):
+        return {"level": "blocked", "score": 0, "reasons": ["invalid_profile"], "factors": {}}
+    mode = profile.get("mode")
+    if mode not in PROVIDER_MODES:
+        return {"level": "blocked", "score": 0, "reasons": ["unknown_mode"], "factors": {"mode": mode}}
+
+    reasons: list[str] = []
+    if mode in PROVIDER_MODES_LOCAL:
+        return {"level": "low", "score": 0, "reasons": ["local_mode_no_egress"],
+                "factors": {"mode": mode, "is_local": True}}
+
+    categories = profile.get("data_categories_sent", []) or []
+    sensitive = sorted(set(categories) & PROVIDER_SENSITIVE_CATEGORIES)
+    stores = bool(profile.get("stores_data"))
+    trains = bool(profile.get("trains_on_data"))
+    residency_unknown = str(profile.get("data_residency") or "").strip().lower() == "unknown"
+
+    score = 0
+    if categories:
+        score += 1
+        reasons.append("sends_data_externally")
+    if sensitive:
+        score += 2
+        reasons.append(f"sensitive_categories:{','.join(sensitive)}")
+    if stores:
+        score += 2
+        reasons.append("provider_stores_data")
+    if trains:
+        score += 2
+        reasons.append("provider_trains_on_data")
+    if residency_unknown:
+        score += 1
+        reasons.append("data_residency_unknown")
+
+    level = "high" if score >= 5 else "medium" if score >= 2 else "low"
+    return {
+        "level": level,
+        "score": score,
+        "reasons": reasons or ["external_no_declared_categories"],
+        "factors": {
+            "mode": mode, "is_local": False, "sensitive_categories": sensitive,
+            "stores_data": stores, "trains_on_data": trains, "residency_unknown": residency_unknown,
+        },
+    }
+
+
+def validate_provider_profile(profile: Any) -> dict[str, Any]:
+    """Validate a provider profile and reject any credential-shaped field.
+
+    Errors: unsupported mode/endpoint_type, unknown data categories, or the
+    presence of a forbidden credential field (api_key/token/endpoint_url/...).
+    Warns when an external provider declares no data categories. Stdlib only.
+    Returns {passed, errors, warnings, mode}.
+    """
+    errors: list[str] = []
+    warnings: list[str] = []
+    if not isinstance(profile, dict):
+        return {"passed": False, "errors": [f"profile must be a JSON object, got {type(profile).__name__}"],
+                "warnings": [], "mode": None}
+
+    leaked = [f for f in PROVIDER_FORBIDDEN_FIELDS if f in profile]
+    if leaked:
+        errors.append(f"provider profile must not carry credential/endpoint field(s) {leaked}")
+
+    mode = profile.get("mode")
+    if not (isinstance(mode, str) and mode.strip()):
+        errors.append("'mode' must be a non-empty string")
+        mode = None
+    elif mode not in PROVIDER_MODES:
+        errors.append(f"unsupported mode '{mode}' (supported: {list(PROVIDER_MODES)})")
+        mode = None
+
+    endpoint_type = profile.get("endpoint_type")
+    if endpoint_type is not None and endpoint_type not in PROVIDER_ENDPOINT_TYPES:
+        errors.append(f"unsupported endpoint_type '{endpoint_type}' (supported: {sorted(PROVIDER_ENDPOINT_TYPES)})")
+
+    categories = profile.get("data_categories_sent")
+    if categories is not None:
+        if not isinstance(categories, list):
+            errors.append("'data_categories_sent' must be a list when present")
+        else:
+            unknown = [c for c in categories if c not in PROVIDER_DATA_CATEGORIES]
+            if unknown:
+                errors.append(f"unknown data categor(ies) {unknown}")
+
+    if mode in ("openai_compatible", "external_api") and not (categories or []):
+        warnings.append("external provider declares no data categories; disclosure will be incomplete")
+
+    return {"passed": not errors, "errors": errors, "warnings": warnings, "mode": mode}
+
+
+def build_provider_risk_summary(options: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Assemble a provider profile + disclosure + risk grade in one deterministic call."""
+    profile = build_provider_profile(options or {})
+    disclosure = build_provider_disclosure(profile)
+    risk = grade_provider_risk(profile)
+    return {
+        "method": "provider_risk_summary_v1",
+        "boundary": (
+            "provider data-flow disclosure + deterministic risk grade skeleton only; "
+            "no real provider integration, no network, no credential/.env read"
+        ),
+        "profile": profile,
+        "disclosure": disclosure,
+        "risk": risk,
+    }
+
+
 def add_evidence(item: dict[str, str]) -> dict[str, str]:
     item_id = str(uuid.uuid4())
     title = item.get("title", "").strip()
@@ -5719,6 +5936,10 @@ class Handler(SimpleHTTPRequestHandler):
         if self.path.startswith("/api/governance/policy"):
             self.json_response(build_governance_policy())
             return
+        if self.path.startswith("/api/providers/risk"):
+            # Deterministic demo: default (offline) provider risk summary.
+            self.json_response(build_provider_risk_summary({}))
+            return
         if self.path.startswith("/api/evidence/search"):
             q = self.path.split("q=", 1)[1] if "q=" in self.path else ""
             self.json_response({"items": search_evidence(q)})
@@ -5792,6 +6013,12 @@ class Handler(SimpleHTTPRequestHandler):
             elif self.path == "/api/governance/audit/validate":
                 report = validate_audit_record(payload)
                 self.json_response(report, 200 if report["passed"] else HTTPStatus.UNPROCESSABLE_ENTITY)
+            elif self.path == "/api/providers/risk/grade":
+                validation = validate_provider_profile(payload)
+                if not validation["passed"]:
+                    self.json_response(validation, HTTPStatus.UNPROCESSABLE_ENTITY)
+                else:
+                    self.json_response(build_provider_risk_summary(payload))
             elif self.path == "/api/evidence":
                 self.json_response(add_evidence(payload), HTTPStatus.CREATED)
             elif self.path == "/api/library/import":
