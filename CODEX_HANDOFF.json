@@ -1,37 +1,37 @@
 {
   "status": "verified_by_codex",
-  "task_id": "cailiao-stage3-approved-facts-v1",
-  "phase": "ROADMAP Stage 3: deterministic approved-facts paragraph audit v1",
-  "baseline": "Release repo main 4ae1ba1 Add structured writing plan. Claude Code had already produced a related WSL diff for approved evidence flags; Codex reviewed it and adjusted the data model to also support payload facts and approved_facts as requested.",
-  "summary": "Added an additive approved_facts_audit surface to analyze_payload. It checks each draft paragraph's required claim markers against request-local pre-approved fact sources: payload facts, structured approved_facts, and explicitly approved evidence. Existing status, score, issues, structured_writing_plan, and writing_state behavior is unchanged.",
+  "task_id": "cailiao-stage3-targeted-repair-plan-v1",
+  "phase": "ROADMAP Stage 3: deterministic targeted paragraph repair plan v1",
+  "baseline": "Release repo main f9fe29b Add approved facts audit. Codex attempted to send this task to Claude Code via UIA and direct TTY, but the WSL repo stayed clean and the report did not update to the target task, so Codex implemented this small deterministic slice directly.",
+  "summary": "Added an additive targeted_repair_plan surface to analyze_payload. It creates paragraph-scoped repair units only for failed or unverified paragraphs, combining pN issue targets, structured writing plan missing markers, and approved-facts audit unapproved markers. It does not rewrite the draft, call a model, query the library database, or change existing analysis semantics.",
   "changed_files": [
     "backend/server.py",
-    "tests/test_approved_facts_audit.py",
+    "tests/test_targeted_repair_plan.py",
     "tools/run_quality_gates.py",
     "README.md",
     "docs/ROADMAP.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "backend/server.py: added _truthy_approval(raw) for approved/review_approved/is_approved evidence flags.",
-    "backend/server.py: added _approved_fact_search_items(payload), adapting payload['facts'], payload['approved_facts'], and explicitly approved payload evidence into stable local search-like items without mutating the payload.",
-    "backend/server.py: added build_approved_facts_audit(payload, analysis), returning method=approved_facts_audit_v1, source_counts, approval_provided, approved_fact_count, paragraphs, and summary.",
-    "Per-paragraph audit entries include index, text, required_markers, used_fact_markers, unapproved_markers, approved_fact_ids, status, and warnings.",
-    "Paragraph status is no_claim_markers when no required markers exist, all_facts_approved when every required marker is covered by approved fact sources, and uses_unapproved_facts when any marker is absent.",
-    "tools/run_quality_gates.py py-compile gate now includes tests/test_approved_facts_audit.py.",
-    "README.md and docs/ROADMAP.md document the v1 boundary: deterministic lexical audit only, no DB query, no model call, no NLI/semantic entailment."
+    "backend/server.py: added _paragraph_index_from_target(target) for stable pN issue mapping.",
+    "backend/server.py: added build_targeted_repair_plan(payload, analysis), returning method=targeted_repair_plan_v1, can_repair, repair_units, and summary.",
+    "Repair units are created only for paragraph-indexed failures, structured_writing_plan needs_verification paragraphs, or approved_facts_audit uses_unapproved_facts paragraphs.",
+    "Each repair unit includes paragraph_index, original_text, issue_codes, source_targets, required_markers, missing_markers, unapproved_markers, allowed_fact_ids, instruction, locked=false, and scope=paragraph_only.",
+    "Instruction strings explicitly require rewriting only that paragraph, preserving unrelated paragraphs, and using only approved facts/evidence listed in allowed_fact_ids.",
+    "No draft text is modified and no full-document rewrite is generated.",
+    "tools/run_quality_gates.py py-compile gate now includes tests/test_targeted_repair_plan.py.",
+    "README.md and docs/ROADMAP.md document the v1 boundary."
   ],
   "not_implemented": [
-    "No semantic entailment, NLI, legal correctness, or claim truth judgment beyond lexical marker coverage.",
-    "No library database retrieval; only request-local payload fields are used.",
-    "No LLM calls, DOCX formatting, targeted paragraph rewrite, locked paragraph diff, or rollback implementation.",
-    "No frontend rendering for approved_facts_audit in this slice."
+    "No actual paragraph rewrite, LLM call, semantic entailment, or final review.",
+    "No locked paragraph persistence, draft version diff, rollback, or frontend rendering in this slice.",
+    "No library database retrieval; only the existing request-local analysis surfaces are used."
   ],
   "test_files": [
-    "tests/test_approved_facts_audit.py"
+    "tests/test_targeted_repair_plan.py"
   ],
   "required_test_commands_for_codex": [
-    "python -m unittest tests.test_approved_facts_audit -v",
+    "python -m unittest tests.test_targeted_repair_plan -v",
     "python -m unittest discover -s tests -v",
     "python tools/validate_retrieval_suite.py --suite tests/data/retrieval_eval_suite.json --json",
     "python tools/run_quality_gates.py --json",
@@ -39,18 +39,18 @@
     "git diff --check"
   ],
   "test_status": [
-    "python -m unittest tests.test_approved_facts_audit -v: 7 tests OK.",
-    "python -m unittest discover -s tests -v: 182 tests OK.",
+    "python -m unittest tests.test_targeted_repair_plan -v: 8 tests OK.",
+    "python -m unittest discover -s tests -v: 190 tests OK.",
     "python tools/validate_retrieval_suite.py --suite tests/data/retrieval_eval_suite.json --json: passed=true, with expected placeholder/<50-case warnings.",
     "python tools/run_quality_gates.py --json: passed=true, 5 gates passed.",
     "python -m json.tool CODEX_HANDOFF.json: passed.",
     "git diff --check: passed."
   ],
   "risks": [
-    "approved_facts_audit is deterministic linkage metadata only; all_facts_approved must not be treated as semantic support, legal/policy correctness, or final review.",
-    "payload['facts'] is treated as user-confirmed approved fact text by contract. Callers needing stricter approval provenance should use approved_facts or approved evidence flags.",
-    "Coverage is exact lexical marker coverage through existing helpers, so paraphrased approved facts may be conservatively flagged.",
-    "The audit is nested in analyze_payload output; frontend rendering and top-level /api/generate surfacing are intentionally left for a later UI/API slice."
+    "targeted_repair_plan is planning metadata only; it should not be treated as proof that a paragraph has been repaired.",
+    "Issue mapping is intentionally limited to explicit pN targets plus existing structured/approved-facts paragraph statuses.",
+    "The instruction text is deterministic and paragraph scoped, but any later model rewrite still requires independent review.",
+    "Claude Code did not consume this task in the polling window; WSL should be resynced after Codex publishes this slice."
   ],
   "credentials": [
     "No credentials or .env files were read, created, or modified.",

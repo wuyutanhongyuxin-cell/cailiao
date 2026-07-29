@@ -2584,6 +2584,119 @@ def build_approved_facts_audit(payload: dict[str, Any], analysis: dict[str, Any]
     }
 
 
+def _paragraph_index_from_target(target: Any) -> int | None:
+    match = re.fullmatch(r"p(\d+)", str(target or ""))
+    if not match:
+        return None
+    value = int(match.group(1))
+    return value if value > 0 else None
+
+
+def build_targeted_repair_plan(payload: dict[str, Any], analysis: dict[str, Any]) -> dict[str, Any]:
+    """Build paragraph-scoped repair units for failed or unverified paragraphs.
+
+    This is planning metadata only. It never rewrites text, calls a model, reads
+    the library DB, or changes the existing analysis status.
+    """
+    paragraphs = split_paragraphs(str(payload.get("draft", "") or ""))
+    blockers = [issue for issue in analysis.get("issues", []) or [] if issue.get("level") == "blocker"]
+    if not paragraphs or blockers:
+        return {
+            "method": "targeted_repair_plan_v1",
+            "can_repair": False,
+            "repair_units": [],
+            "summary": {
+                "paragraph_count": len(paragraphs),
+                "repair_unit_count": 0,
+                "blocked": bool(blockers),
+            },
+        }
+
+    issue_map: dict[int, list[dict[str, Any]]] = {}
+    for issue in analysis.get("issues", []) or []:
+        paragraph_index = _paragraph_index_from_target(issue.get("target"))
+        if paragraph_index is None:
+            continue
+        issue_map.setdefault(paragraph_index, []).append(issue)
+
+    structured_by_index = {
+        int(item.get("index")): item
+        for item in analysis.get("structured_writing_plan", {}).get("paragraphs", []) or []
+        if item.get("index")
+    }
+    approved_by_index = {
+        int(item.get("index")): item
+        for item in analysis.get("approved_facts_audit", {}).get("paragraphs", []) or []
+        if item.get("index")
+    }
+
+    repair_indexes = set(issue_map)
+    for idx, item in structured_by_index.items():
+        if item.get("status") == "needs_verification":
+            repair_indexes.add(idx)
+    for idx, item in approved_by_index.items():
+        if item.get("status") == "uses_unapproved_facts":
+            repair_indexes.add(idx)
+
+    repair_units: list[dict[str, Any]] = []
+    for idx in sorted(i for i in repair_indexes if 1 <= i <= len(paragraphs)):
+        structured = structured_by_index.get(idx, {})
+        approved = approved_by_index.get(idx, {})
+        issues = issue_map.get(idx, [])
+        issue_codes = sorted({str(issue.get("code")) for issue in issues if issue.get("code")})
+        source_targets = sorted({str(issue.get("target")) for issue in issues if issue.get("target")})
+        required_markers = sorted(set(str(m) for m in (
+            list(structured.get("required_markers") or []) +
+            list(approved.get("required_markers") or [])
+        )))
+        structured_missing = structured.get("evidence_map", {}).get("missing_markers", [])
+        missing_markers = sorted(set(str(m) for m in structured_missing if m))
+        unapproved_markers = sorted(set(str(m) for m in approved.get("unapproved_markers", []) or [] if m))
+        allowed_fact_ids = sorted(set(str(m) for m in approved.get("approved_fact_ids", []) or [] if m))
+
+        reasons = issue_codes[:]
+        if missing_markers:
+            reasons.append("missing_required_markers")
+        if unapproved_markers:
+            reasons.append("unapproved_or_missing_markers")
+        if not reasons:
+            reasons.append("paragraph_needs_verification")
+
+        marker_note = ", ".join(required_markers) if required_markers else "none"
+        allowed_note = ", ".join(allowed_fact_ids) if allowed_fact_ids else "none"
+        instruction = (
+            f"Rewrite only paragraph {idx}. Preserve all unrelated paragraphs. "
+            f"Use only approved facts/evidence listed in allowed_fact_ids: {allowed_note}. "
+            f"Required claim markers for this paragraph: {marker_note}. "
+            f"Fix only these deterministic issues: {', '.join(sorted(set(reasons)))}."
+        )
+
+        repair_units.append({
+            "paragraph_index": idx,
+            "original_text": paragraphs[idx - 1],
+            "issue_codes": issue_codes,
+            "source_targets": source_targets,
+            "required_markers": required_markers,
+            "missing_markers": missing_markers,
+            "unapproved_markers": unapproved_markers,
+            "allowed_fact_ids": allowed_fact_ids,
+            "instruction": instruction,
+            "locked": False,
+            "scope": "paragraph_only",
+        })
+
+    return {
+        "method": "targeted_repair_plan_v1",
+        "can_repair": bool(repair_units),
+        "repair_units": repair_units,
+        "summary": {
+            "paragraph_count": len(paragraphs),
+            "repair_unit_count": len(repair_units),
+            "blocked": False,
+        },
+    }
+
+
 # --- Stage 3: deterministic writing workflow state (v1) ----------------------
 #
 # An additive, deterministic surface over analyze_payload. It never changes the
@@ -2715,6 +2828,8 @@ def analyze_payload(payload: dict[str, Any]) -> dict[str, Any]:
     analysis["writing_state"] = build_writing_state(payload, analysis)
     # Additive Stage 3 approved-facts audit (does not change status/issues).
     analysis["approved_facts_audit"] = build_approved_facts_audit(payload, analysis)
+    # Additive Stage 3 paragraph-scoped repair plan (does not rewrite draft).
+    analysis["targeted_repair_plan"] = build_targeted_repair_plan(payload, analysis)
     return analysis
 
 
