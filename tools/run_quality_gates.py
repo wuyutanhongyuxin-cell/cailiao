@@ -173,6 +173,7 @@ def _gate_py_compile() -> tuple[str, str, int]:
                              "tests/test_claim_insufficiency.py",
                              "tests/test_writing_state.py",
                              "tests/test_structured_writing_plan.py",
+                             "tests/test_approved_facts_audit.py",
                              "tests/test_vector_pipeline.py",
                              "tests/test_reranker_pipeline.py",
                              "tools/evaluate_retrieval.py", "tools/run_quality_gates.py"],

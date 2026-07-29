@@ -2461,6 +2461,129 @@ def build_structured_writing_plan(payload: dict[str, Any], analysis: dict[str, A
     }
 
 
+# --- Stage 3: deterministic "approved facts only" gate (v1) ------------------
+#
+# Additive paragraph-level audit. It checks whether each paragraph's required
+# claim markers are covered by request-local approved fact sources. This is a
+# lexical/marker gate only: no library DB query, no model call, no semantic
+# entailment, and no mutation of existing status/issues/score/writing_state.
+def _truthy_approval(raw: dict[str, Any]) -> bool:
+    return bool(raw.get("approved") or raw.get("review_approved") or raw.get("is_approved"))
+
+
+def _approved_fact_search_items(payload: dict[str, Any]) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Adapt request-local approved facts into search-like evidence items.
+
+    ``payload["facts"]`` is treated as user-confirmed pre-approved fact text.
+    ``payload["approved_facts"]`` may contain strings or objects with id/text/body.
+    Evidence items are included only when explicitly approved.
+    """
+    items: list[dict[str, Any]] = []
+    source_counts = {"facts": 0, "approved_facts": 0, "approved_evidence": 0}
+
+    facts_text = str(payload.get("facts", "") or "").strip()
+    if facts_text:
+        source_counts["facts"] = 1
+        items.append({
+            "chunk_id": "payload-facts",
+            "document_id": "payload-facts",
+            "title": "payload facts",
+            "source": "payload.facts",
+            "url": "",
+            "body": facts_text,
+            "content": facts_text,
+            "hit_reasons": [],
+        })
+
+    for idx, raw in enumerate(payload.get("approved_facts", []) or [], start=1):
+        if isinstance(raw, dict):
+            text = str(raw.get("text") or raw.get("body") or raw.get("content") or "")
+            fact_id = str(raw.get("id") or idx)
+            title = str(raw.get("title") or f"approved fact {fact_id}")
+        else:
+            text = str(raw or "")
+            fact_id = str(idx)
+            title = f"approved fact {fact_id}"
+        if not text.strip():
+            continue
+        source_counts["approved_facts"] += 1
+        chunk_id = f"payload-approved-fact-{fact_id}"
+        items.append({
+            "chunk_id": chunk_id,
+            "document_id": chunk_id,
+            "title": title,
+            "source": "payload.approved_facts",
+            "url": "",
+            "body": text,
+            "content": " ".join(part for part in (title, text) if part),
+            "hit_reasons": [],
+        })
+
+    approved_evidence = [
+        raw for raw in (payload.get("evidence", []) or [])
+        if isinstance(raw, dict) and _truthy_approval(raw)
+    ]
+    source_counts["approved_evidence"] = len(approved_evidence)
+    items.extend(_payload_evidence_search_items(approved_evidence))
+
+    return items, source_counts
+
+
+def build_approved_facts_audit(payload: dict[str, Any], analysis: dict[str, Any]) -> dict[str, Any]:
+    """Return per-paragraph approved-fact coverage metadata."""
+    approved_items, source_counts = _approved_fact_search_items(payload)
+    paragraphs = split_paragraphs(str(payload.get("draft", "") or ""))
+
+    paragraph_entries: list[dict[str, Any]] = []
+    for index, paragraph in enumerate(paragraphs, start=1):
+        evidence_map = map_claim_to_evidence(paragraph, approved_items)
+        required_markers = list(evidence_map.get("required_markers") or [])
+        unapproved_markers = list(evidence_map.get("missing_markers") or [])
+        approved_fact_ids = sorted({
+            str(item.get("chunk_id"))
+            for item in evidence_map.get("supporting_items", [])
+            if item.get("chunk_id")
+        })
+        warnings: list[str] = []
+        if not required_markers:
+            status = "no_claim_markers"
+            approved_fact_ids = []
+        elif unapproved_markers:
+            status = "uses_unapproved_facts"
+            warnings.append("unapproved_or_missing_markers")
+        else:
+            status = "all_facts_approved"
+
+        paragraph_entries.append({
+            "index": index,
+            "text": paragraph,
+            "required_markers": required_markers,
+            "used_fact_markers": [m for m in required_markers if m not in unapproved_markers],
+            "unapproved_markers": unapproved_markers,
+            "approved_fact_ids": approved_fact_ids,
+            "status": status,
+            "warnings": warnings,
+        })
+
+    claim_paragraph_count = sum(1 for p in paragraph_entries if p["required_markers"])
+    approved_paragraph_count = sum(1 for p in paragraph_entries if p["status"] == "all_facts_approved")
+    unapproved_paragraph_count = sum(1 for p in paragraph_entries if p["status"] == "uses_unapproved_facts")
+
+    return {
+        "method": "approved_facts_audit_v1",
+        "approval_provided": bool(approved_items),
+        "approved_fact_count": len(approved_items),
+        "source_counts": source_counts,
+        "paragraphs": paragraph_entries,
+        "summary": {
+            "paragraph_count": len(paragraph_entries),
+            "claim_paragraph_count": claim_paragraph_count,
+            "approved_paragraph_count": approved_paragraph_count,
+            "unapproved_paragraph_count": unapproved_paragraph_count,
+        },
+    }
+
+
 # --- Stage 3: deterministic writing workflow state (v1) ----------------------
 #
 # An additive, deterministic surface over analyze_payload. It never changes the
@@ -2590,6 +2713,8 @@ def analyze_payload(payload: dict[str, Any]) -> dict[str, Any]:
     analysis["structured_writing_plan"] = build_structured_writing_plan(payload, analysis)
     # Additive Stage 3 deterministic workflow state (does not change status/issues).
     analysis["writing_state"] = build_writing_state(payload, analysis)
+    # Additive Stage 3 approved-facts audit (does not change status/issues).
+    analysis["approved_facts_audit"] = build_approved_facts_audit(payload, analysis)
     return analysis
 
 
