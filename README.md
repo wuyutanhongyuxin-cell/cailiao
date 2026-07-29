@@ -44,6 +44,7 @@
 | DOCX 样式 profile | 阶段 4 v1：确定性 `build_docx_style_profile`/`docx_style_xml`，为 DOCX 导出加入 GB/T 9704-2012-inspired 的 A4、页边距、标题/正文/层级样式、字体、行距、首行缩进和页脚页码元数据；`export_docx` 保持旧签名兼容，同时支持可选 `style_profile` 并写入 `word/styles.xml`。边界：stdlib OOXML 样式骨架，不是完整正式排版认证，不含 UI/持久化/第三方依赖 |
 | DOCX 布局角色 | 阶段 4 v1：确定性 `build_docx_layout_plan`/`docx_footer_xml`，把导出文本映射为 `title`、`heading`、`body`、`signature`、`imprint` 角色；`export_docx` 对简单中文/数字层级标题使用 `MaterialHeading`，支持可选落款/版记，并默认写入页码 footer part，可通过 `page_number=false` 关闭。边界：词面角色映射和 OOXML 骨架，不做正式分页、版记排版认证或语义章节识别 |
 | DOCX 结构化字段 | 阶段 4 v1：确定性 `build_docx_structured_fields`/`docx_table_xml`，通过可选 `style_profile` 支持 `document_number`、`issuer`、`recipient`、`attachments` 和简单 `tables`；导出时文号/签发人/主送机关靠前插入，附件说明和表格追加在正文后、落款/版记前。边界：基础 OOXML 表格和字段段落，不做复杂表格样式、附件分页、正式版记排版或 UI 持久化 |
+| DOCX 字体回退与导出预检 | 阶段 4 v1：确定性 `build_font_fallback_plan`/`build_export_preflight_report`，基于 `build_docx_style_profile` 报告各角色（body/title/heading/latin）请求字体、是否在保守内置已知字体列表中、按角色的回退候选链，并为未知字体给出告警；预检汇总方法/版本、字体回退计划、布局计划摘要、结构化字段摘要与导出边界告警。边界：仅生成建议性元数据，不替换/嵌入/下载字体，不读取宿主字体，不改动 `export_docx` 输出，不加 UI/持久化 |
 | 模型接入 | 支持 OpenAI 兼容的 `/chat/completions` 接口 |
 | 无 Key 模式 | 不调用模型，仍可输出严格提示词、缺项报告和审稿结果 |
 | 本地存储 | 草稿保存在浏览器本地；后端使用本地 SQLite |

@@ -3499,6 +3499,134 @@ def build_docx_structured_fields(options: dict[str, Any] | None = None) -> dict[
     }
 
 
+# Conservative built-in list of fonts commonly bundled with Chinese Windows /
+# Office installs. Membership here means "very likely to render on a standard
+# GB/T official-document workstation", not "the only valid font". Unknown fonts
+# are still exported; they only trigger an advisory preflight warning.
+_KNOWN_DOCX_FONTS = frozenset({
+    # East Asian body/title/heading faces
+    "FangSong", "仿宋", "仿宋_GB2312",
+    "SimSun", "宋体", "NSimSun", "新宋体",
+    "SimHei", "黑体",
+    "KaiTi", "楷体", "楷体_GB2312",
+    "Microsoft YaHei", "微软雅黑",
+    "DengXian", "等线",
+    "STSong", "华文宋体", "STKaiti", "华文楷体", "STFangsong", "华文仿宋",
+    "STHeiti", "华文黑体", "STZhongsong", "华文中宋",
+    # Latin faces
+    "Times New Roman", "Arial", "Calibri", "Cambria", "Courier New", "Georgia",
+})
+
+# Deterministic fallback chains keyed by role. The first entry is the most
+# faithful stand-in; later entries are progressively safer defaults. These are
+# advisory suggestions for a downstream renderer, not automatic substitutions.
+_DOCX_FONT_FALLBACKS = {
+    "body": ["FangSong", "仿宋", "SimSun", "宋体"],
+    "title": ["SimHei", "黑体", "SimSun", "宋体"],
+    "heading": ["SimHei", "黑体", "SimSun", "宋体"],
+    "latin": ["Times New Roman", "Cambria", "Georgia", "Arial"],
+}
+
+
+def build_font_fallback_plan(style_profile: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Build a deterministic DOCX font fallback / known-font plan.
+
+    For each font role (body/title/heading/latin) it reports the requested font,
+    whether that font is in a conservative built-in known list, and a fallback
+    chain of safer candidates. Unknown requested fonts produce advisory warnings.
+
+    This is metadata only: it never rewrites the exported DOCX fonts, download
+    fonts, or inspect the host system. It is stdlib-only and request-local.
+    """
+    profile = build_docx_style_profile(style_profile or {})
+    fonts = profile["fonts"]
+
+    roles: list[dict[str, Any]] = []
+    warnings: list[str] = []
+    for role in ("body", "title", "heading", "latin"):
+        requested = str(fonts.get(role) or fonts.get("body") or "").strip()
+        is_known = requested in _KNOWN_DOCX_FONTS
+        # Fallback candidates: the role's chain plus a universal SimSun/宋体 tail,
+        # excluding the requested font itself and de-duplicated while preserving order.
+        raw_candidates = list(_DOCX_FONT_FALLBACKS.get(role, [])) + ["SimSun", "宋体"]
+        candidates: list[str] = []
+        for candidate in raw_candidates:
+            if candidate != requested and candidate not in candidates:
+                candidates.append(candidate)
+        if not is_known and requested:
+            warnings.append(
+                f"字体“{requested}”（{role}）不在保守内置已知字体列表中，"
+                f"导出仍会写入该字体，但目标机器可能缺失，建议核对或改用已知字体。"
+            )
+        roles.append({
+            "role": role,
+            "requested": requested,
+            "is_known": is_known,
+            "fallback_candidates": candidates,
+        })
+
+    known_count = sum(1 for r in roles if r["is_known"])
+    return {
+        "method": "docx_font_fallback_plan_v1",
+        "boundary": (
+            "advisory font fallback metadata only; does not substitute, embed, "
+            "or download fonts, and does not read host-installed fonts"
+        ),
+        "known_font_list_size": len(_KNOWN_DOCX_FONTS),
+        "roles": roles,
+        "warnings": warnings,
+        "summary": {
+            "role_count": len(roles),
+            "known_count": known_count,
+            "unknown_count": len(roles) - known_count,
+            "warning_count": len(warnings),
+        },
+    }
+
+
+def build_export_preflight_report(
+    title: str,
+    body: str,
+    style_profile: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Build a deterministic pre-export preflight report for DOCX generation.
+
+    Aggregates the font fallback plan, layout plan summary, and structured field
+    summary, and lists export boundary warnings so a caller can inspect what the
+    stdlib OOXML export will and will not do before writing a file.
+
+    This inspects only request-local inputs. It performs no file write, no model
+    call, and no network access.
+    """
+    font_plan = build_font_fallback_plan(style_profile or {})
+    layout_plan = build_docx_layout_plan(title, body, {"style_profile": style_profile or {}})
+    structured_fields = build_docx_structured_fields(style_profile or {})
+
+    boundary_warnings = [
+        "stdlib OOXML 导出，不是完整 GB/T 9704-2012 正式排版认证。",
+        "不做真实分页、版记定位或字体嵌入/替换，字体仅按请求写入。",
+        "表格仅支持表头/行，无合并单元格、列宽或复杂样式。",
+    ]
+    boundary_warnings.extend(font_plan["warnings"])
+
+    return {
+        "method": "docx_export_preflight_v1",
+        "version": "docx_export_preflight_v1",
+        "font_fallback_plan": font_plan,
+        "layout_plan_summary": layout_plan["summary"],
+        "structured_field_summary": structured_fields["summary"],
+        "export_boundary_warnings": boundary_warnings,
+        "summary": {
+            "font_role_count": font_plan["summary"]["role_count"],
+            "unknown_font_count": font_plan["summary"]["unknown_count"],
+            "paragraph_count": layout_plan["summary"]["paragraph_count"],
+            "table_count": structured_fields["summary"]["table_count"],
+            "attachment_count": structured_fields["summary"]["attachment_count"],
+            "boundary_warning_count": len(boundary_warnings),
+        },
+    }
+
+
 def _docx_paragraph(text: str, style_id: str) -> str:
     return f'<w:p><w:pPr><w:pStyle w:val="{escape(style_id)}"/></w:pPr><w:r><w:t>{escape(text)}</w:t></w:r></w:p>'
 

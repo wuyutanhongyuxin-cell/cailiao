@@ -1,34 +1,36 @@
 {
-  "status": "verified_by_codex",
-  "task_id": "cailiao-stage4-docx-structured-fields-v1",
-  "phase": "ROADMAP Stage 4: deterministic DOCX structured fields for document number, issuer, recipient, attachments, and simple tables v1",
-  "baseline": "Release repo main 0ae05172a918653441bfec53638dc1fecc27ac6c Add DOCX layout roles. Codex wrote the task file and attempted to send it through the without_human UIA bridge, but the script could not find a Claude Code window, so no Claude report or WSL diff was produced. Codex implemented this deterministic slice directly to keep the stage moving.",
-  "summary": "Added deterministic structured DOCX export fields. export_docx now accepts request-local style_profile options for document_number, issuer, recipient, attachments, and simple tables; inserts front metadata near the title; appends attachments and tables after body content but before signature/imprint; and escapes all generated XML text. This is still stdlib-only OOXML structure, not complex table layout or full official-document certification.",
+  "status": "implemented_by_claude",
+  "task_id": "cailiao-stage4-font-fallback-preflight-v1",
+  "phase": "ROADMAP Stage 4: deterministic DOCX font fallback / known-font detection and pre-export preflight report v1",
+  "baseline": "3107af4502343a08db74aef5822d8564a1ee8e4c Add DOCX structured fields",
+  "summary": "Added deterministic, stdlib-only DOCX font fallback and export preflight helpers. build_font_fallback_plan reports, per role (body/title/heading/latin), the requested font, whether it is in a conservative built-in known-font list, and an ordered de-duplicated fallback candidate chain, plus advisory warnings for unknown fonts. build_export_preflight_report aggregates method/version, the font fallback plan, the layout plan summary, the structured field summary, and export boundary warnings. Both helpers reuse build_docx_style_profile and are additive: export_docx output is unchanged.",
   "changed_files": [
     "backend/server.py",
-    "tests/test_docx_structured_fields.py",
+    "tests/test_docx_font_preflight.py",
     "tools/run_quality_gates.py",
     "README.md",
     "docs/ROADMAP.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "backend/server.py: added build_docx_structured_fields(options=None), returning method=docx_structured_fields_v1, normalized document_number/issuer/recipient, attachments, tables, and summary counts.",
-    "backend/server.py: added docx_table_xml(table, style_id) with escaped stdlib OOXML table rows/cells.",
-    "export_docx now inserts document_number, issuer, and recipient after the title; appends attachment paragraphs and simple tables before signature/imprint; and preserves backwards-compatible exports without structured fields.",
-    "tools/run_quality_gates.py py-compile gate now includes tests/test_docx_structured_fields.py.",
-    "README.md and docs/ROADMAP.md document the v1 boundary."
+    "backend/server.py: added _KNOWN_DOCX_FONTS (conservative built-in known-font list) and _DOCX_FONT_FALLBACKS (per-role fallback chains).",
+    "backend/server.py: added build_font_fallback_plan(style_profile=None) returning method=docx_font_fallback_plan_v1, known_font_list_size, per-role {requested,is_known,fallback_candidates}, warnings, and summary counts.",
+    "backend/server.py: added build_export_preflight_report(title, body, style_profile=None) returning method/version=docx_export_preflight_v1, font_fallback_plan, layout_plan_summary, structured_field_summary, export_boundary_warnings, and summary counts.",
+    "tests/test_docx_font_preflight.py: 10 unit tests covering known/unknown fonts, fallback de-dup, JSON serializability, preflight aggregation, and the additive export_docx guarantee.",
+    "tools/run_quality_gates.py: py-compile gate now includes tests/test_docx_font_preflight.py.",
+    "README.md and docs/ROADMAP.md document the v1 boundary; ROADMAP items for font detection/fallback and pre-export preflight report are marked done."
   ],
   "not_implemented": [
-    "No complex table styling, merged cells, formulas, table captions, or visual layout validation.",
-    "No formal attachment pagination or final 版记 formatting certification.",
-    "No frontend controls, persistence, third-party DOCX library, model call, or network call."
+    "No font embedding, font downloading, or host-installed-font inspection.",
+    "No automatic font substitution in the exported DOCX (fonts are still written as requested).",
+    "No rendered screenshot, layout regression, model call, network call, frontend UI, or persistence.",
+    "export_docx output is unchanged; the helpers are advisory metadata only."
   ],
   "test_files": [
-    "tests/test_docx_structured_fields.py"
+    "tests/test_docx_font_preflight.py"
   ],
   "required_test_commands_for_codex": [
-    "python -m unittest tests.test_docx_structured_fields -v",
+    "python -m unittest tests.test_docx_font_preflight -v",
     "python -m unittest discover -s tests -v",
     "python tools/validate_retrieval_suite.py --suite tests/data/retrieval_eval_suite.json --json",
     "python tools/run_quality_gates.py --json",
@@ -36,22 +38,22 @@
     "git diff --check"
   ],
   "test_status": [
-    "python -m unittest tests.test_docx_structured_fields -v: 7 tests OK.",
-    "python tools/run_quality_gates.py --json: passed=true, 5 gates passed, unittest gate ran 223 tests OK.",
-    "python -m unittest discover -s tests -v: 223 tests OK.",
-    "python tools/validate_retrieval_suite.py --suite tests/data/retrieval_eval_suite.json --json: passed=true, with expected placeholder/<50-case warnings.",
-    "python -m json.tool CODEX_HANDOFF.json: passed.",
-    "git diff --check: passed."
+    "python3 -m unittest tests.test_docx_font_preflight -v: 10 tests OK.",
+    "python3 -m unittest discover -s tests -v: 233 tests OK.",
+    "python3 tools/validate_retrieval_suite.py --suite tests/data/retrieval_eval_suite.json --json: passed=true with expected placeholder/<50-case warnings.",
+    "python tools/run_quality_gates.py --json (default 'python' on PATH): passed=true, all 5 gates passed (py-compile, unittest, eval-retrieval, git-diff, secret-scan); unittest gate ran 233 tests OK.",
+    "python3 -m json.tool CODEX_HANDOFF.json: valid JSON.",
+    "git diff --check: no whitespace/conflict issues."
   ],
   "risks": [
-    "Table support is deliberately simple: headers and rows only, no merged cells or sizing policy.",
-    "Structured fields are request-local style_profile options and are not persisted.",
-    "Attachment and table placement is deterministic but not a final official-document pagination/layout pass.",
-    "Claude Code did not consume this task because no Claude Code window was discoverable through the UIA bridge; WSL should be resynced after Codex publishes this slice."
+    "The known-font list is intentionally conservative; a real but uncommon font can be flagged as unknown (advisory only, export still proceeds).",
+    "Fallback candidate chains are static suggestions for a downstream renderer, not verified against any host system.",
+    "Preflight is request-local metadata and is not wired into an HTTP endpoint in this slice.",
+    "Environment note: the local interpreter is python3 (no bare 'python' on PATH); the quality-gate runner honors PYTHON=python3."
   ],
   "credentials": [
     "No credentials or .env files were read, created, or modified.",
     "No external network calls were used for implementation or local tests.",
-    "Commit and push are performed only by Codex after local verification passes."
+    "No push performed; commit/push left to the maintainer."
   ]
 }

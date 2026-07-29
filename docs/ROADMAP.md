@@ -132,9 +132,9 @@
 - [x] 按 GB/T 9704-2012 建立可配置样式 v1：确定性 `build_docx_style_profile(payload_or_options=None)` 与 `docx_style_xml(profile)`，为 DOCX 导出提供 GB/T 9704-2012-inspired 的 A4 页面、页边距、标题/正文/层级样式、字体、字号、首行缩进、行距和页脚页码元数据；`export_docx(title, body, style_profile=None)` 保持旧调用兼容，并写入 `word/styles.xml`、styles content type 和 document relationship。**边界：stdlib OOXML 样式骨架，不是完整国标排版认证；不加前端 UI、不持久化、不调用模型、不引入第三方依赖。**
 - [x] 页面、版心、标题、正文、层级标题、落款、页码和版记 v1：确定性 `build_docx_layout_plan(title, body, options=None)` 与 `docx_footer_xml(profile, layout_plan)`；导出时将文本映射为 `title`、`heading`、`body`、`signature`、`imprint` 角色，简单中文/数字层级标题（如 `一、`、`（一）`、`1.`）使用 `MaterialHeading`，可选 `signature`/`imprint` 追加落款和版记元数据，默认写入带 PAGE 字段的 footer part 和 relationship，并可通过 `page_number=false` 关闭。**边界：词面角色映射和 stdlib OOXML 骨架，不做正式分页/版记排版认证、不做语义章节识别、不加 UI/持久化。**
 - [x] 表格、附件说明、文号、签发人、主送机关等结构化字段 v1：确定性 `build_docx_structured_fields(options=None)` 与 `docx_table_xml(table, style_id)`；通过 `style_profile` 支持 `document_number`、`issuer`、`recipient`、`attachments`（字符串或 `title`/`name` 结构）和简单 `tables`（`headers`/`rows`），导出时文号/签发人/主送机关靠前插入，附件说明和基础 OOXML `w:tbl` 表格追加在正文后、落款/版记前；字段输出稳定归一化并给出 counts。**边界：基础字段段落和简单表格 XML，不做复杂表格样式、附件分页、正式版记排版、不加 UI/持久化。**
-- [ ] 字体缺失检测和替代策略
+- [x] 字体缺失检测和替代策略 v1：确定性 `build_font_fallback_plan(style_profile=None)`，基于 `build_docx_style_profile` 逐角色（body/title/heading/latin）报告请求字体、是否在保守内置已知字体列表 `_KNOWN_DOCX_FONTS` 中、按角色的回退候选链（去重且排除请求字体本身），并对未知字体给出告警；输出 `method=docx_font_fallback_plan_v1` 与 counts。**边界：仅建议性元数据，不替换/嵌入/下载字体，不读取宿主已安装字体，不改动 `export_docx` 输出。**
+- [x] 导出前格式预检报告 v1：确定性 `build_export_preflight_report(title, body, style_profile=None)`，汇总 `method`/`version`、字体回退计划、布局计划摘要、结构化字段摘要与导出边界告警（含未知字体告警），输出 `method=docx_export_preflight_v1` 与 summary counts。**边界：仅检查请求本地输入，不写文件、不调用模型、不访问网络，不是正式排版认证。**
 - [ ] DOCX 渲染截图与版式回归
-- [ ] 导出前格式预检报告
 
 验收：Word/WPS 打开无修复提示；关键版式自动检查通过；多页材料无异常分页或溢出；模板由熟悉公文格式的人员验收。
 
