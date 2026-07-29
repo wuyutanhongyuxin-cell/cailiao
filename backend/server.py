@@ -2369,6 +2369,19 @@ def evidence_text(items: list[dict[str, str]]) -> str:
     return "\n".join(" ".join(str(v) for v in item.values()) for item in items)
 
 
+def _normalize_string_list(raw: Any) -> list[str]:
+    values = raw if isinstance(raw, list) else [raw]
+    normalized: list[str] = []
+    seen: set[str] = set()
+    for value in values:
+        text = str(value or "").strip()
+        if not text or text in seen:
+            continue
+        seen.add(text)
+        normalized.append(text)
+    return normalized
+
+
 def _payload_evidence_search_items(evidence: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Adapt payload evidence into search-like items without mutating the payload."""
     items: list[dict[str, Any]] = []
@@ -2580,6 +2593,116 @@ def build_approved_facts_audit(payload: dict[str, Any], analysis: dict[str, Any]
             "claim_paragraph_count": claim_paragraph_count,
             "approved_paragraph_count": approved_paragraph_count,
             "unapproved_paragraph_count": unapproved_paragraph_count,
+        },
+    }
+
+
+def build_unit_template_profile(payload: dict[str, Any], genre_rule: dict[str, Any]) -> dict[str, Any]:
+    """Normalize optional unit-template metadata for prompts and audits.
+
+    This is request-local metadata only: no persistence, no model call, and no
+    requirement that callers provide a template.
+    """
+    raw = payload.get("unit_template") or {}
+    if not isinstance(raw, dict):
+        raw = {}
+
+    preferred_terms = _normalize_string_list(raw.get("preferred_terms", []))
+    forbidden_terms = _normalize_string_list(raw.get("forbidden_terms", []))
+    required_signature = str(raw.get("required_signature") or "").strip()
+    contact = str(raw.get("contact") or "").strip()
+    style_notes = str(raw.get("style_notes") or "").strip()
+    unit_name = str(raw.get("unit_name") or "").strip()
+    enabled = bool(unit_name or preferred_terms or forbidden_terms or required_signature or contact or style_notes)
+
+    return {
+        "method": "unit_template_profile_v1",
+        "enabled": enabled,
+        "genre_name": genre_rule.get("name", ""),
+        "unit_name": unit_name,
+        "preferred_terms": preferred_terms,
+        "forbidden_terms": forbidden_terms,
+        "required_signature": required_signature,
+        "contact": contact,
+        "style_notes": style_notes,
+        "summary": {
+            "preferred_term_count": len(preferred_terms),
+            "forbidden_term_count": len(forbidden_terms),
+            "has_required_signature": bool(required_signature),
+            "has_contact": bool(contact),
+            "has_style_notes": bool(style_notes),
+        },
+    }
+
+
+def _forbidden_phrase_sources(payload: dict[str, Any]) -> list[dict[str, Any]]:
+    phrases: list[dict[str, Any]] = []
+    for phrase in _normalize_string_list(RULES.get("vague_phrases", [])):
+        phrases.append({"phrase": phrase, "source": "global_vague", "severity": "warning"})
+
+    template = payload.get("unit_template") or {}
+    if isinstance(template, dict):
+        for phrase in _normalize_string_list(template.get("forbidden_terms", [])):
+            phrases.append({"phrase": phrase, "source": "unit_template", "severity": "fail"})
+
+    for phrase in _normalize_string_list(payload.get("forbidden_phrases", [])):
+        phrases.append({"phrase": phrase, "source": "payload", "severity": "fail"})
+
+    deduped: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+    for item in phrases:
+        key = (item["phrase"], item["source"])
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(item)
+    return deduped
+
+
+def build_forbidden_expression_audit(payload: dict[str, Any]) -> dict[str, Any]:
+    """Audit draft paragraphs for configured forbidden expressions.
+
+    Matching is deterministic substring matching. It does not perform semantic
+    paraphrase detection, persistence, UI work, or model calls.
+    """
+    paragraphs = split_paragraphs(str(payload.get("draft", "") or ""))
+    phrases = _forbidden_phrase_sources(payload)
+    paragraph_entries: list[dict[str, Any]] = []
+    total_matches = 0
+
+    for idx, paragraph in enumerate(paragraphs, start=1):
+        matches: list[dict[str, Any]] = []
+        seen: set[tuple[str, str]] = set()
+        for item in phrases:
+            phrase = item["phrase"]
+            if phrase and phrase in paragraph:
+                key = (phrase, item["source"])
+                if key in seen:
+                    continue
+                seen.add(key)
+                matches.append({
+                    "phrase": phrase,
+                    "source": item["source"],
+                    "severity": item["severity"],
+                })
+        total_matches += len(matches)
+        paragraph_entries.append({
+            "index": idx,
+            "target": f"p{idx}",
+            "text": paragraph,
+            "matches": matches,
+            "status": "has_forbidden_expression" if matches else "clear",
+        })
+
+    return {
+        "method": "forbidden_expression_audit_v1",
+        "enabled": bool(phrases),
+        "configured_phrase_count": len(phrases),
+        "paragraphs": paragraph_entries,
+        "summary": {
+            "paragraph_count": len(paragraph_entries),
+            "paragraphs_with_matches": sum(1 for p in paragraph_entries if p["matches"]),
+            "match_count": total_matches,
         },
     }
 
@@ -2987,9 +3110,35 @@ def analyze_payload(payload: dict[str, Any]) -> dict[str, Any]:
             if sec not in draft:
                 issues.append({"level": "warning", "code": "missing_section", "message": f"草稿缺少建议结构：{sec}", "target": sec})
 
+    unit_template_profile = build_unit_template_profile(payload, genre_rule)
+    forbidden_expression_audit = build_forbidden_expression_audit(payload)
+    forbidden_issue_keys = {
+        (issue.get("target"), issue.get("code"), issue.get("phrase"))
+        for issue in issues
+    }
+    for paragraph in forbidden_expression_audit["paragraphs"]:
+        target = paragraph["target"]
+        for match in paragraph["matches"]:
+            if match["source"] == "global_vague" or match["severity"] != "fail":
+                continue
+            key = (target, "forbidden_expression", match["phrase"])
+            if key in forbidden_issue_keys:
+                continue
+            forbidden_issue_keys.add(key)
+            issues.append({
+                "level": "fail",
+                "code": "forbidden_expression",
+                "message": f"第 {paragraph['index']} 段含禁用表达“{match['phrase']}”（来源：{match['source']}）。",
+                "target": target,
+                "phrase": match["phrase"],
+                "source": match["source"],
+            })
+
     score = max(0, 100 - sum(25 if i["level"] == "blocker" else 14 if i["level"] == "fail" else 6 for i in issues))
     status = "blocked" if any(i["level"] == "blocker" for i in issues) else "fail" if any(i["level"] == "fail" for i in issues) else "pass"
     analysis = {"status": status, "score": score, "issues": issues, "missing": missing, "genre": genre_rule}
+    analysis["unit_template_profile"] = unit_template_profile
+    analysis["forbidden_expression_audit"] = forbidden_expression_audit
     analysis["structured_writing_plan"] = build_structured_writing_plan(payload, analysis)
     # Additive Stage 3 paragraph-based draft snapshot (does not persist state).
     analysis["draft_version"] = build_draft_version(payload)
@@ -3009,6 +3158,20 @@ def build_prompt(payload: dict[str, Any], analysis: dict[str, Any]) -> str:
     facts = payload.get("facts", "") or ""
     field_lines = "\n".join(f"- {k}: {v}" for k, v in fields.items() if str(v).strip())
     evidence_lines = "\n".join(f"[{i+1}] {e.get('title','')} | {e.get('source','')} | {e.get('url','')}\n{e.get('body','')}" for i, e in enumerate(evidence))
+    unit_profile = analysis.get("unit_template_profile") or build_unit_template_profile(payload, genre)
+    unit_template_section = ""
+    if unit_profile.get("enabled"):
+        preferred_terms = ", ".join(unit_profile.get("preferred_terms") or []) or "none"
+        forbidden_terms = ", ".join(unit_profile.get("forbidden_terms") or []) or "none"
+        unit_template_section = f"""
+
+Unit template constraints:
+- unit_name: {unit_profile.get('unit_name') or 'none'}
+- preferred_terms: {preferred_terms}
+- forbidden_terms: {forbidden_terms}
+- required_signature: {unit_profile.get('required_signature') or 'none'}
+- contact: {unit_profile.get('contact') or 'none'}
+- style_notes: {unit_profile.get('style_notes') or 'none'}"""
     return f"""你是中文机关材料写作助手。必须先核事实、再成文，不得编造政策、文号、数据、会议精神或审批状态。
 
 文种：{genre['name']}
@@ -3029,6 +3192,7 @@ def build_prompt(payload: dict[str, Any], analysis: dict[str, Any]) -> str:
 
 证据台账：
 {evidence_lines or '无'}
+{unit_template_section}
 """
 
 

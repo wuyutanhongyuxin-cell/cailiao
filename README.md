@@ -40,6 +40,7 @@
 | 预先批准事实审计 | 阶段 3 v1：确定性附加层 `build_approved_facts_audit`，在每次 `analyze_payload` 中给出 `approved_facts_audit`；逐段检查必备主张标记是否被请求内预先批准事实覆盖。批准来源包括 `payload["facts"]`、`payload["approved_facts"]` 和带 `approved`/`review_approved`/`is_approved` 的 `payload["evidence"]`；输出 `no_claim_markers`/`all_facts_approved`/`uses_unapproved_facts`、`unapproved_markers` 和 `approved_fact_ids`。这是确定性词面审计，非语义蕴含、非 NLI、非正式复核 |
 | 定点修复计划 | 阶段 3 v1：确定性附加层 `build_targeted_repair_plan`，在每次 `analyze_payload` 中给出 `targeted_repair_plan`；只为失败或待核实段落生成 `paragraph_only` 修复单元，聚合 `pN` 失败项、缺失证据标记和未批准事实标记，并生成只改该段、保留其他段落、仅使用列明批准事实的修复指令。不调用模型、不改写草稿、不整篇重生成 |
 | 段落版本与锁定 | 阶段 3 v1：确定性 helper `build_draft_version`/`diff_draft_versions`/`apply_paragraph_revisions`/`rollback_draft_version`；按段落建立快照，在 `analyze_payload` 中给出 `draft_version`，支持 `locked_paragraphs`、段落级 diff、跳过锁定段的修订应用和从版本回退重建草稿。当前仅为本地元数据与纯函数，不含持久化、前端 UI 或模型改写 |
+| 单位模板与禁用表达 | 阶段 3 v1：确定性附加层 `build_unit_template_profile`/`build_forbidden_expression_audit`，支持请求内 `unit_template`（单位名、推荐术语、禁用术语、落款、联系人、风格说明）与 `forbidden_phrases`；`build_prompt` 在配置后追加独立单位模板约束区块，`analyze_payload` 返回 `unit_template_profile` 和 `forbidden_expression_audit`，并对单位/payload 显式禁用表达生成段落级 fail issue。边界：仅做确定性文本匹配，不含 UI、持久化、模型调用或语义改写 |
 | 模型接入 | 支持 OpenAI 兼容的 `/chat/completions` 接口 |
 | 无 Key 模式 | 不调用模型，仍可输出严格提示词、缺项报告和审稿结果 |
 | 本地存储 | 草稿保存在浏览器本地；后端使用本地 SQLite |

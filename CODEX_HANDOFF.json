@@ -1,37 +1,36 @@
 {
   "status": "verified_by_codex",
-  "task_id": "cailiao-stage3-draft-version-locks-v1",
-  "phase": "ROADMAP Stage 3: deterministic draft version, paragraph locks, diff, and rollback primitives v1",
-  "baseline": "Release repo main e4a1b64 Add targeted repair plan. Codex wrote the task file and sent the command to Claude Code via UIA plus direct TTY, but no report or WSL diff appeared after polling. Codex implemented this deterministic slice directly to keep the stage moving.",
-  "summary": "Added paragraph-based draft version helper primitives and an additive draft_version analysis surface. The new functions build locked paragraph snapshots, compute paragraph-scoped diffs, apply revisions while skipping locked paragraphs, and reconstruct a draft for rollback. This is local deterministic metadata only: no persistence, no frontend UI, no model calls, and no semantic review.",
+  "task_id": "cailiao-stage3-unit-template-forbidden-v1",
+  "phase": "ROADMAP Stage 3: configurable unit template and forbidden expression support v1",
+  "baseline": "Release repo main 763068a Add draft version locks. Codex wrote the task file and attempted to send it through the without_human UIA bridge, but the script could not find a Claude Code window, so no Claude report or WSL diff was produced. Codex implemented this deterministic slice directly to keep the stage moving.",
+  "summary": "Added request-local unit template normalization and deterministic forbidden-expression auditing. analyze_payload now returns unit_template_profile and forbidden_expression_audit, build_prompt appends a separate unit template constraints section when configured, and explicit unit/payload forbidden expressions create paragraph-targeted fail issues without duplicate issue spam. This is deterministic text matching only: no persistence, no frontend UI, no model calls, and no semantic paraphrase detection.",
   "changed_files": [
     "backend/server.py",
-    "tests/test_draft_versions.py",
+    "tests/test_unit_template_forbidden.py",
     "tools/run_quality_gates.py",
     "README.md",
     "docs/ROADMAP.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "backend/server.py: added _locked_index_set(raw) and _version_id_for(paragraphs) helpers.",
-    "backend/server.py: added build_draft_version(payload, version_id=None), returning method=draft_version_v1, version_id, paragraph_count, paragraphs, and locked_paragraphs.",
-    "backend/server.py: added diff_draft_versions(previous, current), returning method=draft_version_diff_v1, per-index entries, and changed/added/removed/unchanged counts.",
-    "backend/server.py: added apply_paragraph_revisions(base_version, revisions, locked_indexes=None), applying valid unlocked paragraph revisions and reporting applied_revisions, skipped_locked, and invalid_revisions without mutating the base version.",
-    "backend/server.py: added rollback_draft_version(version), reconstructing draft text from a version and reporting restored_version_id.",
-    "analyze_payload now attaches analysis['draft_version'] before writing_state and other Stage 3 additive surfaces.",
-    "tools/run_quality_gates.py py-compile gate now includes tests/test_draft_versions.py.",
+    "backend/server.py: added _normalize_string_list(raw) for stable request-local list normalization.",
+    "backend/server.py: added build_unit_template_profile(payload, genre_rule), returning method=unit_template_profile_v1, enabled, normalized preferred_terms/forbidden_terms, signature/contact/style notes, and summary counts.",
+    "backend/server.py: added build_forbidden_expression_audit(payload), merging RULES['vague_phrases'], unit_template.forbidden_terms, and payload.forbidden_phrases into paragraph-indexed deterministic matches.",
+    "analyze_payload now attaches analysis['unit_template_profile'] and analysis['forbidden_expression_audit']. Explicit unit_template/payload forbidden phrases create fail issues with target pN, code forbidden_expression, phrase, and source.",
+    "build_prompt now appends a separate Unit template constraints section only when a unit template is configured.",
+    "tools/run_quality_gates.py py-compile gate now includes tests/test_unit_template_forbidden.py.",
     "README.md and docs/ROADMAP.md document the v1 boundary."
   ],
   "not_implemented": [
-    "No persistent draft history, database schema, frontend UI, model rewrite, or semantic review.",
-    "No merge/conflict UI for concurrent edits; diff is simple paragraph-index comparison.",
-    "No cross-session version store; callers must persist returned versions if needed."
+    "No persistent unit template store, database schema, or frontend UI.",
+    "No model call, model rewrite, semantic similarity, paraphrase matching, or NLI.",
+    "Global vague phrases still use existing vague_without_guard behavior; the new forbidden_expression fail issue is only for explicit unit_template/payload configured phrases."
   ],
   "test_files": [
-    "tests/test_draft_versions.py"
+    "tests/test_unit_template_forbidden.py"
   ],
   "required_test_commands_for_codex": [
-    "python -m unittest tests.test_draft_versions -v",
+    "python -m unittest tests.test_unit_template_forbidden -v",
     "python -m unittest discover -s tests -v",
     "python tools/validate_retrieval_suite.py --suite tests/data/retrieval_eval_suite.json --json",
     "python tools/run_quality_gates.py --json",
@@ -39,22 +38,22 @@
     "git diff --check"
   ],
   "test_status": [
-    "python -m unittest tests.test_draft_versions -v: 7 tests OK.",
-    "python -m unittest discover -s tests -v: 197 tests OK.",
+    "python -m unittest tests.test_unit_template_forbidden -v: 7 tests OK.",
+    "python -m unittest discover -s tests -v: 204 tests OK.",
     "python tools/validate_retrieval_suite.py --suite tests/data/retrieval_eval_suite.json --json: passed=true, with expected placeholder/<50-case warnings.",
     "python tools/run_quality_gates.py --json: passed=true, 5 gates passed.",
     "python -m json.tool CODEX_HANDOFF.json: passed.",
     "git diff --check: passed."
   ],
   "risks": [
-    "draft_version is deterministic metadata only and is not a persistence mechanism.",
-    "Paragraph diff is index based, so inserted paragraphs can shift later indexes; richer alignment can be added later if needed.",
-    "apply_paragraph_revisions preserves locked paragraphs but does not authenticate who locked them.",
-    "Claude Code did not consume this task in the polling window; WSL should be resynced after Codex publishes this slice."
+    "Forbidden expression matching is exact substring matching only; paraphrases and inflections are intentionally out of scope.",
+    "Prompt template constraints are request-local metadata, not a persistent organization profile.",
+    "Explicit forbidden terms can fail a draft even when other deterministic checks pass; this is intended for unit/payload configured prohibitions.",
+    "Claude Code did not consume this task because no Claude Code window was discoverable through the UIA bridge; WSL should be resynced after Codex publishes this slice."
   ],
   "credentials": [
     "No credentials or .env files were read, created, or modified.",
-    "No external network calls were used for implementation or tests.",
+    "No external network calls were used for implementation or local tests.",
     "No commit or push has been performed at the time this handoff file was written."
   ]
 }
