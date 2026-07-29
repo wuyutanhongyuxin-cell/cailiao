@@ -54,6 +54,6 @@
   "credentials": [
     "No credentials or .env files were read, created, or modified.",
     "No external network calls were used for implementation or local tests.",
-    "No commit or push has been performed at the time this handoff file was written."
+    "Commit and push are performed only by Codex after local verification passes."
   ]
 }
