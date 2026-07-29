@@ -267,6 +267,24 @@ async function loadProviderRisk() {
 
 if ($('loadProviderRiskBtn')) $('loadProviderRiskBtn').addEventListener('click', loadProviderRisk);
 
+// --- Stage 6: dependency inventory / SBOM / container plan -----------------
+
+async function loadSbom() {
+  try {
+    const s = await fetch('/api/supply-chain/sbom').then((r) => r.json());
+    const inv = s.dependency_inventory || {};
+    const sbom = s.sbom || {};
+    if ($('sbomStatus')) {
+      $('sbomStatus').textContent =
+        `项目 ${inv.project} ${inv.version}（Python ${inv.python_requires}）｜运行时第三方依赖：${(inv.runtime_dependencies || []).length}（stdlib-only=${inv.stdlib_only}）｜SBOM 组件：${sbom.component_count}`;
+    }
+  } catch (e) {
+    if ($('sbomStatus')) $('sbomStatus').textContent = '无法读取供应链信息。';
+  }
+}
+
+if ($('loadSbomBtn')) $('loadSbomBtn').addEventListener('click', loadSbom);
+
 // --- Phase 1: trusted evidence library UI -----------------------------------
 
 const STATUS_LABEL = {

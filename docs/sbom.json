@@ -1,0 +1,37 @@
+{
+  "method": "sbom_document_v1",
+  "bomFormat": "CycloneDX-like",
+  "specVersion": "1.5-inspired",
+  "boundary": "deterministic first-party SBOM metadata only; no external/transitive dependency scan, no network, no timestamp (reproducible), no credentials",
+  "project": "cailiao",
+  "version": "0.6.0-dev",
+  "python_requires": ">=3.12",
+  "runtime_dependencies": [],
+  "components": [
+    {
+      "type": "application",
+      "name": "cailiao",
+      "version": "0.6.0-dev",
+      "description": "Chinese official-material writing review system (stdlib-first)"
+    },
+    {
+      "type": "library",
+      "name": "backend/server.py",
+      "version": "0.6.0-dev",
+      "description": "backend HTTP server, rules, retrieval, DOCX export, Stage 5/6 skeletons"
+    },
+    {
+      "type": "library",
+      "name": "tools",
+      "version": "0.6.0-dev",
+      "description": "deterministic quality gates and validation CLIs"
+    },
+    {
+      "type": "library",
+      "name": "frontend",
+      "version": "0.6.0-dev",
+      "description": "static HTML/CSS/JS workbench (no build step)"
+    }
+  ],
+  "component_count": 4
+}

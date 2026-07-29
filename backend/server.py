@@ -5243,6 +5243,202 @@ def build_provider_risk_summary(options: dict[str, Any] | None = None) -> dict[s
     }
 
 
+# --- Stage 6: dependency inventory / SBOM / container-plan skeleton v1 --------
+
+# The project is stdlib-first: zero third-party RUNTIME dependencies. This is the
+# canonical declared inventory (metadata only; no environment scan, no install).
+PROJECT_NAME = "cailiao"
+PROJECT_VERSION = "0.6.0-dev"
+PROJECT_PYTHON_REQUIRES = ">=3.12"
+
+# Fields a supply-chain document must never carry (no credentials).
+SUPPLY_CHAIN_FORBIDDEN_FIELDS = ("api_key", "key", "secret", "password", "token", "authorization")
+
+
+def build_dependency_inventory() -> dict[str, Any]:
+    """Return the deterministic declared dependency inventory (stdlib-only).
+
+    The backend and tools import only the Python standard library, so there are
+    zero third-party runtime dependencies. This is declared metadata, not an
+    environment scan; it installs nothing and reads no credentials. Stdlib only.
+    """
+    return {
+        "method": "dependency_inventory_v1",
+        "boundary": (
+            "declared stdlib-first inventory metadata only; no dependency install, "
+            "no environment scan, no registry/network access"
+        ),
+        "project": PROJECT_NAME,
+        "version": PROJECT_VERSION,
+        "python_requires": PROJECT_PYTHON_REQUIRES,
+        "runtime_dependencies": [],
+        "stdlib_only": True,
+        "notes": "运行时仅依赖 Python 标准库；如引入第三方依赖须固定版本并更新本清单与 SBOM。",
+    }
+
+
+def validate_dependency_inventory(inventory: Any) -> dict[str, Any]:
+    """Validate a dependency inventory's shape and pinning discipline.
+
+    Requires project/version/python_requires and a runtime_dependencies list.
+    Any listed dependency must be pinned (name + exact version). Rejects
+    credential-shaped fields. Stdlib only. Returns {passed, errors, warnings, dependency_count}.
+    """
+    errors: list[str] = []
+    warnings: list[str] = []
+    if not isinstance(inventory, dict):
+        return {"passed": False, "errors": [f"inventory must be a JSON object, got {type(inventory).__name__}"],
+                "warnings": [], "dependency_count": 0}
+
+    leaked = [f for f in SUPPLY_CHAIN_FORBIDDEN_FIELDS if f in inventory]
+    if leaked:
+        errors.append(f"inventory must not carry credential field(s) {leaked}")
+
+    for field in ("project", "version", "python_requires"):
+        if not (isinstance(inventory.get(field), str) and inventory[field].strip()):
+            errors.append(f"'{field}' must be a non-empty string")
+
+    deps = inventory.get("runtime_dependencies")
+    if not isinstance(deps, list):
+        errors.append("'runtime_dependencies' must be a list")
+        deps = []
+    for idx, dep in enumerate(deps, start=1):
+        if not isinstance(dep, dict):
+            errors.append(f"dependency #{idx}: must be an object")
+            continue
+        if not (isinstance(dep.get("name"), str) and dep["name"].strip()):
+            errors.append(f"dependency #{idx}: 'name' must be a non-empty string")
+        if not (isinstance(dep.get("version"), str) and dep["version"].strip()):
+            errors.append(f"dependency #{idx}: 'version' must be pinned to an exact string")
+    if inventory.get("stdlib_only") is True and deps:
+        warnings.append("stdlib_only is true but runtime_dependencies is non-empty")
+    return {"passed": not errors, "errors": errors, "warnings": warnings, "dependency_count": len(deps)}
+
+
+def build_sbom_document() -> dict[str, Any]:
+    """Build a deterministic CycloneDX-style SBOM for the project's own components.
+
+    Lists the project as the primary component plus its first-party modules. No
+    timestamp or environment scan is included, so the document is byte-stable
+    across runs (reproducible). Stdlib only; no network. Contains no credentials.
+    """
+    inventory = build_dependency_inventory()
+    components = [
+        {"type": "application", "name": PROJECT_NAME, "version": PROJECT_VERSION,
+         "description": "Chinese official-material writing review system (stdlib-first)"},
+        {"type": "library", "name": "backend/server.py", "version": PROJECT_VERSION,
+         "description": "backend HTTP server, rules, retrieval, DOCX export, Stage 5/6 skeletons"},
+        {"type": "library", "name": "tools", "version": PROJECT_VERSION,
+         "description": "deterministic quality gates and validation CLIs"},
+        {"type": "library", "name": "frontend", "version": PROJECT_VERSION,
+         "description": "static HTML/CSS/JS workbench (no build step)"},
+    ]
+    return {
+        "method": "sbom_document_v1",
+        "bomFormat": "CycloneDX-like",
+        "specVersion": "1.5-inspired",
+        "boundary": (
+            "deterministic first-party SBOM metadata only; no external/transitive "
+            "dependency scan, no network, no timestamp (reproducible), no credentials"
+        ),
+        "project": PROJECT_NAME,
+        "version": PROJECT_VERSION,
+        "python_requires": PROJECT_PYTHON_REQUIRES,
+        "runtime_dependencies": inventory["runtime_dependencies"],
+        "components": components,
+        "component_count": len(components),
+    }
+
+
+def validate_sbom_document(sbom: Any) -> dict[str, Any]:
+    """Validate an SBOM document has project name/version and components."""
+    errors: list[str] = []
+    warnings: list[str] = []
+    if not isinstance(sbom, dict):
+        return {"passed": False, "errors": [f"sbom must be a JSON object, got {type(sbom).__name__}"],
+                "warnings": [], "component_count": 0}
+    leaked = [f for f in SUPPLY_CHAIN_FORBIDDEN_FIELDS if f in sbom]
+    if leaked:
+        errors.append(f"sbom must not carry credential field(s) {leaked}")
+    for field in ("project", "version"):
+        if not (isinstance(sbom.get(field), str) and sbom[field].strip()):
+            errors.append(f"'{field}' must be a non-empty string")
+    components = sbom.get("components")
+    if not isinstance(components, list) or not components:
+        errors.append("sbom must contain a non-empty 'components' list")
+        components = []
+    for idx, comp in enumerate(components, start=1):
+        if not isinstance(comp, dict):
+            errors.append(f"component #{idx}: must be an object")
+            continue
+        for field in ("type", "name", "version"):
+            if not (isinstance(comp.get(field), str) and comp[field].strip()):
+                errors.append(f"component #{idx}: '{field}' must be a non-empty string")
+    return {"passed": not errors, "errors": errors, "warnings": warnings, "component_count": len(components)}
+
+
+def build_container_deploy_plan(options: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Build an OPTIONAL container deploy plan (metadata only — never builds/pushes).
+
+    Describes a suggested base image, exposed port, and ordered steps for an
+    offline-friendly container. This plans; it does not build, tag, or push any
+    image and requires no registry/network. Stdlib only.
+    """
+    raw = options if isinstance(options, dict) else {}
+    port = raw.get("port") if isinstance(raw.get("port"), int) and 0 < raw.get("port") < 65536 else 8000
+    base_image = str(raw.get("base_image") or "python:3.12-slim").strip()
+    return {
+        "method": "container_deploy_plan_v1",
+        "boundary": (
+            "optional container plan metadata only; no image is built, tagged, or "
+            "pushed, and no registry/network is used"
+        ),
+        "enabled": bool(raw.get("enabled", False)),
+        "base_image": base_image,
+        "expose_port": port,
+        "network_default": "none",
+        "steps": [
+            "copy project files into the image (stdlib-only, no pip install needed)",
+            f"expose port {port} for the local HTTP server",
+            "run backend/server.py with the offline default model mode",
+        ],
+        "note": "容器为可选、离线优先；默认不联网、不安装依赖、不推送镜像。",
+    }
+
+
+def validate_container_deploy_plan(plan: Any) -> dict[str, Any]:
+    """Validate a container deploy plan's shape (base image, port, steps)."""
+    errors: list[str] = []
+    warnings: list[str] = []
+    if not isinstance(plan, dict):
+        return {"passed": False, "errors": [f"plan must be a JSON object, got {type(plan).__name__}"],
+                "warnings": []}
+    if not (isinstance(plan.get("base_image"), str) and plan["base_image"].strip()):
+        errors.append("'base_image' must be a non-empty string")
+    port = plan.get("expose_port")
+    if not (isinstance(port, int) and 0 < port < 65536):
+        errors.append("'expose_port' must be an integer in (0, 65536)")
+    if not (isinstance(plan.get("steps"), list) and plan["steps"]):
+        errors.append("'steps' must be a non-empty list")
+    if plan.get("network_default") not in (None, "none"):
+        warnings.append("container plan declares a non-'none' network default")
+    return {"passed": not errors, "errors": errors, "warnings": warnings}
+
+
+def build_supply_chain_summary() -> dict[str, Any]:
+    """Assemble the deterministic supply-chain summary (inventory + SBOM + container plan)."""
+    return {
+        "method": "supply_chain_summary_v1",
+        "boundary": (
+            "supply-chain metadata skeleton only; no dependency install, no image "
+            "build/push, no registry/network, no credential/.env read"
+        ),
+        "dependency_inventory": build_dependency_inventory(),
+        "sbom": build_sbom_document(),
+        "container_deploy_plan": build_container_deploy_plan({}),
+    }
+
+
 def add_evidence(item: dict[str, str]) -> dict[str, str]:
     item_id = str(uuid.uuid4())
     title = item.get("title", "").strip()
@@ -5939,6 +6135,9 @@ class Handler(SimpleHTTPRequestHandler):
         if self.path.startswith("/api/providers/risk"):
             # Deterministic demo: default (offline) provider risk summary.
             self.json_response(build_provider_risk_summary({}))
+            return
+        if self.path.startswith("/api/supply-chain/sbom"):
+            self.json_response(build_supply_chain_summary())
             return
         if self.path.startswith("/api/evidence/search"):
             q = self.path.split("q=", 1)[1] if "q=" in self.path else ""

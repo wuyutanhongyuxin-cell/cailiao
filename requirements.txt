@@ -1,0 +1,12 @@
+# cailiao - runtime dependency manifest (Stage 6 v1).
+#
+# The backend (backend/server.py) and tools/ import ONLY the Python standard
+# library. There are ZERO third-party runtime dependencies, so this file is
+# intentionally empty of packages.
+#
+# Requirements:
+#   - Python >= 3.12
+#
+# If a third-party runtime dependency is ever introduced, pin it to an exact
+# version here (name==x.y.z) and update docs/sbom.json + build_dependency_inventory
+# in backend/server.py to match.

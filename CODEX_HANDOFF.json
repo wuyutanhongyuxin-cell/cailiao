@@ -1,65 +1,69 @@
 {
   "status": "implemented_by_claude",
-  "task_id": "cailiao-stage6-provider-risk-v1",
-  "phase": "ROADMAP Stage 6 (fourth item): model-provider data-flow disclosure + risk grading skeleton v1 (offline low, external escalates by data-flow flags; no real provider integration)",
-  "baseline": "7071ffc07c408c3f728db61313d5cb21880b269a Add governance backup audit skeleton",
-  "summary": "Added a deterministic, stdlib-only Stage 6 provider data-flow disclosure + risk grading skeleton. build_provider_profile records provider_id/mode/endpoint_type/data categories/storage/training/residency/retention metadata (local modes send nothing off-machine) and never stores an api key, token, or endpoint URL. build_provider_disclosure produces user-facing text/structured object explaining what may be sent before model use. grade_provider_risk deterministically rates low/medium/high/blocked from flags (local=low, unknown mode=blocked, external escalates by external egress, sensitive categories, storage, training, and unknown residency). validate_provider_profile rejects credential-shaped fields and unsupported mode/categories. build_provider_risk_summary bundles profile+disclosure+risk. HTTP GET /api/providers/risk and POST /api/providers/risk/grade; a front-end 设置 panel section surfaces the disclosure + grade. No real provider integration, no network, no credential/.env read.",
+  "task_id": "cailiao-stage6-dependency-sbom-container-v1",
+  "phase": "ROADMAP Stage 6 (final item): dependency inventory / SBOM / optional-container skeleton v1 (stdlib-first, zero runtime deps). Completes the Stage 6 deterministic skeletons.",
+  "baseline": "358932fa3476698449fda509e4b1359cffcdaf0d Add provider risk grading skeleton",
+  "summary": "Added a deterministic, stdlib-only Stage 6 supply-chain skeleton plus repo-local metadata files. build_dependency_inventory declares the project as stdlib-first with zero third-party runtime dependencies; validate_dependency_inventory requires pinned versions and rejects credential fields. build_sbom_document emits a deterministic, timestamp-free CycloneDX-like SBOM of first-party components; validate_sbom_document checks project/version/components. build_container_deploy_plan describes an optional offline-first container (never builds or pushes); validate_container_deploy_plan checks base image/port/steps. build_supply_chain_summary bundles all three. New committed files: requirements.txt (comments only, no third-party pins), docs/sbom.json (kept in sync with the helper, asserted by test), and an optional Containerfile with no RUN/install step. HTTP GET /api/supply-chain/sbom and a 设置 panel status. No dependency install, no image build/push, no network/registry, no credential/.env read.",
   "changed_files": [
     "backend/server.py",
+    "requirements.txt",
+    "docs/sbom.json",
+    "Containerfile",
     "frontend/index.html",
     "frontend/app.js",
-    "tests/test_provider_risk.py",
+    "tests/test_supply_chain.py",
     "tools/run_quality_gates.py",
     "README.md",
     "docs/ROADMAP.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "backend/server.py: added PROVIDER_MODES, PROVIDER_MODES_LOCAL, PROVIDER_ENDPOINT_TYPES, PROVIDER_DATA_CATEGORIES, PROVIDER_SENSITIVE_CATEGORIES, PROVIDER_RISK_LEVELS, PROVIDER_FORBIDDEN_FIELDS.",
-    "backend/server.py: build_provider_profile(options=None) (method=provider_profile_v1; local modes drop all off-machine categories/flags; never carries credentials).",
-    "backend/server.py: build_provider_disclosure(profile) (method=provider_disclosure_v1; local vs external user-facing text + structured fields).",
-    "backend/server.py: grade_provider_risk(profile) (deterministic low/medium/high/blocked with score, reasons, factors; invalid/unknown mode -> blocked).",
-    "backend/server.py: validate_provider_profile(profile) (rejects api_key/token/secret/endpoint_url... and unsupported mode/endpoint_type/categories; warns external-without-categories).",
-    "backend/server.py: build_provider_risk_summary(options=None) bundling profile+disclosure+risk.",
-    "backend/server.py: Handler.do_GET serves GET /api/providers/risk; do_POST serves POST /api/providers/risk/grade (422 when the posted profile fails validation).",
-    "frontend/index.html + app.js: 设置 panel provider-risk section with #loadProviderRiskBtn/#providerRiskStatus/#providerDisclosure and loadProviderRisk() calling /api/providers/risk.",
-    "tests/test_provider_risk.py: 24 tests (offline low + no egress, external prompt-only medium, sensitive+store+train high, unknown blocked, no-credential-leak, disclosure content, validation rejections, live HTTP risk/grade, frontend tokens).",
-    "tools/run_quality_gates.py: py-compile gate now includes tests/test_provider_risk.py.",
-    "README.md and docs/ROADMAP.md document the v1 boundary; only the ROADMAP '模型供应商数据流提示与风险分级' item is marked done (dependency-lock/SBOM/container untouched)."
+    "backend/server.py: added PROJECT_NAME/PROJECT_VERSION/PROJECT_PYTHON_REQUIRES, SUPPLY_CHAIN_FORBIDDEN_FIELDS.",
+    "backend/server.py: build_dependency_inventory/validate_dependency_inventory (stdlib-first, zero runtime deps; validator requires pinned name+version and rejects credential fields).",
+    "backend/server.py: build_sbom_document/validate_sbom_document (deterministic, timestamp-free CycloneDX-like first-party SBOM).",
+    "backend/server.py: build_container_deploy_plan/validate_container_deploy_plan (optional offline-first plan; never builds/pushes; port/image/steps checks).",
+    "backend/server.py: build_supply_chain_summary bundling inventory+SBOM+container plan; Handler.do_GET serves GET /api/supply-chain/sbom.",
+    "requirements.txt: comments only (no third-party pins) documenting Python>=3.12 and the pinning rule if a dep is ever added.",
+    "docs/sbom.json: committed deterministic SBOM, asserted by test to equal build_sbom_document() output.",
+    "Containerfile: optional offline-first skeleton with COPY/EXPOSE/CMD and no RUN or pip install (not built or pushed by any gate).",
+    "frontend/index.html + app.js: 设置 panel supply-chain section with #loadSbomBtn/#sbomStatus and loadSbom() calling /api/supply-chain/sbom.",
+    "tests/test_supply_chain.py: 18 tests (inventory deterministic/stdlib-only, unpinned-dep rejection, SBOM validity/determinism/no-timestamp/no-secrets, committed-file-in-sync, container defaults/invalid-port, requirements/Containerfile/no-secret file checks, live HTTP sbom, frontend tokens).",
+    "tools/run_quality_gates.py: py-compile gate now includes tests/test_supply_chain.py.",
+    "README.md and docs/ROADMAP.md document the v1 boundary; the ROADMAP '依赖锁定、软件物料清单和可选容器部署' item is marked done and a Stage 6 skeleton-status note keeps the boundary honest."
   ],
   "not_implemented": [
-    "No real model-provider integration or connectivity check; profiles are declarative metadata.",
-    "No API key/token/endpoint-URL handling; those fields are rejected, never stored.",
-    "No dependency locking, SBOM, or container deployment (final Stage 6 item).",
+    "No dependency install or package-manager invocation; the inventory is declared metadata.",
+    "No container image build, tag, or push; the Containerfile is a skeleton not exercised by any gate.",
+    "No external/transitive dependency scan, registry access, or vulnerability lookup.",
     "No network, no credential/.env read."
   ],
   "test_files": [
-    "tests/test_provider_risk.py"
+    "tests/test_supply_chain.py"
   ],
   "required_test_commands_for_codex": [
-    "python -m unittest tests.test_provider_risk -v",
+    "python -m unittest tests.test_supply_chain -v",
     "python -m unittest discover -s tests -v",
     "python tools/run_quality_gates.py --json",
     "python -m json.tool CODEX_HANDOFF.json",
     "git diff --check"
   ],
   "test_status": [
-    "python -m unittest tests.test_provider_risk -v: 24 tests OK (includes live ThreadingHTTPServer risk + grade).",
-    "python -m unittest discover -s tests -v: 413 tests OK.",
-    "python tools/run_quality_gates.py --json (default 'python' on PATH): passed=true, all 5 gates passed; unittest gate ran 413 tests OK.",
+    "python -m unittest tests.test_supply_chain -v: 18 tests OK (includes live ThreadingHTTPServer sbom and committed docs/sbom.json in-sync assertion).",
+    "python -m unittest discover -s tests -v: 431 tests OK.",
+    "python tools/run_quality_gates.py --json (default 'python' on PATH): passed=true, all 5 gates passed (secret-scan clean over new files); unittest gate ran 431 tests OK.",
     "python -m json.tool CODEX_HANDOFF.json: valid JSON.",
     "git diff --check: no whitespace/conflict issues."
   ],
   "risks": [
-    "The risk grade is a deterministic heuristic over declared flags, not a legal/compliance assessment; a provider that lies about storage/training would be under-graded. It informs a human decision, it does not certify safety.",
-    "Risk grading trusts the caller-supplied profile; there is no verification that the declared mode/endpoint/categories match the provider's actual behavior.",
-    "The scoring thresholds (>=5 high, >=2 medium) are fixed and coarse; they are a starting policy, not a calibrated risk model.",
-    "Disclosure text is generated from the profile only; if a category is omitted from the profile it will be omitted from the disclosure (validation warns for external-without-categories).",
+    "docs/sbom.json is committed and must stay in sync with build_sbom_document(); a test asserts equality, so bumping PROJECT_VERSION requires regenerating the file or the suite fails (intentional guard).",
+    "The SBOM lists first-party components only; it is not a transitive/vulnerability scan and must not be treated as a security attestation.",
+    "The dependency inventory is declared, not discovered: if a third-party import is added without updating the inventory, validation will not automatically catch it.",
+    "The Containerfile is a skeleton; it is not built or scanned by CI, so image-level correctness/security is unverified here.",
     "Environment note: the local interpreter is python3 (no bare 'python' on PATH); the quality-gate runner honors PYTHON=python3, and a local 'python->python3' PATH shim lets its default-interpreter meta-test pass."
   ],
   "credentials": [
-    "No credentials or .env files were read, created, or modified; provider profile builder omits and validator rejects api_key/token/secret/password/authorization/endpoint_url.",
-    "No external network calls were used for implementation or local tests; no provider is actually contacted.",
+    "No credentials or .env files were read, created, or modified; inventory/SBOM validators reject credential-shaped fields and a test scans the new files for secret tokens.",
+    "No external network calls, registry access, or dependency installs were used for implementation or local tests.",
     "No push performed; commit/push left to the maintainer."
   ]
 }

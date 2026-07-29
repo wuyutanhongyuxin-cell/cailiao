@@ -260,6 +260,12 @@
         <p class="muted">供应商数据流披露仅为元数据/风险分级骨架：说明在使用模型前哪些数据类别可能发送到外部、是否存储/用于训练与数据驻留，并给出确定性 低/中/高/blocked 分级；不含任何 API 密钥、令牌或含凭据的地址，也不真正连接任何供应商。</p>
         <div id="providerRiskStatus" class="muted"></div>
         <div id="providerDisclosure" class="muted"></div>
+
+        <div class="exportActions">
+          <button id="loadSbomBtn">查看依赖清单与 SBOM</button>
+        </div>
+        <p class="muted">供应链信息为元数据骨架：项目仅依赖 Python 标准库（运行时零第三方依赖），SBOM 仅列本项目自有组件，容器为可选离线部署骨架；不安装依赖、不构建/推送镜像、不联网、不含凭据。</p>
+        <div id="sbomStatus" class="muted"></div>
       </section>
     </main>
   </div>
