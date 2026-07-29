@@ -1,36 +1,34 @@
 {
   "status": "verified_by_codex",
-  "task_id": "cailiao-stage4-docx-layout-roles-v1",
-  "phase": "ROADMAP Stage 4: deterministic DOCX layout roles, footer, signature, and imprint metadata v1",
-  "baseline": "Release repo main 20d44a2607195e450b04266e9fd038f156f230ef Add DOCX style profile. Codex wrote the task file and attempted to send it through the without_human UIA bridge, but the script could not find a Claude Code window, so no Claude report or WSL diff was produced. Codex implemented this deterministic slice directly to keep the stage moving.",
-  "summary": "Added deterministic DOCX layout role planning on top of the existing style profile. export_docx now maps title/body text into title, heading, body, signature, and imprint roles, styles simple Chinese/numbered headings with MaterialHeading, appends optional signature/imprint paragraphs, and writes a default PAGE footer part/relationship that can be disabled with page_number=false. This is still stdlib-only OOXML structure, not full formal pagination or GB/T certification.",
+  "task_id": "cailiao-stage4-docx-structured-fields-v1",
+  "phase": "ROADMAP Stage 4: deterministic DOCX structured fields for document number, issuer, recipient, attachments, and simple tables v1",
+  "baseline": "Release repo main 0ae05172a918653441bfec53638dc1fecc27ac6c Add DOCX layout roles. Codex wrote the task file and attempted to send it through the without_human UIA bridge, but the script could not find a Claude Code window, so no Claude report or WSL diff was produced. Codex implemented this deterministic slice directly to keep the stage moving.",
+  "summary": "Added deterministic structured DOCX export fields. export_docx now accepts request-local style_profile options for document_number, issuer, recipient, attachments, and simple tables; inserts front metadata near the title; appends attachments and tables after body content but before signature/imprint; and escapes all generated XML text. This is still stdlib-only OOXML structure, not complex table layout or full official-document certification.",
   "changed_files": [
     "backend/server.py",
-    "tests/test_docx_layout_roles.py",
+    "tests/test_docx_structured_fields.py",
     "tools/run_quality_gates.py",
     "README.md",
     "docs/ROADMAP.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "backend/server.py: added _is_docx_heading(text) for deterministic lexical heading detection.",
-    "backend/server.py: added build_docx_layout_plan(title, body, options=None), returning method=docx_layout_plan_v1, role-indexed paragraphs, signature/imprint flags, and role counts.",
-    "backend/server.py: added docx_footer_xml(profile, layout_plan), generating a PAGE field footer using stdlib XML strings.",
-    "export_docx now uses the layout plan to style title, heading, body, signature, and imprint paragraphs, adds footer content type/relationship/reference when page numbers are enabled, and preserves backwards-compatible calls.",
-    "tools/run_quality_gates.py py-compile gate now includes tests/test_docx_layout_roles.py.",
+    "backend/server.py: added build_docx_structured_fields(options=None), returning method=docx_structured_fields_v1, normalized document_number/issuer/recipient, attachments, tables, and summary counts.",
+    "backend/server.py: added docx_table_xml(table, style_id) with escaped stdlib OOXML table rows/cells.",
+    "export_docx now inserts document_number, issuer, and recipient after the title; appends attachment paragraphs and simple tables before signature/imprint; and preserves backwards-compatible exports without structured fields.",
+    "tools/run_quality_gates.py py-compile gate now includes tests/test_docx_structured_fields.py.",
     "README.md and docs/ROADMAP.md document the v1 boundary."
   ],
   "not_implemented": [
-    "No formal pagination, rendered layout certification, or visual regression screenshots.",
-    "No semantic heading detection beyond simple lexical Chinese/numbered prefixes.",
-    "No full 版记 layout, table/attachment/document-number fields, or frontend style controls.",
-    "No persistence, third-party DOCX library, model call, or network call."
+    "No complex table styling, merged cells, formulas, table captions, or visual layout validation.",
+    "No formal attachment pagination or final 版记 formatting certification.",
+    "No frontend controls, persistence, third-party DOCX library, model call, or network call."
   ],
   "test_files": [
-    "tests/test_docx_layout_roles.py"
+    "tests/test_docx_structured_fields.py"
   ],
   "required_test_commands_for_codex": [
-    "python -m unittest tests.test_docx_layout_roles -v",
+    "python -m unittest tests.test_docx_structured_fields -v",
     "python -m unittest discover -s tests -v",
     "python tools/validate_retrieval_suite.py --suite tests/data/retrieval_eval_suite.json --json",
     "python tools/run_quality_gates.py --json",
@@ -38,17 +36,17 @@
     "git diff --check"
   ],
   "test_status": [
-    "python -m unittest tests.test_docx_layout_roles -v: 6 tests OK.",
-    "python tools/run_quality_gates.py --json: passed=true, 5 gates passed, unittest gate ran 216 tests OK.",
-    "python -m unittest discover -s tests -v: 216 tests OK.",
+    "python -m unittest tests.test_docx_structured_fields -v: 7 tests OK.",
+    "python tools/run_quality_gates.py --json: passed=true, 5 gates passed, unittest gate ran 223 tests OK.",
+    "python -m unittest discover -s tests -v: 223 tests OK.",
     "python tools/validate_retrieval_suite.py --suite tests/data/retrieval_eval_suite.json --json: passed=true, with expected placeholder/<50-case warnings.",
     "python -m json.tool CODEX_HANDOFF.json: passed.",
     "git diff --check: passed."
   ],
   "risks": [
-    "Heading detection is intentionally lexical and conservative; unusual headings stay as body paragraphs until a later structured-field slice.",
-    "Footer PAGE fields depend on Word-compatible field rendering; the XML part is present but not visually regression-tested yet.",
-    "Signature and imprint are plain paragraphs in v1, not a final official-document 版记 layout.",
+    "Table support is deliberately simple: headers and rows only, no merged cells or sizing policy.",
+    "Structured fields are request-local style_profile options and are not persisted.",
+    "Attachment and table placement is deterministic but not a final official-document pagination/layout pass.",
     "Claude Code did not consume this task because no Claude Code window was discoverable through the UIA bridge; WSL should be resynced after Codex publishes this slice."
   ],
   "credentials": [

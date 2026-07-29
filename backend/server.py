@@ -3425,8 +3425,99 @@ def build_docx_layout_plan(title: str, body: str, options: dict[str, Any] | None
     }
 
 
+def _structured_text(raw: Any) -> str:
+    return str(raw or "").strip()
+
+
+def _structured_list(raw: Any) -> list[Any]:
+    return raw if isinstance(raw, list) else []
+
+
+def build_docx_structured_fields(options: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Normalize request-local structured DOCX export fields.
+
+    This produces deterministic metadata only. It does not persist templates or
+    attempt full official-document layout validation.
+    """
+    raw = options or {}
+    if not isinstance(raw, dict):
+        raw = {}
+    fields = raw.get("style_profile") if isinstance(raw.get("style_profile"), dict) else raw
+    if not isinstance(fields, dict):
+        fields = {}
+
+    attachments: list[dict[str, Any]] = []
+    for idx, item in enumerate(_structured_list(fields.get("attachments")), start=1):
+        if isinstance(item, dict):
+            title = _structured_text(item.get("title") or item.get("name") or item.get("text"))
+        else:
+            title = _structured_text(item)
+        if title:
+            attachments.append({"index": len(attachments) + 1, "title": title})
+
+    tables: list[dict[str, Any]] = []
+    for raw_table in _structured_list(fields.get("tables")):
+        if not isinstance(raw_table, dict):
+            continue
+        headers = [_structured_text(h) for h in _structured_list(raw_table.get("headers"))]
+        headers = [h for h in headers if h]
+        rows: list[list[str]] = []
+        for raw_row in _structured_list(raw_table.get("rows")):
+            if isinstance(raw_row, dict):
+                if headers:
+                    row = [_structured_text(raw_row.get(header)) for header in headers]
+                else:
+                    row = [_structured_text(v) for v in raw_row.values()]
+            elif isinstance(raw_row, list):
+                row = [_structured_text(v) for v in raw_row]
+            else:
+                continue
+            if any(row):
+                rows.append(row)
+        if headers or rows:
+            tables.append({
+                "index": len(tables) + 1,
+                "title": _structured_text(raw_table.get("title") or raw_table.get("name")),
+                "headers": headers,
+                "rows": rows,
+            })
+
+    return {
+        "method": "docx_structured_fields_v1",
+        "document_number": _structured_text(fields.get("document_number")),
+        "issuer": _structured_text(fields.get("issuer")),
+        "recipient": _structured_text(fields.get("recipient")),
+        "attachments": attachments,
+        "tables": tables,
+        "summary": {
+            "has_document_number": bool(_structured_text(fields.get("document_number"))),
+            "has_issuer": bool(_structured_text(fields.get("issuer"))),
+            "has_recipient": bool(_structured_text(fields.get("recipient"))),
+            "attachment_count": len(attachments),
+            "table_count": len(tables),
+        },
+    }
+
+
 def _docx_paragraph(text: str, style_id: str) -> str:
     return f'<w:p><w:pPr><w:pStyle w:val="{escape(style_id)}"/></w:pPr><w:r><w:t>{escape(text)}</w:t></w:r></w:p>'
+
+
+def _docx_table_cell(text: str, style_id: str) -> str:
+    return f'<w:tc><w:p><w:pPr><w:pStyle w:val="{escape(style_id)}"/></w:pPr><w:r><w:t>{escape(text)}</w:t></w:r></w:p></w:tc>'
+
+
+def docx_table_xml(table: dict[str, Any], style_id: str) -> str:
+    rows: list[list[str]] = []
+    headers = [str(h) for h in table.get("headers", []) or []]
+    if headers:
+        rows.append(headers)
+    rows.extend([[str(cell) for cell in row] for row in table.get("rows", []) or []])
+    body = "".join(
+        "<w:tr>" + "".join(_docx_table_cell(cell, style_id) for cell in row) + "</w:tr>"
+        for row in rows
+    )
+    return f"<w:tbl><w:tblPr><w:tblW w:w=\"0\" w:type=\"auto\"/></w:tblPr>{body}</w:tbl>"
 
 
 def docx_footer_xml(profile: dict[str, Any], layout_plan: dict[str, Any]) -> str:
@@ -3447,6 +3538,7 @@ def export_docx(title: str, body: str, style_profile: dict[str, Any] | None = No
     style_ids = profile["style_ids"]
     margins = profile["page"]["margins_twips"]
     layout_plan = build_docx_layout_plan(title, body, {"style_profile": style_profile or {}})
+    structured_fields = build_docx_structured_fields(style_profile or {})
     role_styles = {
         "title": style_ids["title"],
         "heading": style_ids["heading"],
@@ -3454,10 +3546,35 @@ def export_docx(title: str, body: str, style_profile: dict[str, Any] | None = No
         "signature": style_ids["body"],
         "imprint": style_ids["body"],
     }
-    document = "".join(
-        _docx_paragraph(entry["text"], role_styles.get(entry["role"], style_ids["body"]))
-        for entry in layout_plan["paragraphs"]
-    )
+    document_parts: list[str] = []
+    body_tail_added = False
+
+    def append_structured_tail() -> None:
+        nonlocal body_tail_added
+        if body_tail_added:
+            return
+        for attachment in structured_fields["attachments"]:
+            document_parts.append(_docx_paragraph(f"附件{attachment['index']}：{attachment['title']}", style_ids["body"]))
+        for table in structured_fields["tables"]:
+            if table.get("title"):
+                document_parts.append(_docx_paragraph(str(table["title"]), style_ids["body"]))
+            document_parts.append(docx_table_xml(table, style_ids["body"]))
+        body_tail_added = True
+
+    for entry in layout_plan["paragraphs"]:
+        role = entry["role"]
+        if role in {"signature", "imprint"}:
+            append_structured_tail()
+        document_parts.append(_docx_paragraph(entry["text"], role_styles.get(role, style_ids["body"])))
+        if role == "title":
+            if structured_fields["document_number"]:
+                document_parts.append(_docx_paragraph(structured_fields["document_number"], style_ids["body"]))
+            if structured_fields["issuer"]:
+                document_parts.append(_docx_paragraph(f"签发人：{structured_fields['issuer']}", style_ids["body"]))
+            if structured_fields["recipient"]:
+                document_parts.append(_docx_paragraph(f"主送机关：{structured_fields['recipient']}", style_ids["body"]))
+    append_structured_tail()
+    document = "".join(document_parts)
     content_types = '<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>'
     rels = '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>'
     rel_entries = ['<Relationship Id="rIdStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>']

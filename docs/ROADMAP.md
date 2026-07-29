@@ -131,7 +131,7 @@
 
 - [x] 按 GB/T 9704-2012 建立可配置样式 v1：确定性 `build_docx_style_profile(payload_or_options=None)` 与 `docx_style_xml(profile)`，为 DOCX 导出提供 GB/T 9704-2012-inspired 的 A4 页面、页边距、标题/正文/层级样式、字体、字号、首行缩进、行距和页脚页码元数据；`export_docx(title, body, style_profile=None)` 保持旧调用兼容，并写入 `word/styles.xml`、styles content type 和 document relationship。**边界：stdlib OOXML 样式骨架，不是完整国标排版认证；不加前端 UI、不持久化、不调用模型、不引入第三方依赖。**
 - [x] 页面、版心、标题、正文、层级标题、落款、页码和版记 v1：确定性 `build_docx_layout_plan(title, body, options=None)` 与 `docx_footer_xml(profile, layout_plan)`；导出时将文本映射为 `title`、`heading`、`body`、`signature`、`imprint` 角色，简单中文/数字层级标题（如 `一、`、`（一）`、`1.`）使用 `MaterialHeading`，可选 `signature`/`imprint` 追加落款和版记元数据，默认写入带 PAGE 字段的 footer part 和 relationship，并可通过 `page_number=false` 关闭。**边界：词面角色映射和 stdlib OOXML 骨架，不做正式分页/版记排版认证、不做语义章节识别、不加 UI/持久化。**
-- [ ] 表格、附件说明、文号、签发人、主送机关等结构化字段
+- [x] 表格、附件说明、文号、签发人、主送机关等结构化字段 v1：确定性 `build_docx_structured_fields(options=None)` 与 `docx_table_xml(table, style_id)`；通过 `style_profile` 支持 `document_number`、`issuer`、`recipient`、`attachments`（字符串或 `title`/`name` 结构）和简单 `tables`（`headers`/`rows`），导出时文号/签发人/主送机关靠前插入，附件说明和基础 OOXML `w:tbl` 表格追加在正文后、落款/版记前；字段输出稳定归一化并给出 counts。**边界：基础字段段落和简单表格 XML，不做复杂表格样式、附件分页、正式版记排版、不加 UI/持久化。**
 - [ ] 字体缺失检测和替代策略
 - [ ] DOCX 渲染截图与版式回归
 - [ ] 导出前格式预检报告
