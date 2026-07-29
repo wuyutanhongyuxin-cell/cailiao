@@ -2697,6 +2697,173 @@ def build_targeted_repair_plan(payload: dict[str, Any], analysis: dict[str, Any]
     }
 
 
+def _locked_index_set(raw: Any) -> set[int]:
+    locked: set[int] = set()
+    for value in raw or []:
+        try:
+            idx = int(value)
+        except (TypeError, ValueError):
+            continue
+        if idx > 0:
+            locked.add(idx)
+    return locked
+
+
+def _version_id_for(paragraphs: list[dict[str, Any]], prefix: str = "draft") -> str:
+    payload = [
+        {"index": p.get("index"), "text": p.get("text", ""), "locked": bool(p.get("locked"))}
+        for p in paragraphs
+    ]
+    digest = hashlib.sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
+    return f"{prefix}-{digest[:12]}"
+
+
+def build_draft_version(payload: dict[str, Any], version_id: str | None = None) -> dict[str, Any]:
+    """Build a deterministic paragraph-based draft snapshot.
+
+    This is local metadata only: no persistence, model call, or semantic review.
+    """
+    locked_indexes = _locked_index_set(payload.get("locked_paragraphs", []) or [])
+    paragraph_entries = [
+        {"index": idx, "text": text, "locked": idx in locked_indexes}
+        for idx, text in enumerate(split_paragraphs(str(payload.get("draft", "") or "")), start=1)
+    ]
+    return {
+        "method": "draft_version_v1",
+        "version_id": version_id or _version_id_for(paragraph_entries),
+        "paragraph_count": len(paragraph_entries),
+        "paragraphs": paragraph_entries,
+        "locked_paragraphs": sorted(idx for idx in locked_indexes if idx <= len(paragraph_entries)),
+    }
+
+
+def _version_paragraph_map(version: dict[str, Any]) -> dict[int, dict[str, Any]]:
+    result: dict[int, dict[str, Any]] = {}
+    for raw in version.get("paragraphs", []) or []:
+        try:
+            idx = int(raw.get("index"))
+        except (TypeError, ValueError, AttributeError):
+            continue
+        if idx > 0:
+            result[idx] = {"index": idx, "text": str(raw.get("text", "") or ""),
+                           "locked": bool(raw.get("locked"))}
+    return result
+
+
+def diff_draft_versions(previous: dict[str, Any], current: dict[str, Any]) -> dict[str, Any]:
+    """Return a paragraph-scoped diff between two draft versions."""
+    previous_map = _version_paragraph_map(previous)
+    current_map = _version_paragraph_map(current)
+    entries: list[dict[str, Any]] = []
+    for idx in sorted(set(previous_map) | set(current_map)):
+        old = previous_map.get(idx)
+        new = current_map.get(idx)
+        if old is None:
+            status = "added"
+        elif new is None:
+            status = "removed"
+        elif old["text"] == new["text"] and old["locked"] == new["locked"]:
+            status = "unchanged"
+        else:
+            status = "changed"
+        entries.append({
+            "index": idx,
+            "status": status,
+            "previous_text": old["text"] if old else "",
+            "current_text": new["text"] if new else "",
+            "previous_locked": bool(old["locked"]) if old else False,
+            "current_locked": bool(new["locked"]) if new else False,
+        })
+
+    counts = Counter(entry["status"] for entry in entries)
+    return {
+        "method": "draft_version_diff_v1",
+        "previous_version_id": previous.get("version_id"),
+        "current_version_id": current.get("version_id"),
+        "entries": entries,
+        "summary": {
+            "changed_count": counts.get("changed", 0),
+            "added_count": counts.get("added", 0),
+            "removed_count": counts.get("removed", 0),
+            "unchanged_count": counts.get("unchanged", 0),
+            "entry_count": len(entries),
+        },
+    }
+
+
+def _normalize_revisions(revisions: Any) -> list[dict[str, Any]]:
+    if isinstance(revisions, dict):
+        return [{"paragraph_index": key, "text": value} for key, value in revisions.items()]
+    if isinstance(revisions, list):
+        return [item for item in revisions if isinstance(item, dict)]
+    return []
+
+
+def apply_paragraph_revisions(base_version: dict[str, Any], revisions: Any,
+                              locked_indexes: list[int] | None = None) -> dict[str, Any]:
+    """Apply paragraph revisions while preserving locked paragraphs."""
+    base_paragraphs = [
+        {"index": p["index"], "text": p["text"], "locked": p["locked"]}
+        for p in _version_paragraph_map(base_version).values()
+    ]
+    base_paragraphs.sort(key=lambda p: p["index"])
+    by_index = {p["index"]: p for p in base_paragraphs}
+    locked = {p["index"] for p in base_paragraphs if p["locked"]} | _locked_index_set(locked_indexes or [])
+
+    applied: list[dict[str, Any]] = []
+    skipped_locked: list[dict[str, Any]] = []
+    invalid: list[dict[str, Any]] = []
+    for raw in _normalize_revisions(revisions):
+        try:
+            idx = int(raw.get("paragraph_index"))
+        except (TypeError, ValueError, AttributeError):
+            invalid.append({"revision": raw, "reason": "invalid_paragraph_index"})
+            continue
+        if idx not in by_index:
+            invalid.append({"paragraph_index": idx, "reason": "paragraph_not_found"})
+            continue
+        if "text" not in raw or raw.get("text") is None:
+            invalid.append({"paragraph_index": idx, "reason": "missing_text"})
+            continue
+        text = str(raw.get("text"))
+        if idx in locked:
+            skipped_locked.append({"paragraph_index": idx, "text": text})
+            continue
+        by_index[idx]["text"] = text
+        applied.append({"paragraph_index": idx})
+
+    for idx in locked:
+        if idx in by_index:
+            by_index[idx]["locked"] = True
+    new_paragraphs = [by_index[idx] for idx in sorted(by_index)]
+    new_version = {
+        "method": "draft_version_v1",
+        "version_id": _version_id_for(new_paragraphs, prefix="draft-revised"),
+        "paragraph_count": len(new_paragraphs),
+        "paragraphs": new_paragraphs,
+        "locked_paragraphs": sorted(idx for idx in locked if idx in by_index),
+    }
+    return {
+        "method": "paragraph_revision_apply_v1",
+        "base_version_id": base_version.get("version_id"),
+        "version": new_version,
+        "applied_revisions": applied,
+        "skipped_locked": skipped_locked,
+        "invalid_revisions": invalid,
+    }
+
+
+def rollback_draft_version(version: dict[str, Any]) -> dict[str, Any]:
+    paragraphs = [p for p in _version_paragraph_map(version).values()]
+    paragraphs.sort(key=lambda p: p["index"])
+    return {
+        "method": "draft_version_rollback_v1",
+        "restored_version_id": version.get("version_id"),
+        "draft": "\n\n".join(p["text"] for p in paragraphs),
+        "paragraph_count": len(paragraphs),
+    }
+
+
 # --- Stage 3: deterministic writing workflow state (v1) ----------------------
 #
 # An additive, deterministic surface over analyze_payload. It never changes the
@@ -2824,6 +2991,8 @@ def analyze_payload(payload: dict[str, Any]) -> dict[str, Any]:
     status = "blocked" if any(i["level"] == "blocker" for i in issues) else "fail" if any(i["level"] == "fail" for i in issues) else "pass"
     analysis = {"status": status, "score": score, "issues": issues, "missing": missing, "genre": genre_rule}
     analysis["structured_writing_plan"] = build_structured_writing_plan(payload, analysis)
+    # Additive Stage 3 paragraph-based draft snapshot (does not persist state).
+    analysis["draft_version"] = build_draft_version(payload)
     # Additive Stage 3 deterministic workflow state (does not change status/issues).
     analysis["writing_state"] = build_writing_state(payload, analysis)
     # Additive Stage 3 approved-facts audit (does not change status/issues).

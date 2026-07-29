@@ -1,37 +1,37 @@
 {
   "status": "verified_by_codex",
-  "task_id": "cailiao-stage3-targeted-repair-plan-v1",
-  "phase": "ROADMAP Stage 3: deterministic targeted paragraph repair plan v1",
-  "baseline": "Release repo main f9fe29b Add approved facts audit. Codex attempted to send this task to Claude Code via UIA and direct TTY, but the WSL repo stayed clean and the report did not update to the target task, so Codex implemented this small deterministic slice directly.",
-  "summary": "Added an additive targeted_repair_plan surface to analyze_payload. It creates paragraph-scoped repair units only for failed or unverified paragraphs, combining pN issue targets, structured writing plan missing markers, and approved-facts audit unapproved markers. It does not rewrite the draft, call a model, query the library database, or change existing analysis semantics.",
+  "task_id": "cailiao-stage3-draft-version-locks-v1",
+  "phase": "ROADMAP Stage 3: deterministic draft version, paragraph locks, diff, and rollback primitives v1",
+  "baseline": "Release repo main e4a1b64 Add targeted repair plan. Codex wrote the task file and sent the command to Claude Code via UIA plus direct TTY, but no report or WSL diff appeared after polling. Codex implemented this deterministic slice directly to keep the stage moving.",
+  "summary": "Added paragraph-based draft version helper primitives and an additive draft_version analysis surface. The new functions build locked paragraph snapshots, compute paragraph-scoped diffs, apply revisions while skipping locked paragraphs, and reconstruct a draft for rollback. This is local deterministic metadata only: no persistence, no frontend UI, no model calls, and no semantic review.",
   "changed_files": [
     "backend/server.py",
-    "tests/test_targeted_repair_plan.py",
+    "tests/test_draft_versions.py",
     "tools/run_quality_gates.py",
     "README.md",
     "docs/ROADMAP.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "backend/server.py: added _paragraph_index_from_target(target) for stable pN issue mapping.",
-    "backend/server.py: added build_targeted_repair_plan(payload, analysis), returning method=targeted_repair_plan_v1, can_repair, repair_units, and summary.",
-    "Repair units are created only for paragraph-indexed failures, structured_writing_plan needs_verification paragraphs, or approved_facts_audit uses_unapproved_facts paragraphs.",
-    "Each repair unit includes paragraph_index, original_text, issue_codes, source_targets, required_markers, missing_markers, unapproved_markers, allowed_fact_ids, instruction, locked=false, and scope=paragraph_only.",
-    "Instruction strings explicitly require rewriting only that paragraph, preserving unrelated paragraphs, and using only approved facts/evidence listed in allowed_fact_ids.",
-    "No draft text is modified and no full-document rewrite is generated.",
-    "tools/run_quality_gates.py py-compile gate now includes tests/test_targeted_repair_plan.py.",
+    "backend/server.py: added _locked_index_set(raw) and _version_id_for(paragraphs) helpers.",
+    "backend/server.py: added build_draft_version(payload, version_id=None), returning method=draft_version_v1, version_id, paragraph_count, paragraphs, and locked_paragraphs.",
+    "backend/server.py: added diff_draft_versions(previous, current), returning method=draft_version_diff_v1, per-index entries, and changed/added/removed/unchanged counts.",
+    "backend/server.py: added apply_paragraph_revisions(base_version, revisions, locked_indexes=None), applying valid unlocked paragraph revisions and reporting applied_revisions, skipped_locked, and invalid_revisions without mutating the base version.",
+    "backend/server.py: added rollback_draft_version(version), reconstructing draft text from a version and reporting restored_version_id.",
+    "analyze_payload now attaches analysis['draft_version'] before writing_state and other Stage 3 additive surfaces.",
+    "tools/run_quality_gates.py py-compile gate now includes tests/test_draft_versions.py.",
     "README.md and docs/ROADMAP.md document the v1 boundary."
   ],
   "not_implemented": [
-    "No actual paragraph rewrite, LLM call, semantic entailment, or final review.",
-    "No locked paragraph persistence, draft version diff, rollback, or frontend rendering in this slice.",
-    "No library database retrieval; only the existing request-local analysis surfaces are used."
+    "No persistent draft history, database schema, frontend UI, model rewrite, or semantic review.",
+    "No merge/conflict UI for concurrent edits; diff is simple paragraph-index comparison.",
+    "No cross-session version store; callers must persist returned versions if needed."
   ],
   "test_files": [
-    "tests/test_targeted_repair_plan.py"
+    "tests/test_draft_versions.py"
   ],
   "required_test_commands_for_codex": [
-    "python -m unittest tests.test_targeted_repair_plan -v",
+    "python -m unittest tests.test_draft_versions -v",
     "python -m unittest discover -s tests -v",
     "python tools/validate_retrieval_suite.py --suite tests/data/retrieval_eval_suite.json --json",
     "python tools/run_quality_gates.py --json",
@@ -39,17 +39,17 @@
     "git diff --check"
   ],
   "test_status": [
-    "python -m unittest tests.test_targeted_repair_plan -v: 8 tests OK.",
-    "python -m unittest discover -s tests -v: 190 tests OK.",
+    "python -m unittest tests.test_draft_versions -v: 7 tests OK.",
+    "python -m unittest discover -s tests -v: 197 tests OK.",
     "python tools/validate_retrieval_suite.py --suite tests/data/retrieval_eval_suite.json --json: passed=true, with expected placeholder/<50-case warnings.",
     "python tools/run_quality_gates.py --json: passed=true, 5 gates passed.",
     "python -m json.tool CODEX_HANDOFF.json: passed.",
     "git diff --check: passed."
   ],
   "risks": [
-    "targeted_repair_plan is planning metadata only; it should not be treated as proof that a paragraph has been repaired.",
-    "Issue mapping is intentionally limited to explicit pN targets plus existing structured/approved-facts paragraph statuses.",
-    "The instruction text is deterministic and paragraph scoped, but any later model rewrite still requires independent review.",
+    "draft_version is deterministic metadata only and is not a persistence mechanism.",
+    "Paragraph diff is index based, so inserted paragraphs can shift later indexes; richer alignment can be added later if needed.",
+    "apply_paragraph_revisions preserves locked paragraphs but does not authenticate who locked them.",
     "Claude Code did not consume this task in the polling window; WSL should be resynced after Codex publishes this slice."
   ],
   "credentials": [
