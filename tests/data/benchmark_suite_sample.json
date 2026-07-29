@@ -1,0 +1,77 @@
+{
+  "metadata": {
+    "name": "benchmark placeholder sample",
+    "version": "v1",
+    "anonymized": true,
+    "description": "Synthetic sample fixture for the Stage 5 benchmark schema + scoring skeleton. Not a real anonymized task set."
+  },
+  "cases": [
+    {
+      "id": "bench-001",
+      "genre": "通知",
+      "prompt_fields": {
+        "发文机关": "示例办公室",
+        "事由": "关于开展示例专项工作的通知"
+      },
+      "facts": [
+        "工作自示例月启动",
+        "各科室须在示例日期前反馈"
+      ],
+      "evidence": [
+        "示例制度第一条",
+        "示例会议纪要"
+      ],
+      "expected_elements": {
+        "facts": ["示例专项工作", "示例日期前反馈"],
+        "citations": ["示例制度第一条", "示例会议纪要"],
+        "structure": ["标题", "主送机关", "正文", "落款"],
+        "language": ["请遵照执行", "特此通知"]
+      },
+      "reference_answer": "标题：关于开展示例专项工作的通知\n主送机关：各科室\n正文：为落实示例制度第一条与示例会议纪要要求，现就示例专项工作通知如下：请各科室于示例日期前反馈。请遵照执行。\n落款：示例办公室\n特此通知。"
+    },
+    {
+      "id": "bench-002",
+      "genre": "报告",
+      "prompt_fields": {
+        "发文机关": "示例科室",
+        "事由": "示例专项工作阶段报告"
+      },
+      "facts": [
+        "已完成示例第一阶段",
+        "存在示例风险点"
+      ],
+      "evidence": [
+        "示例台账",
+        "示例统计表"
+      ],
+      "expected_elements": {
+        "facts": ["示例第一阶段", "示例风险点"],
+        "citations": ["示例台账", "示例统计表"],
+        "structure": ["标题", "正文", "结尾"],
+        "language": ["现将有关情况报告如下", "特此报告"]
+      },
+      "reference_answer": "标题：示例专项工作阶段报告\n正文：现将有关情况报告如下：依据示例台账与示例统计表，已完成示例第一阶段工作，同时发现示例风险点需要关注。\n结尾：特此报告。"
+    },
+    {
+      "id": "bench-003",
+      "genre": "函",
+      "prompt_fields": {
+        "发文机关": "示例单位",
+        "事由": "关于商请示例事项的函"
+      },
+      "facts": [
+        "商请协助示例事项"
+      ],
+      "evidence": [
+        "示例协议"
+      ],
+      "expected_elements": {
+        "facts": ["商请协助", "示例事项"],
+        "citations": ["示例协议"],
+        "structure": ["标题", "正文"],
+        "language": ["特此函达", "请予支持"]
+      },
+      "reference_answer": "标题：关于商请示例事项的函\n正文：根据示例协议，现商请协助办理示例事项，请予支持。特此函达。"
+    }
+  ]
+}

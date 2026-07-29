@@ -2321,6 +2321,233 @@ def validate_retrieval_suite(suite: Any) -> dict[str, Any]:
     }
 
 
+# --- Stage 5: benchmark suite schema + deterministic scoring skeleton v1 ------
+
+# The four scoring dimensions a benchmark case declares expected elements for.
+BENCHMARK_DIMENSIONS = ("facts", "citations", "structure", "language")
+
+
+def load_benchmark_suite(path: str | Path) -> dict[str, Any]:
+    """Load a benchmark suite JSON (metadata + cases) into a dict.
+
+    Stdlib only. Raises ValueError on a non-object payload or a missing cases
+    list so callers can distinguish a load failure from a validation failure.
+    """
+    p = Path(path)
+    with p.open("r", encoding="utf-8") as f:
+        suite = json.load(f)
+    if not isinstance(suite, dict):
+        raise ValueError(f"benchmark suite must be a JSON object, got {type(suite).__name__}")
+    if not isinstance(suite.get("cases"), list):
+        raise ValueError("benchmark suite is missing a 'cases' list")
+    return suite
+
+
+def validate_benchmark_suite(suite: Any) -> dict[str, Any]:
+    """Validate a benchmark suite's shape without any model or network call.
+
+    Schema (v1):
+      metadata: {name, version, anonymized: true, ...}
+      cases[]: {id, genre, prompt_fields{}, facts[], evidence[],
+                expected_elements{facts[], citations[], structure[], language[]}}
+
+    Deterministic and stdlib only. Reads no external data. Errors fail
+    validation; warnings (small / non-anonymized-looking / placeholder) do not.
+    Returns {passed, errors, warnings, case_count, genres, expected_element_counts}.
+    """
+    errors: list[str] = []
+    warnings: list[str] = []
+    genres: set[str] = set()
+    expected_element_counts = {dim: 0 for dim in BENCHMARK_DIMENSIONS}
+
+    if not isinstance(suite, dict):
+        return {"passed": False, "errors": [f"suite must be a JSON object, got {type(suite).__name__}"],
+                "warnings": [], "case_count": 0, "genres": [],
+                "expected_element_counts": expected_element_counts}
+
+    metadata = suite.get("metadata", {})
+    if not isinstance(metadata, dict):
+        errors.append("'metadata' must be an object")
+        metadata = {}
+    else:
+        for field in ("name", "version"):
+            if not (isinstance(metadata.get(field), str) and metadata[field].strip()):
+                errors.append(f"metadata '{field}' must be a non-empty string")
+        if metadata.get("anonymized") is not True:
+            errors.append("metadata 'anonymized' must be true (only anonymized sets are accepted)")
+
+    cases = suite.get("cases")
+    if not isinstance(cases, list) or not cases:
+        errors.append("suite must contain a non-empty 'cases' list")
+        cases = []
+
+    seen_ids: set[str] = set()
+    for idx, case in enumerate(cases, start=1):
+        where = f"case #{idx}"
+        if not isinstance(case, dict):
+            errors.append(f"{where}: must be an object")
+            continue
+        cid = case.get("id")
+        if not (isinstance(cid, str) and cid.strip()):
+            errors.append(f"{where}: 'id' must be a non-empty string")
+        else:
+            where = f"case '{cid}'"
+            if cid in seen_ids:
+                errors.append(f"{where}: duplicate id")
+            seen_ids.add(cid)
+
+        if not (isinstance(case.get("genre"), str) and case["genre"].strip()):
+            errors.append(f"{where}: 'genre' must be a non-empty string")
+        else:
+            genres.add(case["genre"].strip())
+
+        for lkey in ("prompt_fields",):
+            val = case.get(lkey, {})
+            if val not in (None, {}) and not isinstance(val, dict):
+                errors.append(f"{where}: '{lkey}' must be an object when present")
+        for lkey in ("facts", "evidence"):
+            val = case.get(lkey, [])
+            if val not in (None, []) and not isinstance(val, list):
+                errors.append(f"{where}: '{lkey}' must be a list when present")
+
+        expected = case.get("expected_elements")
+        if not isinstance(expected, dict):
+            errors.append(f"{where}: 'expected_elements' must be an object")
+            continue
+        unknown = set(expected) - set(BENCHMARK_DIMENSIONS)
+        if unknown:
+            errors.append(f"{where}: unknown expected_elements dimension(s) {sorted(unknown)}")
+        has_any = False
+        for dim in BENCHMARK_DIMENSIONS:
+            markers = expected.get(dim, [])
+            if markers in (None, []):
+                continue
+            if not isinstance(markers, list):
+                errors.append(f"{where}: expected_elements '{dim}' must be a list when present")
+                continue
+            if any(not (isinstance(m, str) and m.strip()) for m in markers):
+                errors.append(f"{where}: expected_elements '{dim}' must contain only non-empty strings")
+            if markers:
+                has_any = True
+                expected_element_counts[dim] += len(markers)
+        if not has_any:
+            errors.append(f"{where}: expected_elements must declare at least one non-empty dimension")
+
+    case_count = len(cases)
+    meta_blob = " ".join(str(metadata.get(k, "")) for k in ("name", "version", "description")).lower()
+    if any(word in meta_blob for word in ("placeholder", "synthetic", "sample", "占位", "合成", "样例")):
+        warnings.append("metadata marks the suite as placeholder/synthetic; not a real anonymized set")
+    if case_count and case_count < 50:
+        warnings.append(f"case_count {case_count} < 50; a real anonymized benchmark should have 50-100 cases")
+
+    return {
+        "passed": not errors,
+        "errors": errors,
+        "warnings": warnings,
+        "case_count": case_count,
+        "genres": sorted(genres),
+        "expected_element_counts": expected_element_counts,
+    }
+
+
+def _benchmark_marker_coverage(markers: list[str], candidate: str) -> dict[str, Any]:
+    """Deterministic lexical coverage of expected markers within candidate text."""
+    norm_candidate = _norm_line(candidate).lower()
+    total = len(markers)
+    matched: list[str] = []
+    missing: list[str] = []
+    for marker in markers:
+        norm_marker = _norm_line(str(marker)).lower()
+        if norm_marker and norm_marker in norm_candidate:
+            matched.append(marker)
+        else:
+            missing.append(marker)
+    score = (len(matched) / total) if total else 1.0
+    return {
+        "score": round(score, 4),
+        "expected": total,
+        "matched": len(matched),
+        "missing": missing,
+    }
+
+
+def score_benchmark_suite(suite: dict[str, Any],
+                          responses: dict[str, str] | None = None) -> dict[str, Any]:
+    """Score candidate answers against a benchmark suite by lexical marker coverage.
+
+    Deterministic scoring skeleton (v1): for each case, each dimension score is
+    the fraction of that dimension's expected markers found (substring, case- and
+    whitespace-normalized) in the candidate text. The candidate text is taken from
+    ``responses[case_id]`` when provided, otherwise from the case's own
+    ``reference_answer`` field (so the synthetic fixture is self-scoring). A case
+    with no candidate text scores 0 on every declared dimension.
+
+    No model call, no network, no persistence. Returns per-case dimension scores
+    plus aggregate mean dimension scores and an overall mean.
+    """
+    responses = responses or {}
+    per_case: list[dict[str, Any]] = []
+    # Accumulate per-dimension sums over cases that declare that dimension.
+    dim_sums = {dim: 0.0 for dim in BENCHMARK_DIMENSIONS}
+    dim_counts = {dim: 0 for dim in BENCHMARK_DIMENSIONS}
+
+    for idx, case in enumerate(suite.get("cases", []) or [], start=1):
+        if not isinstance(case, dict):
+            continue
+        cid = case.get("id") or f"case-{idx}"
+        candidate = responses.get(cid)
+        if candidate is None:
+            candidate = case.get("reference_answer", "")
+        candidate = str(candidate or "")
+        expected = case.get("expected_elements", {}) if isinstance(case.get("expected_elements"), dict) else {}
+
+        dimensions: dict[str, Any] = {}
+        declared_scores: list[float] = []
+        for dim in BENCHMARK_DIMENSIONS:
+            markers = expected.get(dim, [])
+            if not isinstance(markers, list) or not markers:
+                continue
+            markers = [str(m) for m in markers if str(m).strip()]
+            if not markers:
+                continue
+            coverage = _benchmark_marker_coverage(markers, candidate)
+            dimensions[dim] = coverage
+            dim_sums[dim] += coverage["score"]
+            dim_counts[dim] += 1
+            declared_scores.append(coverage["score"])
+
+        overall = round(sum(declared_scores) / len(declared_scores), 4) if declared_scores else 0.0
+        per_case.append({
+            "id": cid,
+            "genre": case.get("genre", ""),
+            "has_candidate": bool(candidate.strip()),
+            "dimensions": dimensions,
+            "overall": overall,
+        })
+
+    aggregate_dimensions = {
+        dim: round(dim_sums[dim] / dim_counts[dim], 4) if dim_counts[dim] else None
+        for dim in BENCHMARK_DIMENSIONS
+    }
+    case_overalls = [c["overall"] for c in per_case]
+    aggregate_overall = round(sum(case_overalls) / len(case_overalls), 4) if case_overalls else 0.0
+
+    return {
+        "method": "benchmark_lexical_scoring_v1",
+        "boundary": (
+            "deterministic lexical marker coverage only; not a semantic, factual, "
+            "or human-judgment quality score, and no model is invoked"
+        ),
+        "case_count": len(per_case),
+        "cases": per_case,
+        "aggregate": {
+            "dimensions": aggregate_dimensions,
+            "overall": aggregate_overall,
+            "scored_dimension_counts": dim_counts,
+        },
+    }
+
+
 def run_retrieval_eval_suite(suite: dict[str, Any], k: int | None = None,
                              db_path: str | Path | None = None,
                              bm25_params: dict[str, Any] | None = None) -> dict[str, Any]:

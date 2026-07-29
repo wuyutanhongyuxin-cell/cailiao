@@ -1,51 +1,58 @@
 {
-  "status": "docs_reworked_by_claude",
-  "task_id": "cailiao-stage4-docx-render-regression-v1",
-  "phase": "ROADMAP Stage 4: deterministic DOCX render/layout regression v1 (structural/markup regression over the generated OOXML package; visual screenshots remain future work). Docs-finalization rework pass; implementation unchanged.",
-  "baseline": "054cd7b6c34d3bdf33d070be2a31fe47bf686666 Add DOCX font preflight",
-  "summary": "Added a deterministic, stdlib-only DOCX render/layout regression slice. inspect_docx_package_layout opens a generated DOCX byte package and reports which parts are present (document/styles/footer), the distinct paragraph style ids referenced, footer PAGE-field presence, and the page size / margins declared in the section properties. build_docx_layout_regression_report exports a DOCX in-memory, inspects it, and cross-checks against the style profile and existing preflight helpers (table / attachment / unknown-font counts), emitting an ordered list of named pass/fail checks plus a rollup summary. No real renderer is bundled or invoked; visual screenshot / pixel layout regression is explicitly documented as future work. export_docx behavior is unchanged.",
+  "status": "implemented_by_claude",
+  "task_id": "cailiao-stage5-benchmark-schema-scoring-v1",
+  "phase": "ROADMAP Stage 5: benchmark suite schema + deterministic lexical scoring skeleton v1 for anonymized real-task sets (synthetic sample fixture only)",
+  "baseline": "2ceb605b86873b600d9c2602173e22870194a49f Add DOCX layout regression",
+  "summary": "Added a deterministic, stdlib-only Stage 5 benchmark schema + scoring skeleton. load_benchmark_suite loads a suite JSON; validate_benchmark_suite checks metadata (name/version/anonymized=true) and cases[] (id/genre/prompt_fields/facts/evidence/expected_elements) with expected_elements split into facts/citations/structure/language; score_benchmark_suite scores each dimension by lexical marker coverage over a candidate answer (from responses[case_id] or the case's reference_answer) and returns per-case and aggregate dimension scores. A CLI tool tools/validate_benchmark_suite.py validates and optionally scores. A synthetic sample fixture lives at tests/data/benchmark_suite_sample.json. No real private data, no model call, no network.",
   "changed_files": [
     "backend/server.py",
-    "tests/test_docx_layout_regression.py",
+    "tools/validate_benchmark_suite.py",
+    "tests/test_benchmark_suite.py",
+    "tests/data/benchmark_suite_sample.json",
     "tools/run_quality_gates.py",
     "README.md",
     "docs/ROADMAP.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "backend/server.py: added inspect_docx_package_layout(raw_docx) returning method=docx_package_layout_inspector_v1, readable_zip, parts, has_document/has_styles/has_footer, footer_has_page_field, style_references, and page size/margins parsed from the section properties.",
-    "backend/server.py: added build_docx_layout_regression_report(title, body, style_profile=None) returning method=docx_layout_regression_v1, passed, package_size_bytes, inspection, an ordered checks[] list (zip_readable, document_present, styles_present, footer_matches_page_number, footer_has_page_field, {title,heading,body}_style_referenced, page_size_present, margins_present), failed_checks, and a summary with table/attachment/unknown-font/paragraph counts.",
-    "tests/test_docx_layout_regression.py: 9 unit tests covering the inspector (parts, footer on/off, style references, invalid bytes) and the regression report (all-pass default, structured/font counts, footer flag tracking, JSON serializability).",
-    "tools/run_quality_gates.py: py-compile gate now includes tests/test_docx_layout_regression.py.",
-    "README.md and docs/ROADMAP.md document the v1 boundary; the ROADMAP 'DOCX 渲染截图与版式回归' item is marked done as structural regression v1 with visual screenshots noted as future work."
+    "backend/server.py: added BENCHMARK_DIMENSIONS and load_benchmark_suite(path) (raises ValueError on non-object / missing cases).",
+    "backend/server.py: added validate_benchmark_suite(suite) returning {passed, errors, warnings, case_count, genres, expected_element_counts}; enforces metadata name/version + anonymized=true, unique case ids, genre, prompt_fields/facts/evidence types, and expected_elements dimensions (facts/citations/structure/language); warns (not fails) on placeholder/small suites.",
+    "backend/server.py: added score_benchmark_suite(suite, responses=None) with method=benchmark_lexical_scoring_v1; per-dimension lexical marker coverage over candidate text (responses[case_id] or reference_answer), per-case + aggregate dimension means and overall mean; deterministic and JSON-serializable.",
+    "tools/validate_benchmark_suite.py: CLI delegating to the server helpers; --json and --score flags; exit 0/1/2 for pass/fail/load-error.",
+    "tests/data/benchmark_suite_sample.json: synthetic 3-case fixture (通知/报告/函) whose reference answers are authored to contain every expected marker (self-scores to 1.0).",
+    "tests/test_benchmark_suite.py: 14 tests across validation, scoring, and the CLI.",
+    "tools/run_quality_gates.py: py-compile gate now includes tests/test_benchmark_suite.py and tools/validate_benchmark_suite.py.",
+    "README.md and docs/ROADMAP.md document the v1 boundary; ROADMAP Stage 5 items for anonymized task-set schema and facts/citations/structure/language scoring are marked done as v1 skeletons."
   ],
   "not_implemented": [
-    "No real renderer, rasterization, screenshot, or pixel-level layout verification.",
-    "No network install of any rendering engine (LibreOffice, headless Word, etc.).",
-    "No frontend UI, persistence, model call, or network call.",
-    "export_docx output is unchanged; the helpers are additive inspectors."
+    "No real anonymized task set; the fixture is synthetic placeholder data (a real 50-100 case set still needs to be built by hand).",
+    "Scoring is lexical marker coverage only, not semantic/factual/human-judgment quality; no model is invoked.",
+    "No blind evaluation harness, model/version comparison, adoption/edit-distance metrics, or regression-run automation (later Stage 5 items).",
+    "No UI, persistence, or network call."
   ],
   "test_files": [
-    "tests/test_docx_layout_regression.py"
+    "tests/test_benchmark_suite.py"
   ],
   "required_test_commands_for_codex": [
-    "python -m unittest tests.test_docx_layout_regression -v",
+    "python -m unittest tests.test_benchmark_suite -v",
     "python -m unittest discover -s tests -v",
+    "python tools/validate_benchmark_suite.py --suite tests/data/benchmark_suite_sample.json --json",
     "python tools/run_quality_gates.py --json",
     "python -m json.tool CODEX_HANDOFF.json",
     "git diff --check"
   ],
   "test_status": [
-    "python -m unittest tests.test_docx_layout_regression -v: 9 tests OK.",
-    "python -m unittest discover -s tests -v: 242 tests OK.",
-    "python tools/run_quality_gates.py --json (default 'python' on PATH): passed=true, all 5 gates passed (py-compile, unittest, eval-retrieval, git-diff, secret-scan); unittest gate ran 242 tests OK.",
+    "python -m unittest tests.test_benchmark_suite -v: 14 tests OK.",
+    "python -m unittest discover -s tests -v: 256 tests OK.",
+    "python tools/validate_benchmark_suite.py --suite tests/data/benchmark_suite_sample.json --json: passed=true (with expected placeholder/<50-case warnings); --score aggregate overall=1.0.",
+    "python tools/run_quality_gates.py --json (default 'python' on PATH): passed=true, all 5 gates passed; unittest gate ran 256 tests OK.",
     "python -m json.tool CODEX_HANDOFF.json: valid JSON.",
     "git diff --check: no whitespace/conflict issues."
   ],
   "risks": [
-    "The inspector matches the section properties via a fixed regex over the known export template; if export_docx's sectPr markup changes, the regex would need updating (a regression test would surface this).",
-    "This is structural/markup regression only: it can confirm parts, style references, page size, and margins exist and match the profile, but cannot detect visual rendering defects.",
-    "Style-reference checks are conditional on a role actually appearing in the layout plan, so an all-body document does not assert title/heading references.",
+    "The fixture is synthetic placeholder data by design; validate flags it as placeholder/small (warnings), and it must not be mistaken for a real anonymized benchmark.",
+    "Lexical marker coverage is a coarse proxy: a candidate can score high by containing marker substrings without being correct, and can score low despite a valid paraphrase. This is an intentional deterministic skeleton, not a quality judge.",
+    "Scoring falls back to each case's reference_answer when no response is supplied, so a suite's self-score reflects fixture authoring, not model output.",
     "Environment note: the local interpreter is python3 (no bare 'python' on PATH); the quality-gate runner honors PYTHON=python3, and a local 'python->python3' PATH shim lets its default-interpreter meta-test pass."
   ],
   "credentials": [
