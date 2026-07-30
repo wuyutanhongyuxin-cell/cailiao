@@ -1,57 +1,56 @@
 {
-    "status":  "implemented_by_claude",
-    "task_id":  "cailiao-stage2b-doit-real-candidate-artifact-v1",
-    "phase":  "Stage 2B line 97: public DoIT real-query candidate artifact generated on the networked Windows sidecar after Claude implemented and fixed the deterministic intake tool. Artifact has 100 public Creative Writing user prompts from the MIT-licensed DoIT file. All five Stage 2B parent blockers REMAIN UNCHECKED.",
-    "baseline":  "e27c491c1dfe750dc597450c29385cc1bd3a460d (Add Stage 2B public real query intake)",
-    "summary":  "Claude implemented the stdlib-only DoIT intake tool and Codex review fixes (set_hash validation and actual DoIT type alias support for creative_writing). Codex then downloaded the public source file curated/1000/creative_writing_1000.json from Hugging Face, generated docs/evidence/stage2b/doit_creative_writing_real_query_candidate_100.json, and validated it. The artifact has record_count=100, contains_assistant_answers=false, roadmap_parent_items_checked=false, and set_hash=sha256:fca0300eea0480089a2f44f47d60b9a4cb7cbbc5aa6193f13427fa43e4be464b. Source SHA256 is 9eed74db9e9fc758104739fa5f5133499606a50485ba11aa6caa01cf5adcec92; artifact SHA256 is af9652d75a387c3091d4c1b106dcf5542d3ee21127fbdeed2372b3015dbb0f58. This is real public candidate evidence, not synthetic placeholder data, but it still does not complete ROADMAP line 97 because qrels/relevance targets, anonymization confirmation, and readiness sign-off remain missing.",
-    "changed_files":  [
-                          "tools/prepare_stage2b_real_query_set.py",
-                          "tests/test_stage2b_real_query_public_doit_intake.py",
-                          "tests/data/doit_fixture.sample.jsonl",
-                          "docs/STAGE2B_REAL_QUERY_PUBLIC_DOIT_INTAKE.md",
-                          "docs/evidence/stage2b/doit_creative_writing_real_query_candidate_100.json",
-                          "tools/run_quality_gates.py",
-                          "README.md",
-                          "docs/ROADMAP.md",
-                          "CODEX_HANDOFF.json"
-                      ],
-    "implemented":  [
-                        "tools/prepare_stage2b_real_query_set.py: supports both Creative Writing and the actual DoIT file label creative_writing; validate_artifact() validates set_hash against ordered per-case query_sha256 values.",
-                        "docs/evidence/stage2b/doit_creative_writing_real_query_candidate_100.json: generated from downloaded MIT-licensed DoIT creative_writing_1000.json; validate passed with 100 records and no assistant answers.",
-                        "docs/STAGE2B_REAL_QUERY_PUBLIC_DOIT_INTAKE.md: records download URL, source SHA256, artifact SHA256, artifact path, set_hash, and candidate-only boundary."
-                    ],
-    "not_implemented":  [
-                            "ROADMAP line 97 remains unchecked: the public DoIT artifact is candidate evidence only and still lacks qrels/relevance targets, anonymization confirmation, and readiness sign-off.",
-                            "All five Stage 2B real parent blockers remain unchecked by design.",
-                            "No provider result, model call, eval, telemetry, approval, or production readiness fabricated. No credential/.env read."
-                        ],
-    "test_files":  [
-                       "tests/test_stage2b_real_query_public_doit_intake.py"
-                   ],
-    "required_test_commands_for_codex":  [
-                                             "python -m unittest tests.test_stage2b_real_query_public_doit_intake -v",
-                                             "python -m unittest discover -s tests -v",
-                                             "python tools/run_quality_gates.py --json",
-                                             "python -m json.tool CODEX_HANDOFF.json",
-                                             "git diff --check"
-                                         ],
-    "test_status":  [
-                        "python tools/prepare_stage2b_real_query_set.py validate --artifact docs/evidence/stage2b/doit_creative_writing_real_query_candidate_100.json: passed=true, record_count=100.",
-                        "python -m unittest tests.test_stage2b_real_query_public_doit_intake -v: 21 tests OK.",
-                        "python -m unittest discover -s tests -v: 711 tests OK.",
-                        "python tools/run_quality_gates.py --json: passed=true, all 5 gates passed; unittest gate ran 711 tests OK.",
-                        "python -m json.tool CODEX_HANDOFF.json: valid JSON.",
-                        "git diff --check: no whitespace/conflict issues."
-                    ],
-    "roadmap_item_status":  "ALL FIVE STAGE 2B REAL PARENT BLOCKERS UNCHECKED. Line 97 now has a tracked public DoIT candidate artifact, but it still needs qrels/relevance targets, anonymization confirmation, and readiness sign-off before the parent can be checked.",
-    "risks":  [
-                  "The artifact is public candidate evidence, not private production telemetry; it may be sufficient as a seed benchmark input but does not prove private anonymized production readiness.",
-                  "The artifact lacks relevance targets/qrels, so BM25 calibration still cannot honestly complete line 100.",
-                  "Anonymization confirmation/readiness sign-off remains a human or external evidence item."
-              ],
-    "credentials":  [
-                        "No credentials or .env files were read, created, or modified.",
-                        "Codex downloaded one public MIT-licensed DoIT source file from Hugging Face; no provider calls, model downloads, or eval runs were used.",
-                        "No push performed by Claude; Codex handles commit/push after independent verification."
-                    ]
+  "status": "implemented_by_claude_audited_by_codex",
+  "task_id": "cailiao-stage2b-doit-bm25-tests-v1",
+  "phase": "Stage 2B lines 97/100 bridge: DoIT prompt-answer records can now be converted into a ready_real query set with paired corpus for the existing gated BM25 sweep. All five Stage 2B parent blockers remain unchecked.",
+  "baseline": "e51457cc226200546624442ab03a53a63308624a (Add DoIT real query candidate artifact)",
+  "summary": "Claude added a stdlib-only DoIT BM25 dataset builder, docs, invented fixture, focused tests, and quality-gate coverage. Codex independently audited and ran focused tests plus full gates on Windows. The builder reads only local DoIT records, requires valid Creative Writing prompts with assistant answers, stores user prompts as cases, stores public MIT assistant answers only in paired corpus docs, validates ready_real readiness, checks relevance targets, validates set_hash, and refuses insufficient inputs without fabrication.",
+  "changed_files": [
+    "README.md",
+    "docs/ROADMAP.md",
+    "docs/STAGE2B_DOIT_BM25_DATASET.md",
+    "tests/data/doit_bm25_fixture.sample.jsonl",
+    "tests/test_stage2b_doit_bm25_dataset.py",
+    "tools/build_stage2b_doit_bm25_dataset.py",
+    "tools/run_quality_gates.py",
+    "CODEX_HANDOFF.json"
+  ],
+  "implemented": [
+    "tools/build_stage2b_doit_bm25_dataset.py: build/validate commands for local DoIT prompt-answer JSON/JSONL inputs; no network or secret reads.",
+    "tests/test_stage2b_doit_bm25_dataset.py: 18 focused tests covering ready_real readiness, paired corpus relevance targets, no assistant answers in cases, set_hash tamper rejection, insufficient-input refusal, and BM25 sweep compatibility.",
+    "docs/STAGE2B_DOIT_BM25_DATASET.md plus README/ROADMAP entries document the boundary: public MIT benchmark seed, not private telemetry or final production calibration."
+  ],
+  "not_implemented": [
+    "ROADMAP line 97 remains unchecked: no final human-approved 50-100 private anonymized production query set.",
+    "ROADMAP line 102 remains unchecked: no final BM25 calibration on accepted real production query/corpus evidence.",
+    "ROADMAP lines for embedding provider/vector DB, reranker/RRF, and NLI/LLM semantic evaluation remain unchecked.",
+    "No provider result, model call, production telemetry, approval, or secret was fabricated."
+  ],
+  "test_files": [
+    "tests/test_stage2b_doit_bm25_dataset.py"
+  ],
+  "required_test_commands_for_codex": [
+    "python -m unittest tests.test_stage2b_doit_bm25_dataset -v",
+    "python -m unittest tests.test_bm25_real_sweep -v",
+    "python tools/run_quality_gates.py --json",
+    "python -m json.tool CODEX_HANDOFF.json",
+    "git diff --check"
+  ],
+  "test_status": [
+    "python -m unittest tests.test_stage2b_doit_bm25_dataset -v: 18 tests OK.",
+    "python -m unittest tests.test_bm25_real_sweep -v: 12 tests OK.",
+    "python tools/run_quality_gates.py --json: passed=true, all 5 gates passed; unittest gate ran 729 tests OK.",
+    "python -m json.tool CODEX_HANDOFF.json: valid JSON.",
+    "git diff --check: no whitespace/conflict issues."
+  ],
+  "roadmap_item_status": "ALL FIVE STAGE 2B REAL PARENT BLOCKERS UNCHECKED. This commit adds a real-public-benchmark bridge and BM25-ready dataset builder, but final production readiness still requires external evidence and sign-off.",
+  "risks": [
+    "DoIT is public benchmark data, not private production telemetry.",
+    "Prompt-answer pairing gives a seed corpus and gate-compatible qrels, not final production retrieval calibration.",
+    "A real downloaded DoIT file still needs to be converted and swept by Codex in a follow-up before any evidence claim can be made."
+  ],
+  "credentials": [
+    "No credentials or .env files were read, created, or modified.",
+    "The builder never downloads; it only reads local input files.",
+    "No push performed by Claude; Codex handles commit/push after independent verification."
+  ]
 }
