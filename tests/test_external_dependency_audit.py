@@ -82,6 +82,15 @@ class DefaultAuditTest(unittest.TestCase):
                 self.assertIn(field, b)
             self.assertEqual(b["verification_mode"], "declared_metadata_shape_only")
 
+    def test_blocker_roadmap_lines_match_current_roadmap(self):
+        a = server.build_external_dependency_audit()
+        by_id = {b["id"]: b for b in a["blockers"]}
+        self.assertEqual(by_id["real_query_set"]["roadmap_line"], 97)
+        self.assertEqual(by_id["real_query_bm25_calibration"]["roadmap_line"], 100)
+        self.assertEqual(by_id["real_embedding_provider_vector_store"]["roadmap_line"], 103)
+        self.assertEqual(by_id["real_reranker_rrf"]["roadmap_line"], 107)
+        self.assertEqual(by_id["real_nli_semantic_conflict"]["roadmap_line"], 114)
+
     def test_output_is_json_serializable(self):
         json.dumps(server.build_external_dependency_audit(), ensure_ascii=False)
 

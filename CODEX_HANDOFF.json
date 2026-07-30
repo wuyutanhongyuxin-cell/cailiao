@@ -1,48 +1,35 @@
 {
   "status": "codex_implemented_after_claude_not_consuming_task",
-  "task_id": "cailiao-stage2b-rollout-protocols-audit-integration-v1",
-  "phase": "Stage 2B hardening: integrate rollout protocols into external dependency audit/status surfaces. No real parent item is checked.",
-  "baseline": "aba47bf Add Stage 2B NLI semantic rollout protocol",
-  "summary": "Claude task dispatch succeeded at the channel level, but polling showed no matching report and no WSL diff. Codex integrated the three rollout protocols into the audit/status layer: external dependency blocker protected_by fields now list the corresponding rollout protocol helpers, stale ROADMAP line references for rerank/NLI were corrected, and build_stage2b_rollout_protocols_status(config=None) plus tools/check_stage2b_rollout_protocols_status.py aggregate vector/rerank/NLI rollout metadata readiness. This remains metadata-shape only and never calls providers, connects vector stores, downloads models, runs evals, reads secrets, or checks real ROADMAP parents.",
+  "task_id": "cailiao-stage2b-audit-line-reference-consistency-v1",
+  "phase": "Stage 2B audit consistency hardening.",
+  "baseline": "a1945c1 Integrate Stage 2B rollout protocols into audit",
+  "summary": "Claude task dispatch succeeded at the channel level, but polling showed no matching report and no WSL diff. Codex fixed the stale ROADMAP prose in the external dependency audit summary: rerank now references line 107 and NLI semantic conflict references line 114. Added focused tests asserting all five external blocker roadmap_line values match current ROADMAP parent lines 97/100/103/107/114. No real parent item was checked.",
   "changed_files": [
-    "backend/server.py",
-    "tools/check_stage2b_rollout_protocols_status.py",
-    "tests/test_stage2b_rollout_protocols_status.py",
-    "tools/run_quality_gates.py",
-    "README.md",
     "docs/ROADMAP.md",
+    "tests/test_external_dependency_audit.py",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "backend/server.py: updated protected_by for vector/rerank/NLI external blockers to include rollout protocol helpers and current ROADMAP lines; added build_stage2b_rollout_protocols_status(config=None).",
-    "tools/check_stage2b_rollout_protocols_status.py: CLI (--config/--json); default exits 1, complete declared rollout packets exit 0, load error exits 2.",
-    "tests/test_stage2b_rollout_protocols_status.py: focused tests for default not ready, complete declared packets ready shape-only, template examples not ready, audit protected_by integration, JSON serializability, and CLI behavior.",
-    "tools/run_quality_gates.py: py-compile gate includes the new CLI and test file.",
-    "README.md and docs/ROADMAP.md document the aggregate rollout protocol status as a checked sub-note only."
+    "docs/ROADMAP.md: external dependency audit summary now references current parent lines 97/100/103/107/114.",
+    "tests/test_external_dependency_audit.py: added exact roadmap_line assertions for all five blockers.",
+    "CODEX_HANDOFF.json: updated current task status and verification requirements."
   ],
   "not_implemented": [
     "No real query set, provider connection, vector DB connection, model download, or eval run was performed.",
-    "ROADMAP parent lines 97, 100, 103, 107, and 114 remain unchecked by design.",
-    "A complete declared packet proves metadata shape only, not real-world readiness."
-  ],
-  "test_files": [
-    "tests/test_stage2b_rollout_protocols_status.py"
+    "ROADMAP parent lines 97, 100, 103, 107, and 114 remain unchecked by design."
   ],
   "required_test_commands_for_codex": [
-    "python -m unittest tests.test_stage2b_rollout_protocols_status -v",
-    "python tools/check_stage2b_rollout_protocols_status.py --json",
+    "python -m unittest tests.test_external_dependency_audit -v",
     "python tools/run_quality_gates.py --json",
     "python -m json.tool CODEX_HANDOFF.json",
     "git diff --check"
   ],
   "test_status": [
-    "python -m unittest tests.test_stage2b_rollout_protocols_status -v: 7 tests OK.",
-    "python tools/check_stage2b_rollout_protocols_status.py --json: all_rollout_protocols_ready=false, roadmap_parent_items_checked=false, expected exit 1.",
-    "python tools/run_quality_gates.py --json: passed=true, 5 gates passed, 625 tests OK.",
+    "python -m unittest tests.test_external_dependency_audit -v: 10 tests OK.",
+    "python tools/run_quality_gates.py --json: passed=true, 5 gates passed, 626 tests OK.",
     "python -m json.tool CODEX_HANDOFF.json: valid JSON.",
     "git diff --check: passed."
   ],
-  "roadmap_item_status": "No real external ROADMAP parent item checked. This only wires rollout protocol metadata into existing status surfaces.",
   "claude_monitoring": [
     "Task file written to /home/kiro/kiro-work/work/CODEX_TO_CLAUDE_LATEST.md.",
     "send-claude-task.ps1 returned sent=true and used_uia=true.",
