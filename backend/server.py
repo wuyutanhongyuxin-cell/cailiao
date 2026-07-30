@@ -7402,6 +7402,105 @@ def build_stage2b_observability_contract(config: dict[str, Any] | None = None) -
     }
 
 
+# --- Stage 2B release dossier / model-data card contract v1 ------------------
+
+STAGE2B_RELEASE_DOSSIER_DOC = "docs/STAGE2B_RELEASE_DOSSIER.md"
+STAGE2B_RELEASE_DOSSIER_EXAMPLE_FILE = "examples/stage2b_release_dossier.example.json"
+
+_STAGE2B_RELEASE_DOSSIER_SPECS = {
+    "real_query_set": {
+        "required_cards_or_records": ["dataset card", "anonymization review", "qrels coverage record",
+                                      "human owner signoff"],
+        "accountable_owner_role": "evaluation_dataset_owner",
+        "reviewer_role": "privacy_reviewer",
+        "approval_record_shape": ["approver", "role", "approved_at", "dataset_id", "decision", "notes"],
+        "required_links": ["real query collection protocol", "human action packet", "external dependency audit"],
+    },
+    "real_query_bm25_calibration": {
+        "required_cards_or_records": ["eval card", "BM25 sweep manifest", "baseline comparison",
+                                      "parameter decision record"],
+        "accountable_owner_role": "retrieval_quality_owner",
+        "reviewer_role": "evaluation_reviewer",
+        "approval_record_shape": ["approver", "role", "approved_at", "run_id", "decision", "rollback_notes"],
+        "required_links": ["eval-run contract", "promotion gates", "observability contract"],
+    },
+    "real_embedding_provider_vector_store": {
+        "required_cards_or_records": ["provider card", "vector index card", "rollout record",
+                                      "observability snapshot", "security review"],
+        "accountable_owner_role": "retrieval_platform_owner",
+        "reviewer_role": "security_and_operations_reviewer",
+        "approval_record_shape": ["approver", "role", "approved_at", "index_id", "decision", "risk_acceptance"],
+        "required_links": ["vector rollout protocol", "standards traceability", "promotion gates"],
+    },
+    "real_reranker_rrf": {
+        "required_cards_or_records": ["model/provider card", "rerank eval card", "RRF decision record",
+                                      "canary observation snapshot"],
+        "accountable_owner_role": "ranking_quality_owner",
+        "reviewer_role": "latency_and_quality_reviewer",
+        "approval_record_shape": ["approver", "role", "approved_at", "model_id", "decision", "latency_budget"],
+        "required_links": ["rerank rollout protocol", "eval-run contract", "promotion gates"],
+    },
+    "real_nli_semantic_conflict": {
+        "required_cards_or_records": ["model/provider card", "semantic eval card", "human review policy",
+                                      "fabrication/citation audit", "risk signoff"],
+        "accountable_owner_role": "semantic_safety_owner",
+        "reviewer_role": "policy_and_human_review_reviewer",
+        "approval_record_shape": ["approver", "role", "approved_at", "policy_id", "decision", "escalation_path"],
+        "required_links": ["NLI semantic rollout protocol", "observability contract", "promotion gates"],
+    },
+}
+
+
+def build_stage2b_release_dossier(config: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Return release dossier contract for Stage 2B external blockers.
+
+    Dossier metadata only. It names model/data/eval cards, accountable roles,
+    reviewer roles, approval-record shape, and required links. It never fabricates
+    approvals, runs evals, calls providers, reads credentials, or checks ROADMAP
+    parent items.
+    """
+    audit = build_external_dependency_audit(config)
+    entries = []
+    for blocker in audit["blockers"]:
+        bid = blocker["id"]
+        spec = _STAGE2B_RELEASE_DOSSIER_SPECS[bid]
+        entries.append({
+            "id": bid,
+            "roadmap_line": blocker["roadmap_line"],
+            "topic": blocker["topic"],
+            "required_cards_or_records": list(spec["required_cards_or_records"]),
+            "accountable_owner_role": spec["accountable_owner_role"],
+            "reviewer_role": spec["reviewer_role"],
+            "approval_record_shape": list(spec["approval_record_shape"]),
+            "required_links": list(spec["required_links"]),
+            "repo_guardrails": blocker["protected_by"],
+            "status": "release_evidence_declared" if blocker["satisfied"] else "missing_release_evidence",
+            "satisfied": blocker["satisfied"],
+        })
+    missing_ids = [e["id"] for e in entries if not e["satisfied"]]
+    return {
+        "method": "stage2b_release_dossier_v1",
+        "boundary": (
+            "deterministic release dossier contract only; no runtime network, no provider call, "
+            "no model download, no eval execution, no approval fabrication, no credential/.env "
+            "read, and no ROADMAP parent auto-check"
+        ),
+        "dossier_doc": STAGE2B_RELEASE_DOSSIER_DOC,
+        "example_file": STAGE2B_RELEASE_DOSSIER_EXAMPLE_FILE,
+        "reference_alignment": [
+            "NIST AI RMF Govern/Map/Measure/Manage",
+            "OECD AI transparency and accountability principles",
+            "ISO/IEC 42001 AI management-system accountability concepts",
+            "Google Model Cards reporting pattern",
+        ],
+        "entry_count": len(entries),
+        "entries": entries,
+        "missing_release_evidence_ids": missing_ids,
+        "ready_for_release": not missing_ids,
+        "roadmap_parent_items_checked": False,
+    }
+
+
 # --- Stage 2B evaluation-run contract / manifest (declared-shape) v1 ----------
 
 STAGE2B_EVAL_RUN_CONTRACT_DOC = "docs/STAGE2B_EVAL_RUN_CONTRACT.md"

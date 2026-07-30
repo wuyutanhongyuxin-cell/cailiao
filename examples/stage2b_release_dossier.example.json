@@ -1,0 +1,10 @@
+{
+  "is_template": true,
+  "purpose": "Example wrapper for Stage 2B release dossier evidence. Not real approval.",
+  "artifacts": {},
+  "notes": [
+    "Release dossier contract names required cards, records, owners, and reviewers only.",
+    "Populate artifacts only after real evidence and approvals exist.",
+    "Never include credential values."
+  ]
+}
