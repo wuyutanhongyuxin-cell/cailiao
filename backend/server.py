@@ -17,7 +17,7 @@ import uuid
 import xml.etree.ElementTree as ET
 import zipfile
 from collections import Counter
-from datetime import datetime
+from datetime import datetime, timezone
 from html import escape
 from html.parser import HTMLParser
 from http import HTTPStatus
@@ -1132,6 +1132,21 @@ VECTOR_MIN_SCORE_DEFAULT = 1e-9
 # (e.g. "provider_api") is deliberately absent so nothing can silently attempt a
 # network/credentialed call; resolve_vector_pipeline() rejects unknown modes.
 VECTOR_TEST_MODE = "deterministic_local_test"
+VECTOR_OPENAI_COMPATIBLE_MODE = "openai_compatible"
+
+
+def _is_env_var_name(value: str) -> bool:
+    return bool(re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", value or ""))
+
+
+def _is_placeholder_credential_source(value: str) -> bool:
+    token = (value or "").strip().lower()
+    return (
+        not token
+        or token in {"todo", "tbd", "placeholder", "changeme", "your_api_key", "api_key", "key"}
+        or token.startswith("sk-")
+        or " " in token
+    )
 
 
 class VectorEmbedder:
@@ -1189,6 +1204,89 @@ class DeterministicHashEmbedder(VectorEmbedder):
         return sum(a[i] * b[i] for i in range(n))
 
 
+class OpenAICompatibleEmbeddingProvider(VectorEmbedder):
+    """OpenAI-compatible embedding adapter.
+
+    This is a real provider adapter shape, but it is never enabled by default.
+    It reads only the configured environment variable at call time, never `.env`,
+    and redacts credential material from metadata/errors. Tests use a local HTTP
+    stub; production connectivity is proven only by a successful real call.
+    """
+
+    mode = VECTOR_OPENAI_COMPATIBLE_MODE
+
+    def __init__(self, endpoint_url: str, model: str, credential_source: str,
+                 timeout_sec: float = 30.0) -> None:
+        self.endpoint_url = str(endpoint_url or "").strip()
+        self.model = str(model or "").strip()
+        self.credential_source = str(credential_source or "").strip()
+        self.timeout_sec = float(timeout_sec or 30.0)
+        self.connectivity_proven = False
+        self._validate_static_config()
+
+    def _validate_static_config(self) -> None:
+        parsed = urllib.parse.urlparse(self.endpoint_url)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            raise ValueError("embedding endpoint_url must be an absolute http(s) URL")
+        if not self.model:
+            raise ValueError("embedding model is required")
+        if _is_placeholder_credential_source(self.credential_source) or not _is_env_var_name(self.credential_source):
+            raise ValueError("credential_source must be a non-placeholder environment variable name")
+
+    def metadata(self) -> dict[str, Any]:
+        return {
+            "mode": self.mode,
+            "endpoint_host": urllib.parse.urlparse(self.endpoint_url).netloc,
+            "model": self.model,
+            "credential_source": self.credential_source,
+            "is_real_embedding_model": True,
+            "connectivity_proven": self.connectivity_proven,
+            "secret_value_exposed": False,
+        }
+
+    def _credential(self) -> str:
+        value = os.environ.get(self.credential_source)
+        if not value:
+            raise RuntimeError(f"embedding credential env var {self.credential_source!r} is not set")
+        return value
+
+    def embed(self, text: str) -> list[float]:
+        return self.embed_many([text])[0]
+
+    def embed_many(self, texts: list[str]) -> list[list[float]]:
+        payload = json.dumps({"model": self.model, "input": [str(t or "") for t in texts]}).encode("utf-8")
+        req = urllib.request.Request(
+            self.endpoint_url,
+            data=payload,
+            method="POST",
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self._credential()}",
+            },
+        )
+        try:
+            opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+            with opener.open(req, timeout=self.timeout_sec) as resp:
+                body = resp.read().decode("utf-8")
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+            raise RuntimeError(f"embedding provider request failed for {self.metadata()['endpoint_host']}") from exc
+        try:
+            data = json.loads(body)
+            rows = data["data"]
+            embeddings = [row["embedding"] for row in rows]
+        except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+            raise RuntimeError("embedding provider returned an invalid embedding response") from exc
+        out: list[list[float]] = []
+        for emb in embeddings:
+            if not isinstance(emb, list) or not emb:
+                raise RuntimeError("embedding provider returned an invalid embedding vector")
+            out.append([float(x) for x in emb])
+        if len(out) != len(texts):
+            raise RuntimeError("embedding provider returned a mismatched embedding count")
+        self.connectivity_proven = True
+        return out
+
+
 class InProcessVectorIndex:
     """Brute-force, in-memory cosine index (extension point for a real index).
 
@@ -1223,6 +1321,94 @@ class InProcessVectorIndex:
 
     def __len__(self) -> int:
         return len(self._items)
+
+
+class SQLiteVectorIndex:
+    """Persistent local SQLite vector index.
+
+    Stores document text, vectors, dimensions, provider metadata, and an index
+    manifest in SQLite. Search is a deterministic cosine scan over persisted
+    vectors. This is persistent local storage, not an ANN production DB.
+    """
+
+    def __init__(self, path: str | Path, embedder: VectorEmbedder,
+                 provider_metadata: dict[str, Any] | None = None,
+                 metric: str = "cosine") -> None:
+        self.path = Path(path)
+        self.embedder = embedder
+        self.provider_metadata = dict(provider_metadata or {})
+        self.metric = metric
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        self._init()
+
+    def _connect(self) -> sqlite3.Connection:
+        return sqlite3.connect(self.path)
+
+    def _init(self) -> None:
+        with self._connect() as conn:
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS vector_documents ("
+                "id TEXT PRIMARY KEY, text TEXT NOT NULL, vector_json TEXT NOT NULL, "
+                "dim INTEGER NOT NULL, model TEXT, provider TEXT, created_at TEXT NOT NULL)"
+            )
+            conn.execute(
+                "CREATE TABLE IF NOT EXISTS vector_manifest ("
+                "key TEXT PRIMARY KEY, value_json TEXT NOT NULL)"
+            )
+            self._write_manifest(conn)
+
+    def _write_manifest(self, conn: sqlite3.Connection) -> None:
+        manifest = {
+            "method": "sqlite_vector_index_v1",
+            "boundary": "persistent local SQLite cosine-scan index; not ANN production DB",
+            "metric": self.metric,
+            "provider": self.provider_metadata,
+        }
+        conn.execute(
+            "INSERT OR REPLACE INTO vector_manifest(key, value_json) VALUES (?, ?)",
+            ("manifest", json.dumps(manifest, ensure_ascii=False, sort_keys=True)),
+        )
+
+    def manifest(self) -> dict[str, Any]:
+        with self._connect() as conn:
+            row = conn.execute("SELECT value_json FROM vector_manifest WHERE key='manifest'").fetchone()
+        return json.loads(row[0]) if row else {}
+
+    def add(self, item_id: str, text: str, vector: list[float] | None = None) -> None:
+        vec = vector if vector is not None else self.embedder.embed(text)
+        vec = [float(v) for v in vec]
+        model = str(self.provider_metadata.get("model") or "")
+        provider = str(self.provider_metadata.get("mode") or self.provider_metadata.get("provider") or "")
+        with self._connect() as conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO vector_documents"
+                "(id, text, vector_json, dim, model, provider, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (str(item_id), str(text or ""), json.dumps(vec, separators=(",", ":")),
+                 len(vec), model, provider,
+                 datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")),
+            )
+
+    def build(self, docs: list[tuple[str, str]]) -> "SQLiteVectorIndex":
+        for item_id, text in docs:
+            self.add(item_id, text)
+        return self
+
+    def search(self, query: str, min_score: float = VECTOR_MIN_SCORE_DEFAULT) -> list[tuple[str, float]]:
+        qvec = self.embedder.embed(query or "")
+        hits: list[tuple[str, float]] = []
+        with self._connect() as conn:
+            rows = conn.execute("SELECT id, vector_json FROM vector_documents ORDER BY id").fetchall()
+        for item_id, vector_json in rows:
+            vec = [float(v) for v in json.loads(vector_json)]
+            score = DeterministicHashEmbedder.cosine(qvec, vec)
+            if score > min_score:
+                hits.append((str(item_id), score))
+        hits.sort(key=lambda x: (-x[1], x[0]))
+        return hits
+
+    def __len__(self) -> int:
+        with self._connect() as conn:
+            return int(conn.execute("SELECT COUNT(*) FROM vector_documents").fetchone()[0])
 
 
 class VectorPipeline:
@@ -5792,7 +5978,7 @@ VECTOR_INMEMORY_STORES = frozenset({"in_memory", "in_process", "inprocess", "non
 
 # Credential-shaped fields that must never be embedded in a config (use a *source*
 # reference like an env var NAME instead of the secret value).
-VECTOR_FORBIDDEN_FIELDS = ("api_key", "key", "secret", "password", "token", "authorization", "endpoint_url")
+VECTOR_FORBIDDEN_FIELDS = ("api_key", "key", "secret", "password", "token", "authorization")
 
 
 def build_embedding_provider_readiness(config: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -5808,6 +5994,7 @@ def build_embedding_provider_readiness(config: dict[str, Any] | None = None) -> 
     provider = str(raw.get("provider") or "").strip()
     mode = str(raw.get("mode") or "").strip()
     model = str(raw.get("model") or "").strip()
+    endpoint_url = str(raw.get("endpoint_url") or "").strip()
     credential_source = str(raw.get("credential_source") or "").strip()
     try:
         dim = int(raw.get("dim")) if raw.get("dim") is not None else None
@@ -5821,10 +6008,14 @@ def build_embedding_provider_readiness(config: dict[str, Any] | None = None) -> 
     else:
         if not model:
             missing.append("model")
+        if provider == "openai_compatible" and not endpoint_url:
+            missing.append("endpoint_url")
         if not (isinstance(dim, int) and dim > 0):
             missing.append("positive integer dim")
         if not credential_source:
             missing.append("credential_source (env var NAME, never a secret value)")
+        elif _is_placeholder_credential_source(credential_source) or not _is_env_var_name(credential_source):
+            missing.append("credential_source env var NAME must be non-placeholder")
 
     return {
         "method": "embedding_provider_readiness_v1",
@@ -5836,6 +6027,7 @@ def build_embedding_provider_readiness(config: dict[str, Any] | None = None) -> 
         "is_local_test_embedder": is_local_test,
         "is_real_provider_declared": (not is_local_test) and not missing,
         "model": model,
+        "endpoint_host": urllib.parse.urlparse(endpoint_url).netloc if endpoint_url else "",
         "dim": dim,
         "credential_source": credential_source,
         "missing": missing,
@@ -5851,7 +6043,7 @@ def validate_embedding_provider_config(config: Any) -> dict[str, Any]:
                 "warnings": [], "is_real_provider_declared": False}
     leaked = [f for f in VECTOR_FORBIDDEN_FIELDS if f in config]
     if leaked:
-        errors.append(f"provider config must not carry credential/endpoint value field(s) {leaked}; "
+        errors.append(f"provider config must not carry credential value field(s) {leaked}; "
                       "use 'credential_source' (an env var name) instead")
     readiness = build_embedding_provider_readiness(config)
     if readiness["is_local_test_embedder"]:

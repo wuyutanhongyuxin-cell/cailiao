@@ -1,56 +1,50 @@
 {
   "status": "implemented_by_codex_after_claude_channel_failed",
-  "task_id": "cailiao-stage2b-doit-real-bm25-sweep-v1",
-  "phase": "Stage 2B lines 97/100 bridge: public MIT DoIT prompt-answer file converted into a tracked ready_real query set with paired corpus, then swept by the gated BM25 calibration helper. All five Stage 2B parent blockers remain unchecked.",
-  "baseline": "1f7a519f0d9db86e649679790a4ff4de5dffeb3a (Add DoIT BM25 dataset builder)",
-  "summary": "Codex copied the verified public DoIT source file into WSL for Claude, but both CLI and UIA Claude dispatches produced no report or WSL diff. To avoid idle looping, Codex used the already-audited stdlib builder on the Windows sidecar. Source SHA256 matched 9eed74db9e9fc758104739fa5f5133499606a50485ba11aa6caa01cf5adcec92. The generated artifact has 100 records, ready_real status, paired corpus, no assistant answers embedded in cases, roadmap_parent_items_checked=false, and set_hash=sha256:fca0300eea0480089a2f44f47d60b9a4cb7cbbc5aa6193f13427fa43e4be464b. The gated BM25 sweep ran 36 candidates; best is k1=0.9, b=1.0, threshold=0.0, title_recall_at_k=0.95, miss_count=5.",
+  "task_id": "cailiao-stage2b-openai-compatible-embedding-sqlite-index-v1",
+  "phase": "Stage 2B line 103 bridge: OpenAI-compatible embedding adapter plus local persistent SQLite vector index path. The real embedding/vector production parent remains unchecked.",
+  "baseline": "6593bba90c07738bfa552bf8bb51bea0264d30b8 (Add DoIT BM25 sweep evidence)",
+  "summary": "Claude dispatch via CLI and UIA produced no matching report or WSL diff, so Codex implemented the next minimal aligned step directly. Added a stdlib OpenAI-compatible embedding provider adapter requiring explicit endpoint_url, model, and credential_source env var name. It reads only the named env var at call time, never .env, does not expose key values in metadata/errors, and proves provider connectivity only after a successful call. Added SQLiteVectorIndex for persistent local vector storage with documents, vectors, dimensions, provider metadata, manifest, reopen support, and deterministic cosine scan. Tests use a local stdlib HTTP server stub; no external network/provider was contacted.",
   "changed_files": [
+    "backend/server.py",
+    "tests/test_vector_production_readiness.py",
     "docs/ROADMAP.md",
-    "docs/evidence/stage2b/doit_creative_writing_bm25_ready_real_100.json",
-    "docs/evidence/stage2b/doit_creative_writing_bm25_sweep_report.json",
-    "tests/test_stage2b_doit_bm25_dataset.py",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "docs/evidence/stage2b/doit_creative_writing_bm25_ready_real_100.json: real public MIT DoIT seed query set with paired corpus, generated from the downloaded source file.",
-    "docs/evidence/stage2b/doit_creative_writing_bm25_sweep_report.json: actual gated BM25 sweep report over the tracked seed artifact.",
-    "tests/test_stage2b_doit_bm25_dataset.py: added regression checks for the tracked artifact and sweep report.",
-    "docs/ROADMAP.md: records the public seed evidence while keeping the production parent blockers unchecked."
+    "OpenAICompatibleEmbeddingProvider: stdlib HTTP POST to OpenAI-compatible embeddings endpoints with endpoint/model/env-var credential source config.",
+    "SQLiteVectorIndex: stdlib sqlite3 persistent local vector document/index manifest storage and cosine-scan search.",
+    "Focused tests verify request path/body/auth header shape through a local HTTP stub, missing env var failure, secret non-leakage, placeholder credential_source rejection, provider readiness endpoint_url handling, and SQLite persist/reopen/query behavior.",
+    "ROADMAP records the bridge while keeping the real provider/vector parent unchecked."
   ],
   "not_implemented": [
-    "ROADMAP line 97 remains unchecked: no final human-approved private anonymized production query set.",
-    "ROADMAP BM25 parent remains unchecked: the run is over public MIT benchmark seed data, not final production query/corpus evidence.",
-    "Embedding provider/vector DB, reranker/RRF, and NLI/LLM semantic evidence remain unchecked.",
-    "No provider result, model call, production telemetry, approval, or secret was fabricated."
+    "ROADMAP embedding/vector parent remains unchecked: no real external provider credential, real provider call, production vector DB, ANN index, migration, telemetry, or acceptance evidence.",
+    "No .env/secret file was read. No real external network call was made.",
+    "Reranker/cross-encoder/RRF and NLI/LLM semantic evidence remain unchecked."
   ],
   "test_files": [
-    "tests/test_stage2b_doit_bm25_dataset.py"
+    "tests/test_vector_production_readiness.py"
   ],
   "required_test_commands_for_codex": [
-    "python tools/build_stage2b_doit_bm25_dataset.py validate --set docs/evidence/stage2b/doit_creative_writing_bm25_ready_real_100.json",
-    "python tools/sweep_bm25_real_queries.py --set docs/evidence/stage2b/doit_creative_writing_bm25_ready_real_100.json --json",
-    "python -m unittest tests.test_stage2b_doit_bm25_dataset -v",
+    "python -m unittest tests.test_vector_production_readiness -v",
     "python tools/run_quality_gates.py --json",
     "python -m json.tool CODEX_HANDOFF.json",
     "git diff --check"
   ],
   "test_status": [
-    "validate artifact: passed=true, status=ready_real, record_count=100.",
-    "sweep: ran=true, candidate_count=36, best k1=0.9 b=1.0 threshold=0.0 title_recall_at_k=0.95 miss_count=5.",
-    "python -m unittest tests.test_stage2b_doit_bm25_dataset -v: 20 tests OK.",
-    "python tools/run_quality_gates.py --json: passed=true, all 5 gates passed; unittest gate ran 731 tests OK.",
+    "python -m unittest tests.test_vector_production_readiness -v: 24 tests OK.",
+    "python tools/run_quality_gates.py --json: passed=true, all 5 gates passed; unittest gate ran 737 tests OK.",
     "python -m json.tool CODEX_HANDOFF.json: valid JSON.",
     "git diff --check: no whitespace/conflict issues."
   ],
-  "roadmap_item_status": "ALL FIVE STAGE 2B REAL PARENT BLOCKERS UNCHECKED. Public DoIT seed evidence improved the BM25 bridge, but final production readiness still requires external private/production evidence and sign-off.",
+  "roadmap_item_status": "ALL FIVE STAGE 2B REAL PARENT BLOCKERS STILL UNCHECKED. This improves the real embedding/vector implementation path but does not prove production provider/store/index readiness.",
   "risks": [
-    "DoIT is public benchmark data, not private production telemetry.",
-    "Prompt-answer pairing gives seed qrels/corpus and a real gated run, not final production retrieval calibration.",
-    "Claude dispatch for this step failed to produce report/diff; Codex performed the deterministic sidecar work directly."
+    "The adapter shape is real but unproven against an external provider in this environment.",
+    "SQLiteVectorIndex is persistent local storage, not a production ANN vector DB.",
+    "A future real-provider pass needs credentials supplied via env var, provider call evidence, vector DB/index manifest, eval run, observability, and rollout/rollback evidence."
   ],
   "credentials": [
     "No credentials or .env files were read, created, or modified.",
-    "No network was used in the builder or sweep; source file was already downloaded and SHA-verified.",
+    "Tests used only a local HTTP stub and a test env var value scoped to the test process.",
     "Codex handles commit/push after independent verification."
   ]
 }
