@@ -6711,23 +6711,29 @@ _EXTERNAL_DEPENDENCY_BLOCKERS = (
         "required_external_input": "a real embedding provider (credential_source env var), a persistent "
                                    "vector store, and an index descriptor",
         "current_repo_state": "deterministic local test embedder + in-process index only",
-        "protected_by": "build_vector_index_readiness (+ tools/check_vector_production_readiness.py)",
+        "protected_by": "build_vector_index_readiness + build_stage2b_vector_rollout_protocol "
+                        "(+ tools/check_vector_production_readiness.py, "
+                        "tools/check_stage2b_vector_rollout_protocol.py)",
     },
     {
         "id": "real_reranker_rrf",
-        "roadmap_line": 106,
+        "roadmap_line": 107,
         "topic": "real reranker/cross-encoder provider + RRF deepening",
         "required_external_input": "a real cross-encoder provider (credential_source env var) + eval metrics",
         "current_repo_state": "deterministic local reranker + standalone RRF helper only",
-        "protected_by": "build_rerank_pipeline_readiness (+ tools/check_rerank_production_readiness.py)",
+        "protected_by": "build_rerank_pipeline_readiness + build_stage2b_rerank_rollout_protocol "
+                        "(+ tools/check_rerank_production_readiness.py, "
+                        "tools/check_stage2b_rerank_rollout_protocol.py)",
     },
     {
         "id": "real_nli_semantic_conflict",
-        "roadmap_line": 112,
+        "roadmap_line": 114,
         "topic": "real NLI/LLM citation entailment + semantic conflict detection",
         "required_external_input": "a real NLI/LLM provider (credential_source env var) + eval labels + policy",
         "current_repo_state": "deterministic lexical conflict detector only (no entailment inference)",
-        "protected_by": "build_semantic_conflict_readiness (+ tools/check_semantic_conflict_readiness.py)",
+        "protected_by": "build_semantic_conflict_readiness + build_stage2b_nli_semantic_rollout_protocol "
+                        "(+ tools/check_semantic_conflict_readiness.py, "
+                        "tools/check_stage2b_nli_semantic_rollout_protocol.py)",
     },
 )
 
@@ -6879,6 +6885,49 @@ def build_stage2b_production_playbook_status(config: dict[str, Any] | None = Non
         "acceptance_gates": list(STAGE2B_ACCEPTANCE_GATES),
         "references": list(STAGE2B_REFERENCES),
         "external_dependency_audit": audit,
+    }
+
+
+def build_stage2b_rollout_protocols_status(config: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Aggregate vector/rerank/NLI rollout protocol readiness.
+
+    This is a status companion to the external dependency audit: it checks whether
+    the three production rollout packets are declared and shape-valid. It still
+    proves metadata completeness only; it never calls providers, connects stores,
+    runs evals, reads credentials, or checks ROADMAP parent items.
+    """
+    raw = config if isinstance(config, dict) else {}
+    protocols = raw.get("rollout_protocols") if isinstance(raw.get("rollout_protocols"), dict) else {}
+    vector_cfg = protocols.get("vector") if isinstance(protocols.get("vector"), dict) else None
+    rerank_cfg = protocols.get("rerank") if isinstance(protocols.get("rerank"), dict) else None
+    nli_cfg = protocols.get("nli_semantic") if isinstance(protocols.get("nli_semantic"), dict) else None
+
+    vector = build_stage2b_vector_rollout_protocol({"vector_rollout": vector_cfg} if vector_cfg else None)
+    rerank = build_stage2b_rerank_rollout_protocol({"rerank_rollout": rerank_cfg} if rerank_cfg else None)
+    nli = build_stage2b_nli_semantic_rollout_protocol({"nli_semantic_rollout": nli_cfg} if nli_cfg else None)
+    entries = [
+        {"id": "vector", "roadmap_line": 103, "ready": vector["ready_for_vector_rollout"],
+         "status": vector},
+        {"id": "rerank", "roadmap_line": 107, "ready": rerank["ready_for_rerank_rollout"],
+         "status": rerank},
+        {"id": "nli_semantic", "roadmap_line": 114, "ready": nli["ready_for_semantic_rollout"],
+         "status": nli},
+    ]
+    ready_ids = [e["id"] for e in entries if e["ready"]]
+    outstanding_ids = [e["id"] for e in entries if not e["ready"]]
+    return {
+        "method": "stage2b_rollout_protocols_status_v1",
+        "boundary": (
+            "aggregate rollout protocol status over declared metadata shape only; "
+            "does not prove provider connectivity, vector DB availability, model inference, "
+            "eval execution, or real-world quality; no secret read and no ROADMAP parent auto-check"
+        ),
+        "all_rollout_protocols_ready": not outstanding_ids,
+        "protocol_count": len(entries),
+        "ready_ids": ready_ids,
+        "outstanding_ids": outstanding_ids,
+        "protocols": entries,
+        "roadmap_parent_items_checked": False,
     }
 
 
