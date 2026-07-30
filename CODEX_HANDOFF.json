@@ -1,66 +1,62 @@
 {
   "status": "implemented_by_claude",
-  "task_id": "cailiao-stage3-nli-conflict-readiness-v1",
-  "phase": "ROADMAP Stage 3 backfill: real NLI / semantic-conflict PRODUCTION-READINESS SCAFFOLD v1. The original 'citation entailment + full semantic-level conflict evidence detection (needs LLM/NLI)' item remains UNCHECKED — no real entailment/contradiction inference exists; only a readiness-gated config/validation + deterministic label mapper is delivered, and the shipped conflict detector stays lexical.",
-  "baseline": "6c33b370cd61ee330df42b1aa1d4c5641b094ef9 (rerank RRF readiness scaffold head)",
-  "summary": "Added a deterministic, stdlib-only NLI/semantic-conflict production-readiness scaffold that distinguishes the existing deterministic LEXICAL conflict detector (is_real_nli_model=false, does_semantic_entailment=false) from a real NLI/LLM setup. map_nli_label_to_verdict deterministically maps SNLI/MNLI (entailment/contradiction/neutral) and FEVER/CFEVER (supports/refutes/NEI) labels to canonical verdicts supports/refutes/not_enough_info, raising on unknown labels. build_nli_provider_readiness / validate_nli_provider_config classify a provider config, requiring a real provider + model + credential_source (env var NAME, never a value) and rejecting credential-shaped fields. build_semantic_conflict_policy / validate_semantic_conflict_policy describe and check a decision policy (verdict labels, min_confidence in [0,1], block_on/warn_on). build_semantic_conflict_readiness aggregates into a production_ready verdict true only for a complete DECLARED config with eval labels covering all three verdicts, and always reports current_shipped_state.production_ready=false. A CLI tools/check_semantic_conflict_readiness.py exits nonzero on the repo default. No model call, no download, no network, no credential/.env read; the existing lexical detector is unchanged and the original ROADMAP item stays unchecked with a checked sub-note.",
+  "task_id": "cailiao-final-external-dependency-audit-v1",
+  "phase": "Final: deterministic external-dependency audit/gate aggregating the 5 ROADMAP items that require human data or real provider credentials. All 5 parent items REMAIN UNCHECKED; only the audit/gate scaffold is delivered and marked as a checked sub-note.",
+  "baseline": "d01a569f8cc2ccbe66a0ea351f7aa046ee2e199e (semantic conflict readiness scaffold head)",
+  "summary": "Added build_external_dependency_audit(config=None): a deterministic, stdlib-only capstone that aggregates the five still-unchecked real-world blockers (real query set, real-query BM25 calibration, real embedding provider + persistent vector store + production index, real reranker/cross-encoder + RRF, real NLI/LLM semantic conflict) into one machine-readable report. Each blocker names its ROADMAP line/topic, required external input, current repo state, and the readiness scaffold/gate protecting it. all_external_dependencies_satisfied is false by default; roadmap_parent_items_checked is always false. A blocker is 'satisfied' only when config declares an artifact whose METADATA SHAPE passes the matching readiness helper (summarize_real_query_readiness=='ready_real' or *_readiness.production_ready==true) — declared-metadata shape only, never credential read, provider contact, or evaluation. A CLI tools/check_external_dependency_audit.py exits 1 in the default repo state. No dataset/connectivity/metric/credential/model-download/eval result is fabricated.",
   "changed_files": [
     "backend/server.py",
-    "tools/check_semantic_conflict_readiness.py",
-    "tests/test_semantic_conflict_readiness.py",
+    "tools/check_external_dependency_audit.py",
+    "tests/test_external_dependency_audit.py",
     "tools/run_quality_gates.py",
     "README.md",
     "docs/ROADMAP.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "backend/server.py: added NLI_LEXICAL_MODES, NLI_VERDICTS, NLI_LABEL_MAP.",
-    "backend/server.py: map_nli_label_to_verdict(label) deterministic SNLI/FEVER/CFEVER label -> supports/refutes/not_enough_info; raises ValueError on unknown labels.",
-    "backend/server.py: build_nli_provider_readiness(config=None) distinguishing the lexical detector from a real NLI model (requires model+credential_source), and validate_nli_provider_config(config) rejecting api_key/token/endpoint_url... value fields (reuses VECTOR_FORBIDDEN_FIELDS).",
-    "backend/server.py: build_semantic_conflict_policy(config=None) + validate_semantic_conflict_policy(policy) (known verdict labels, min_confidence in [0,1], block_on/warn_on of known verdicts).",
-    "backend/server.py: build_semantic_conflict_readiness(config=None) aggregating provider+eval-labels+policy into production_ready (true only when a real provider is declared, eval labels cover all three verdicts, and the policy is valid); always reports current_shipped_state.production_ready=false / is_real_nli_model=false / does_semantic_entailment=false.",
-    "tools/check_semantic_conflict_readiness.py: CLI (--config/--json); exit 0 only when production_ready, 1 otherwise (repo default -> 1), 2 on load error; no network/model call.",
-    "tests/test_semantic_conflict_readiness.py: 19 tests (label mapping deterministic + unknown raises; default/lexical not real; real provider needs model/credential_source; credential value rejected but credential_source ok; policy threshold/label validation; aggregate not-ready by default, ready only when fully declared, missing eval labels not ready, bad policy not ready, lexical provider never ready; CLI default nonzero, complete config zero).",
-    "tools/run_quality_gates.py: py-compile gate now includes tests/test_semantic_conflict_readiness.py and tools/check_semantic_conflict_readiness.py.",
-    "README.md documents the gated readiness scaffold and its honesty boundary; docs/ROADMAP.md keeps the original NLI item UNCHECKED and adds a checked sub-note for the readiness scaffold only."
+    "backend/server.py: added _EXTERNAL_DEPENDENCY_BLOCKERS (5 specs) and build_external_dependency_audit(config=None) returning method=external_dependency_audit_v1 with all_external_dependencies_satisfied (false by default), blocker_count=5, satisfied_ids/outstanding_ids, per-blocker {id, roadmap_line, topic, required_external_input, current_repo_state, protected_by, satisfied, verification_mode='declared_metadata_shape_only', detail}, and roadmap_parent_items_checked=false.",
+    "backend/server.py: satisfaction is computed only via existing readiness helpers over declared artifact metadata (summarize_real_query_readiness, build_vector_index_readiness, build_rerank_pipeline_readiness, build_semantic_conflict_readiness) plus a corpus-presence check for BM25 calibration; no credential read, no provider contact.",
+    "tools/check_external_dependency_audit.py: CLI (--config/--json); exit 0 only if all_external_dependencies_satisfied, 1 otherwise (repo default -> 1), 2 on load error.",
+    "tests/test_external_dependency_audit.py: 9 tests (default has exactly 5 outstanding blockers; default does not check ROADMAP parents; each blocker documents input/state/gate + verification_mode; JSON serializable; complete declared metadata can satisfy but stays metadata-only and never checks parents; dropping corpus reopens only bm25; partial config leaves others outstanding; CLI default exits 1, complete declared config exits 0).",
+    "tools/run_quality_gates.py: py-compile gate now includes tests/test_external_dependency_audit.py and tools/check_external_dependency_audit.py.",
+    "README.md documents the final audit gate + honesty boundary; docs/ROADMAP.md keeps all 5 parent items UNCHECKED and adds a checked sub-note ONLY for this audit/gate under a new '外部依赖终审门禁' section."
   ],
   "not_implemented": [
-    "NO real NLI/LLM entailment/contradiction inference, NO semantic conflict detection — none are implemented or contacted; the shipped conflict detector remains deterministic LEXICAL.",
-    "The original ROADMAP item '引用蕴含与完整语义级冲突证据检测（需 LLM/NLI）' remains unchecked by design.",
-    "A production_ready=true verdict reflects a COMPLETE DECLARED CONFIG only; it does not mean a model was reached, authenticated, or evaluated.",
-    "map_nli_label_to_verdict maps labels only; it does not itself classify text (no inference).",
-    "No network, no model call, no credential/.env read, no model download."
+    "None of the 5 real-world dependencies are implemented: no real anonymized query set, no real-query BM25 calibration run, no real embedding provider/persistent store/production index, no real reranker/cross-encoder, no real NLI/LLM entailment or semantic conflict inference.",
+    "All 5 ROADMAP parent items (lines 97/100/103/106/112) remain unchecked by design.",
+    "'satisfied' / all_external_dependencies_satisfied is a DECLARED-METADATA-SHAPE verdict; it never means a provider/dataset was contacted, authenticated, downloaded, or evaluated.",
+    "No dataset, connectivity, metric, credential, model download, or eval result is fabricated. No network, no credential/.env read."
   ],
   "test_files": [
-    "tests/test_semantic_conflict_readiness.py"
+    "tests/test_external_dependency_audit.py"
   ],
   "required_test_commands_for_codex": [
-    "python -m unittest tests.test_semantic_conflict_readiness -v",
+    "python -m unittest tests.test_external_dependency_audit -v",
     "python -m unittest discover -s tests -v",
-    "python tools/check_semantic_conflict_readiness.py --json",
+    "python tools/check_external_dependency_audit.py --json",
     "python tools/run_quality_gates.py --json",
     "python -m json.tool CODEX_HANDOFF.json",
     "git diff --check"
   ],
   "test_status": [
-    "python -m unittest tests.test_semantic_conflict_readiness -v: 19 tests OK.",
-    "python -m unittest discover -s tests -v: 513 tests OK.",
-    "python tools/check_semantic_conflict_readiness.py --json: production_ready=false (repo default is the lexical detector), exit 1.",
-    "python tools/run_quality_gates.py --json (default 'python' on PATH): passed=true, all 5 gates passed; unittest gate ran 513 tests OK.",
+    "python -m unittest tests.test_external_dependency_audit -v: 9 tests OK.",
+    "python -m unittest discover -s tests -v: 522 tests OK.",
+    "python tools/check_external_dependency_audit.py --json: all_external_dependencies_satisfied=false, 5 outstanding blockers, roadmap_parent_items_checked=false, exit 1.",
+    "python tools/run_quality_gates.py --json (default 'python' on PATH): passed=true, all 5 gates passed; unittest gate ran 522 tests OK.",
     "python -m json.tool CODEX_HANDOFF.json: valid JSON.",
     "git diff --check: no whitespace/conflict issues."
   ],
-  "roadmap_item_status": "UNCHECKED — 'citation entailment + full semantic-level conflict detection (needs LLM/NLI)' is NOT marked done; only the deterministic lexical detector exists. A checked sub-note for the gated readiness scaffold was added.",
+  "roadmap_item_status": "ALL FIVE PARENT ITEMS UNCHECKED (lines 97/100/103/106/112). Only a checked sub-note for the aggregated external-dependency audit/gate was added.",
   "risks": [
-    "production_ready=true is a CONFIG-COMPLETENESS verdict, not a connectivity/authentication/evaluation check; a fully-declared but wrong config would read as ready. It gates human intent, it does not run NLI or an eval.",
-    "map_nli_label_to_verdict collapses 'neutral' and 'NEI' to not_enough_info; a downstream policy that needs to distinguish genuine neutrality from missing evidence would need a richer mapping.",
-    "The scaffold reads only declared metadata and never resolves credential_source to a secret, so it cannot confirm a credential is present or valid.",
-    "The existing lexical detect_conflict_evidence is deliberately untouched; enabling real NLI later must register a provider and only then read config/credentials, and would need its own eval before replacing lexical output.",
+    "all_external_dependencies_satisfied=true is a CONFIG-COMPLETENESS aggregate, not a connectivity/authentication/evaluation check; a fully-declared but wrong config would read as satisfied. It informs a human decision and never auto-checks a ROADMAP parent.",
+    "The audit only checks artifacts explicitly named under config.artifacts; it does not scan the filesystem or discover real datasets/providers on its own.",
+    "It reuses the same readiness helpers as the individual scaffolds, so its verdict is exactly as strict (and as metadata-only) as they are — if one is loosened, this aggregate loosens with it.",
+    "It deliberately never resolves credential_source to a secret and never contacts a provider, so it cannot confirm a credential is valid or a model is reachable.",
     "Environment note: the local interpreter is python3 (no bare 'python' on PATH); the quality-gate runner honors PYTHON=python3, and a local 'python->python3' PATH shim lets its default-interpreter meta-test pass."
   ],
   "credentials": [
-    "No credentials or .env files were read, created, or modified; NLI validators reject credential-shaped value fields and the scaffold uses only a credential_source env-var NAME.",
-    "No external network calls, model calls, or model downloads were used for implementation or local tests.",
+    "No credentials or .env files were read, created, or modified; the audit resolves no credential_source to a secret and reuses validators that reject credential-shaped fields.",
+    "No external network calls, provider calls, model downloads, or dataset fabrication were used for implementation or local tests.",
     "No push performed; commit/push left to the maintainer."
   ]
 }

@@ -6366,6 +6366,133 @@ def build_semantic_conflict_readiness(config: dict[str, Any] | None = None) -> d
     }
 
 
+# --- Final: external-dependency audit / gate for real-world blockers v1 -------
+
+# The five ROADMAP parent items that cannot honestly be completed inside this repo
+# without human data or real provider credentials. Each blocker names the external
+# input required, the current repo state, and the readiness scaffold/gate that
+# already protects it from being faked.
+_EXTERNAL_DEPENDENCY_BLOCKERS = (
+    {
+        "id": "real_query_set",
+        "roadmap_line": 97,
+        "topic": "50-100 real anonymized query set",
+        "required_external_input": "50-100 human-supplied, anonymized real query cases with provenance",
+        "current_repo_state": "only a fill-in template + intake scaffold; no real set",
+        "protected_by": "load_real_query_set / validate_real_query_set / summarize_real_query_readiness "
+                        "(+ tools/validate_real_query_set.py)",
+    },
+    {
+        "id": "real_query_bm25_calibration",
+        "roadmap_line": 100,
+        "topic": "real-query BM25 k1/b/threshold calibration",
+        "required_external_input": "a ready_real query set WITH a corpus to sweep against",
+        "current_repo_state": "gated sweep scaffold that refuses non-ready_real / corpus-less input",
+        "protected_by": "run_bm25_sweep_on_real_query_set (+ tools/sweep_bm25_real_queries.py)",
+    },
+    {
+        "id": "real_embedding_provider_vector_store",
+        "roadmap_line": 103,
+        "topic": "real embedding provider + persistent vector store + production index",
+        "required_external_input": "a real embedding provider (credential_source env var), a persistent "
+                                   "vector store, and an index descriptor",
+        "current_repo_state": "deterministic local test embedder + in-process index only",
+        "protected_by": "build_vector_index_readiness (+ tools/check_vector_production_readiness.py)",
+    },
+    {
+        "id": "real_reranker_rrf",
+        "roadmap_line": 106,
+        "topic": "real reranker/cross-encoder provider + RRF deepening",
+        "required_external_input": "a real cross-encoder provider (credential_source env var) + eval metrics",
+        "current_repo_state": "deterministic local reranker + standalone RRF helper only",
+        "protected_by": "build_rerank_pipeline_readiness (+ tools/check_rerank_production_readiness.py)",
+    },
+    {
+        "id": "real_nli_semantic_conflict",
+        "roadmap_line": 112,
+        "topic": "real NLI/LLM citation entailment + semantic conflict detection",
+        "required_external_input": "a real NLI/LLM provider (credential_source env var) + eval labels + policy",
+        "current_repo_state": "deterministic lexical conflict detector only (no entailment inference)",
+        "protected_by": "build_semantic_conflict_readiness (+ tools/check_semantic_conflict_readiness.py)",
+    },
+)
+
+
+def build_external_dependency_audit(config: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Aggregate the five real-world external dependencies into one audit/gate.
+
+    Each blocker is reported with its id, ROADMAP line/topic, the external input it
+    needs, the current repo state, and the readiness scaffold/gate that already
+    protects it. A blocker is only ``satisfied`` when ``config`` declares an
+    artifact for it whose METADATA SHAPE passes the corresponding readiness helper
+    (readiness=='ready_real', or production_ready==true). This checks declared
+    metadata shape only: it never reads credentials, never resolves credential_source
+    to a secret, and never contacts a provider — so ``satisfied`` means "the declared
+    config is complete", NOT "a real provider/dataset was reached or evaluated".
+
+    ``all_external_dependencies_satisfied`` is false by default (empty config).
+    Deterministic, stdlib only. No network, no credential/.env read.
+    """
+    raw = config if isinstance(config, dict) else {}
+    artifacts = raw.get("artifacts") if isinstance(raw.get("artifacts"), dict) else {}
+
+    def _artifact(bid: str) -> Any:
+        val = artifacts.get(bid)
+        return val if isinstance(val, dict) else None
+
+    def _check(bid: str) -> tuple[bool, str]:
+        art = _artifact(bid)
+        if art is None:
+            return False, "no declared artifact"
+        # Metadata-shape checks only, via the existing readiness helpers.
+        if bid == "real_query_set":
+            r = summarize_real_query_readiness(art)
+            return r["status"] == "ready_real", f"readiness status={r['status']}"
+        if bid == "real_query_bm25_calibration":
+            r = summarize_real_query_readiness(art)
+            has_corpus = isinstance(art.get("corpus"), list) and bool(art.get("corpus"))
+            ok = r["status"] == "ready_real" and has_corpus
+            return ok, f"readiness status={r['status']}, has_corpus={has_corpus}"
+        if bid == "real_embedding_provider_vector_store":
+            r = build_vector_index_readiness(art)
+            return r["production_ready"], f"production_ready={r['production_ready']}"
+        if bid == "real_reranker_rrf":
+            r = build_rerank_pipeline_readiness(art)
+            return r["production_ready"], f"production_ready={r['production_ready']}"
+        if bid == "real_nli_semantic_conflict":
+            r = build_semantic_conflict_readiness(art)
+            return r["production_ready"], f"production_ready={r['production_ready']}"
+        return False, "unknown blocker"
+
+    blockers: list[dict[str, Any]] = []
+    for spec in _EXTERNAL_DEPENDENCY_BLOCKERS:
+        satisfied, detail = _check(spec["id"])
+        blockers.append({
+            **spec,
+            "satisfied": satisfied,
+            "verification_mode": "declared_metadata_shape_only",
+            "detail": detail,
+        })
+
+    satisfied_ids = [b["id"] for b in blockers if b["satisfied"]]
+    outstanding_ids = [b["id"] for b in blockers if not b["satisfied"]]
+    return {
+        "method": "external_dependency_audit_v1",
+        "boundary": (
+            "aggregated external-dependency gate over DECLARED metadata shape only; a "
+            "satisfied blocker means its declared config is complete, NOT that a real "
+            "provider/dataset was contacted, authenticated, or evaluated; no network, no "
+            "credential/.env read, and no ROADMAP parent item is auto-checked"
+        ),
+        "all_external_dependencies_satisfied": not outstanding_ids,
+        "blocker_count": len(blockers),
+        "satisfied_ids": satisfied_ids,
+        "outstanding_ids": outstanding_ids,
+        "blockers": blockers,
+        "roadmap_parent_items_checked": False,
+    }
+
+
 def add_evidence(item: dict[str, str]) -> dict[str, str]:
     item_id = str(uuid.uuid4())
     title = item.get("title", "").strip()
