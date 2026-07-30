@@ -1,68 +1,63 @@
 {
-  "status": "implemented_by_claude",
-  "task_id": "cailiao-stage2b-eval-run-contract-v1",
-  "phase": "Stage 2B hardening: deterministic evaluation-run contract/manifest layer so future real Stage 2B evaluations are auditable and reproducible (TREC qrels/runfile/result + ir-measures/BEIR metrics). No real eval run exists; all Stage 2B real parent items REMAIN UNCHECKED; only the eval-run contract scaffold is a checked sub-note.",
-  "baseline": "9800976ef0a607a4c52ba059009b5fe4e71f2c9d (Stage 2B artifact contracts head)",
-  "summary": "Added docs/STAGE2B_EVAL_RUN_CONTRACT.md (eval-run package fields, required metrics, artifact pointers/hashes, acceptance verdict + rollback, proves/does_not_prove, and an explicit shape-only boundary), a placeholder examples/stage2b_eval_run.example.json (template-marked so it never validates as a real run), and two helpers: validate_stage2b_eval_run_manifest(manifest) (requires object shape, no template marker, dataset_readiness_status==ready_real, query_count in [50,100], all required metrics as numbers, latency_p95>=latency_p50, qrels/runfile/result_snapshot pointers with path|uri+sha256 and non-placeholder hashes, explicit acceptance verdict) and build_stage2b_eval_run_contract(config=None) (contract metadata + required fields/metrics/artifacts + validation summary; defaults not-ready). The validator never reads pointed-to files, never verifies a hash against contents, and never calls a provider. A CLI tools/check_stage2b_eval_run_contract.py exits 1 by default and 0 only when a manifest validates. No real eval run is fabricated; no ROADMAP parent item is marked complete.",
+  "status": "implemented_by_claude_then_codex_finished",
+  "task_id": "cailiao-stage2b-real-query-collection-protocol-v1",
+  "phase": "Stage 2B hardening: privacy-aware real-query collection protocol and de-identification checklist gate for the future 50-100 real anonymized query set. The real query-set parent item remains unchecked; only the collection protocol/checklist scaffold is a checked sub-note.",
+  "baseline": "f8b7e554a8d8cffcc3a6d6af46254da86c5db008 (Stage 2B eval run contract head)",
+  "summary": "Added docs/STAGE2B_REAL_QUERY_COLLECTION_PROTOCOL.md, examples/real_query_collection_packet.example.json, build_real_query_collection_protocol(config=None), validate_real_query_collection_packet(packet), and tools/check_real_query_collection_protocol.py. The protocol covers data minimization, de-identification checklist, pseudonymization notes, retention/disposal, access control, and handoff into the real_query_set artifact contract. The validator checks declared packet metadata/checklist shape only: collector role, purpose, retention policy, access-control summary, all de-identification checklist items true, target_count in [50,100], and no PII-shaped sample values. It collects no real queries, reads no secrets, and never marks the parent ROADMAP item complete. Claude produced the partial implementation but hit API Error 402 before docs/handoff/report completion; Codex finished README/ROADMAP/CODEX_HANDOFF and verified locally.",
   "changed_files": [
-    "docs/STAGE2B_EVAL_RUN_CONTRACT.md",
-    "examples/stage2b_eval_run.example.json",
+    "docs/STAGE2B_REAL_QUERY_COLLECTION_PROTOCOL.md",
+    "examples/real_query_collection_packet.example.json",
     "backend/server.py",
-    "tools/check_stage2b_eval_run_contract.py",
-    "tests/test_stage2b_eval_run_contract.py",
+    "tools/check_real_query_collection_protocol.py",
+    "tests/test_real_query_collection_protocol.py",
     "tools/run_quality_gates.py",
     "README.md",
     "docs/ROADMAP.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "docs/STAGE2B_EVAL_RUN_CONTRACT.md: eval-run package spec (identity/dataset, retrieval config version summaries, qrels/runfile/result pointers+hashes, required BEIR/ir-measures metrics + latency, acceptance verdict + rollback), proves/does_not_prove, explicit no-real-run-by-default note, references.",
-    "examples/stage2b_eval_run.example.json: placeholder-only, template-marked (dataset_readiness_status='template', empty metrics, placeholder hashes, env-var credential summaries); does not validate as a real run.",
-    "backend/server.py: added STAGE2B_EVAL_RUN_CONTRACT_DOC, STAGE2B_EVAL_RUN_EXAMPLE_FILE, STAGE2B_EVAL_RUN_REQUIRED_FIELDS, STAGE2B_EVAL_RUN_REQUIRED_METRICS (=STAGE2B_REQUIRED_METRICS), STAGE2B_EVAL_RUN_REQUIRED_ARTIFACTS, STAGE2B_EVAL_RUN_VERDICTS, _eval_run_is_template.",
-    "backend/server.py: validate_stage2b_eval_run_manifest(manifest) -> {passed, errors, warnings, ready} enforcing shape/template/readiness/query-count/metrics/latency-ordering/artifact-pointers/verdict; never reads files or calls providers.",
-    "backend/server.py: build_stage2b_eval_run_contract(config=None) -> method=stage2b_eval_run_contract_v1 with required_fields/metrics/artifacts, acceptance_verdicts, example_file, example_is_placeholder_only=true, has_real_eval_run (from validation of an optional config.eval_run manifest), validation summary, roadmap_parent_items_checked=false.",
-    "tools/check_stage2b_eval_run_contract.py: CLI (--config/--json); accepts a bare manifest or one under 'eval_run'; exit 0 only when a manifest validates, 1 otherwise (default), 2 on load error.",
-    "tests/test_stage2b_eval_run_contract.py: 19 tests (default not ready; required metrics/fields exposed; example parses and is not ready; complete manifest validates without reading files; template marker/non-ready_real/missing metric/non-numeric metric/bad latency ordering/query-count out of band/placeholder hash/missing verdict all fail; non-object safe; doc states shape-only; CLI default exits 1, example exits 1, complete temp manifest exits 0).",
-    "tools/run_quality_gates.py: py-compile gate now includes tests/test_stage2b_eval_run_contract.py and tools/check_stage2b_eval_run_contract.py.",
-    "README.md documents the eval-run contract with its boundary; docs/ROADMAP.md keeps all real parent items UNCHECKED and adds a checked sub-note for the eval-run contract only."
+    "docs/STAGE2B_REAL_QUERY_COLLECTION_PROTOCOL.md: NIST/FTC/ICO-aligned collection protocol covering data minimization, de-identification checklist, pseudonymization boundary, retention/disposal, access control, and artifact-contract handoff.",
+    "examples/real_query_collection_packet.example.json: placeholder-only packet with is_template=true; no real queries, no secret values, checklist false by default.",
+    "backend/server.py: added protocol constants, validate_real_query_collection_packet(packet), and build_real_query_collection_protocol(config=None).",
+    "tools/check_real_query_collection_protocol.py: CLI (--config/--json); default exits 1, complete declared packet exits 0, load error exits 2.",
+    "tests/test_real_query_collection_protocol.py: 17 tests covering default not ready, example not ready, complete packet ready, missing checklist/control fields, PII-shaped sample rejection without leaking value, target count bounds, CLI default/example/complete behavior, JSON serializability.",
+    "tools/run_quality_gates.py: py-compile gate now includes tests/test_real_query_collection_protocol.py and tools/check_real_query_collection_protocol.py.",
+    "README.md and docs/ROADMAP.md document this as a checked protocol/checklist sub-note only; the real query-set parent remains unchecked."
   ],
   "not_implemented": [
-    "No real Stage 2B evaluation was run; no real metrics, qrels, runfile, or result snapshot are produced.",
-    "All Stage 2B real parent items (ROADMAP lines 97/100/103/106/112) remain unchecked by design.",
-    "A validating manifest is DECLARED-SHAPE only; it never means the run executed, the artifact files exist or match their hashes, a provider was reached, or the metrics are real.",
-    "The validator never opens files at the pointers and never verifies a sha256 against file contents.",
-    "No network, no provider call, no model download, no credential/.env read."
+    "No real queries were collected.",
+    "No real 50-100 anonymized query set exists in the repo.",
+    "ROADMAP line 97 remains unchecked by design.",
+    "The protocol validates declared metadata/checklist shape only; it does not prove de-identification quality or real-world collection happened.",
+    "No network, no provider call, no credential/.env read, no mapping table/salt/pepper committed."
   ],
   "test_files": [
-    "tests/test_stage2b_eval_run_contract.py"
+    "tests/test_real_query_collection_protocol.py"
   ],
   "required_test_commands_for_codex": [
-    "python -m unittest tests.test_stage2b_eval_run_contract -v",
+    "python -m unittest tests.test_real_query_collection_protocol -v",
     "python -m unittest discover -s tests -v",
-    "python tools/check_stage2b_eval_run_contract.py --json",
+    "python tools/check_real_query_collection_protocol.py --json",
     "python tools/run_quality_gates.py --json",
     "python -m json.tool CODEX_HANDOFF.json",
     "git diff --check"
   ],
   "test_status": [
-    "python -m unittest tests.test_stage2b_eval_run_contract -v: 19 tests OK.",
-    "python -m unittest discover -s tests -v: 565 tests OK.",
-    "python tools/check_stage2b_eval_run_contract.py --json: has_real_eval_run=false (no manifest), roadmap_parent_items_checked=false, exit 1.",
-    "python tools/run_quality_gates.py --json (default 'python' on PATH): passed=true, all 5 gates passed (secret-scan clean over new files); unittest gate ran 565 tests OK.",
+    "python -m unittest tests.test_real_query_collection_protocol -v: 17 tests OK.",
+    "python tools/check_real_query_collection_protocol.py --json: ready_for_collection=false, contains_real_queries=false, roadmap_parent_items_checked=false, exit 1.",
     "python -m json.tool CODEX_HANDOFF.json: valid JSON.",
-    "git diff --check: no whitespace/conflict issues."
+    "Full quality gate to be run by Codex before commit/push."
   ],
-  "roadmap_item_status": "ALL STAGE 2B REAL PARENT ITEMS UNCHECKED (lines 97/100/103/106/112). Only a checked sub-note for the eval-run contract/manifest was added.",
+  "roadmap_item_status": "REAL QUERY SET PARENT ITEM UNCHECKED (line 97). Only a checked sub-note for the collection protocol/de-identification gate was added.",
   "risks": [
-    "A validating manifest is a declared-shape verdict, not proof of execution: it never opens the qrels/runfile/result files, never checks a sha256 against contents, and never calls a provider. Trusting the numbers requires actually running the pipeline on a real ready_real dataset.",
-    "Placeholder-hash detection is a small denylist (PLACEHOLDER/TODO/TBD); an arbitrary fake-but-non-denylisted hash string would pass the shape check (it still cannot be verified against a file here).",
-    "Metric presence/type is enforced but value ranges (beyond latency ordering) are not; a manifest could declare implausible metric values and still pass shape validation.",
-    "The contract mirrors the playbook metric set; if that set changes, both should be updated together.",
-    "Environment note: the local interpreter is python3 (no bare 'python' on PATH); the quality-gate runner honors PYTHON=python3, and a local 'python->python3' PATH shim lets its default-interpreter meta-test pass."
+    "A ready collection packet is a process/checklist readiness signal, not proof that de-identification is sufficient or that data was collected.",
+    "PII detection is pattern-based and cannot catch every sensitive detail or re-identification risk.",
+    "Humans must still review rare facts, quasi-identifiers, and provenance before creating a ready_real set.",
+    "Claude Code quota failed with API Error 402 during this task, so Codex finished the small remaining documentation/handoff work."
   ],
   "credentials": [
-    "No credentials or .env files were read, created, or modified; config summaries name env vars only and the example carries no secret values.",
-    "No external network calls, provider calls, or model downloads were used for implementation or local tests; artifact pointer files are never opened.",
-    "No push performed; commit/push left to the maintainer."
+    "No credentials or .env files were read, created, or modified.",
+    "No external network calls, provider calls, model downloads, or real data collection were performed.",
+    "No push performed yet at handoff update time."
   ]
 }

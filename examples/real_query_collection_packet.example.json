@@ -1,0 +1,24 @@
+{
+  "_note": "PLACEHOLDER-ONLY collection packet template for docs/STAGE2B_REAL_QUERY_COLLECTION_PROTOCOL.md. Shows the packet SHAPE and checklist only. No real data, no secret values. It is deliberately is_template-marked so it is NOT ready-for-collection by default and contains no real queries.",
+  "is_template": true,
+  "collector_role": "TEMPLATE-collector-role (fill: e.g. 数据治理专员，按角色而非个人身份)",
+  "collection_purpose": "TEMPLATE: 收集 50-100 条真实且已匿名化的检索查询，用于检索评测",
+  "target_count": 50,
+  "retention_policy": "TEMPLATE: 原始素材仅保留至匿名集定稿，之后按期安全销毁",
+  "access_control_summary": "TEMPLATE: 原始素材仅限收集/复核角色访问，提交集仅含匿名 case",
+  "deidentification_checklist": {
+    "direct_identifiers_removed": false,
+    "quasi_identifiers_generalized": false,
+    "rare_facts_reviewed": false,
+    "provenance_without_identity": false,
+    "reviewer_signoff": false
+  },
+  "sample_cases": [
+    {
+      "id": "template-001",
+      "query": "示例占位查询（请替换为真实且已匿名化的查询，勿含姓名/电话/邮箱/身份证）",
+      "provenance": {"source": "template", "collected_at": "2026-01-01T00:00:00", "anonymized": true},
+      "relevant_titles": ["示例相关标题（占位）"]
+    }
+  ]
+}

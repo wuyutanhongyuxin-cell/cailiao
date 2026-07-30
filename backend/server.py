@@ -6807,6 +6807,146 @@ def build_stage2b_eval_run_contract(config: dict[str, Any] | None = None) -> dic
     }
 
 
+# --- Stage 2B real-query collection protocol / de-identification gate v1 -------
+
+STAGE2B_COLLECTION_PROTOCOL_DOC = "docs/STAGE2B_REAL_QUERY_COLLECTION_PROTOCOL.md"
+STAGE2B_COLLECTION_PACKET_EXAMPLE_FILE = "examples/real_query_collection_packet.example.json"
+
+# Collection steps a packet must declare / satisfy before a real collection can start.
+STAGE2B_COLLECTION_REQUIRED_STEPS = (
+    "collector_role", "collection_purpose", "retention_policy", "access_control_summary",
+    "deidentification_checklist", "target_count",
+)
+# De-identification checklist items (all must be true for ready).
+STAGE2B_DEID_CHECKLIST = (
+    "direct_identifiers_removed", "quasi_identifiers_generalized", "rare_facts_reviewed",
+    "provenance_without_identity", "reviewer_signoff",
+)
+# Data categories that must never be collected.
+STAGE2B_FORBIDDEN_DATA_CATEGORIES = (
+    "name", "phone", "email", "id_card", "address", "account", "credential",
+    "health", "biometric", "姓名", "电话", "手机号", "邮箱", "身份证", "住址",
+)
+STAGE2B_COLLECTION_REFERENCES = (
+    "https://www.nist.gov/publications/de-identification-personal-information",
+    "https://www.nist.gov/privacy-framework/privacy-framework",
+    "https://www.ftc.gov/business-guidance/resources/protecting-personal-information-guide-business",
+    "https://ico.org.uk/for-organisations/uk-gdpr-guidance-and-resources/data-sharing/anonymisation/pseudonymisation/",
+)
+
+_COLLECTION_TEMPLATE_TOKENS = ("template", "placeholder", "example", "sample", "占位", "示例", "模板")
+
+
+def _collection_is_template(packet: dict[str, Any]) -> bool:
+    if packet.get("is_template") is True:
+        return True
+    blob = " ".join(str(packet.get(k, "")) for k in ("collector_role", "collection_purpose")).lower()
+    return any(tok in blob for tok in _COLLECTION_TEMPLATE_TOKENS)
+
+
+def validate_real_query_collection_packet(packet: Any) -> dict[str, Any]:
+    """Validate a real-query collection packet's declared metadata + de-id checklist.
+
+    Requires: object shape; no template marker (for ready); non-empty collector_role,
+    collection_purpose, retention_policy, access_control_summary; a de-identification
+    checklist with every item true; target_count in [50,100]; and any sample_cases must
+    not contain PII-shaped values (email / phone / id-card). This validates DECLARED
+    metadata + checklist only — it collects nothing, reads no secret files, and never
+    echoes a matched PII value (only the field/kind). Deterministic, stdlib only.
+    Returns {passed, errors, warnings, ready}.
+    """
+    errors: list[str] = []
+    warnings: list[str] = []
+    if not isinstance(packet, dict):
+        return {"passed": False, "errors": [f"packet must be a JSON object, got {type(packet).__name__}"],
+                "warnings": [], "ready": False}
+
+    if _collection_is_template(packet):
+        errors.append("packet is template/placeholder-marked; not ready for real collection")
+
+    for field in ("collector_role", "collection_purpose", "retention_policy", "access_control_summary"):
+        if not (isinstance(packet.get(field), str) and packet[field].strip()):
+            errors.append(f"'{field}' must be a non-empty string")
+
+    checklist = packet.get("deidentification_checklist")
+    if not isinstance(checklist, dict):
+        errors.append("'deidentification_checklist' must be an object")
+    else:
+        for item in STAGE2B_DEID_CHECKLIST:
+            if item not in checklist:
+                errors.append(f"deidentification_checklist missing '{item}'")
+            elif checklist[item] is not True:
+                errors.append(f"deidentification_checklist '{item}' must be true before collection")
+
+    target = packet.get("target_count")
+    if not (isinstance(target, int) and not isinstance(target, bool)):
+        errors.append("'target_count' must be an integer")
+    elif not (REAL_QUERY_SET_MIN_CASES <= target <= REAL_QUERY_SET_MAX_CASES):
+        errors.append(f"'target_count' must be in [{REAL_QUERY_SET_MIN_CASES}, {REAL_QUERY_SET_MAX_CASES}] (got {target})")
+
+    # Sample cases (if any) must be free of PII-shaped values and forbidden field names.
+    samples = packet.get("sample_cases")
+    if samples is not None and not isinstance(samples, list):
+        errors.append("'sample_cases' must be a list when present")
+    elif isinstance(samples, list):
+        for idx, case in enumerate(samples, start=1):
+            if not isinstance(case, dict):
+                continue
+            leaked_fields = [f for f in STAGE2B_FORBIDDEN_DATA_CATEGORIES if f in case]
+            if leaked_fields:
+                errors.append(f"sample_cases[{idx}] carries forbidden data field(s) {leaked_fields}")
+            for field in ("query", "notes", "context"):
+                val = case.get(field)
+                if isinstance(val, str):
+                    pii = _real_query_pii_hits(val)
+                    if pii:
+                        errors.append(f"sample_cases[{idx}] '{field}' contains PII-shaped value(s) {pii}; "
+                                      "de-identify before intake")
+
+    return {"passed": not errors, "errors": errors, "warnings": warnings, "ready": not errors}
+
+
+def build_real_query_collection_protocol(config: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Return the real-query collection protocol + a packet validation summary.
+
+    Companion to docs/STAGE2B_REAL_QUERY_COLLECTION_PROTOCOL.md. Exposes the target
+    case range, required steps / de-identification checklist, forbidden data categories,
+    and references. When ``config`` carries a ``collection_packet``, it is validated by
+    validate_real_query_collection_packet (declared metadata + checklist only — no data
+    collected, no secret read). ``ready_for_collection`` is false by default; a completed,
+    non-template packet with reviewer/signoff/retention/access controls flips it true.
+    ``contains_real_queries`` is always false here (no real data in repo/example), and
+    ``roadmap_parent_items_checked`` is always false. Deterministic, stdlib only.
+    """
+    raw = config if isinstance(config, dict) else {}
+    packet = raw.get("collection_packet") if isinstance(raw.get("collection_packet"), dict) else None
+    if packet is None:
+        validation = {"passed": False, "errors": ["no collection_packet supplied"],
+                      "warnings": [], "ready": False}
+    else:
+        validation = validate_real_query_collection_packet(packet)
+    return {
+        "method": "real_query_collection_protocol_v1",
+        "boundary": (
+            "privacy-aware collection protocol + de-identification checklist gate only; "
+            "validates declared packet metadata/checklist shape, collects no data, reads no "
+            "secret files, and never places a real dataset in the repo"
+        ),
+        "protocol_doc": STAGE2B_COLLECTION_PROTOCOL_DOC,
+        "target_case_range": [REAL_QUERY_SET_MIN_CASES, REAL_QUERY_SET_MAX_CASES],
+        "required_steps": list(STAGE2B_COLLECTION_REQUIRED_STEPS),
+        "deidentification_checklist": list(STAGE2B_DEID_CHECKLIST),
+        "forbidden_data_categories": list(STAGE2B_FORBIDDEN_DATA_CATEGORIES),
+        "references": list(STAGE2B_COLLECTION_REFERENCES),
+        "example_file": STAGE2B_COLLECTION_PACKET_EXAMPLE_FILE,
+        "example_is_placeholder_only": True,
+        "ready_for_collection": bool(validation["ready"]),
+        "contains_real_queries": False,
+        "validation": validation,
+        "roadmap_parent_items_checked": False,
+    }
+
+
 def add_evidence(item: dict[str, str]) -> dict[str, str]:
     item_id = str(uuid.uuid4())
     title = item.get("title", "").strip()
