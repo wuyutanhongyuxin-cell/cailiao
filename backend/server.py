@@ -7745,6 +7745,123 @@ def build_final_completion_blocker_audit(config: dict[str, Any] | None = None) -
     }
 
 
+# --- Stage 2B industry implementation checklist v1 ---------------------------
+
+STAGE2B_INDUSTRY_IMPLEMENTATION_CHECKLIST_DOC = "docs/STAGE2B_INDUSTRY_IMPLEMENTATION_CHECKLIST.md"
+
+_STAGE2B_INDUSTRY_IMPLEMENTATION_CHECKLIST_SPECS = {
+    "real_query_set": {
+        "industry_references": [
+            {"name": "NIST AI RMF / AIRC", "url": "https://www.nist.gov/itl/ai-risk-management-framework",
+             "relevance": "governed data provenance, documentation, and risk review"},
+            {"name": "BEIR", "url": "https://github.com/beir-cellar/beir",
+             "relevance": "retrieval benchmark cases, corpus, qrels, and comparable metrics"},
+        ],
+        "implementation_steps": ["collect 50-100 anonymized real queries", "attach provenance and qrels",
+                                 "run privacy/PII review", "freeze dataset id and corpus snapshot"],
+        "minimum_evidence": ["ready_real dataset", "qrels/relevant titles", "anonymization review"],
+        "quality_gates": ["50<=query_count<=100", "no PII/secret-shaped fields or values", "qrels coverage present"],
+        "observability_requirements": ["collection/review event", "dataset version", "case count"],
+        "rollback_or_human_review": ["privacy reviewer signoff before use", "reject dataset on PII finding"],
+    },
+    "real_query_bm25_calibration": {
+        "industry_references": [
+            {"name": "BEIR paper", "url": "https://huggingface.co/papers/2104.08663",
+             "relevance": "retrieval evaluation with standard ranking metrics across corpora"},
+        ],
+        "implementation_steps": ["run BM25 k1/b/threshold grid on ready_real data", "record qrels/run/metrics",
+                                 "select params by recall then miss/MRR", "publish parameter decision"],
+        "minimum_evidence": ["BM25 sweep manifest", "qrels/run pointers", "selected parameter record"],
+        "quality_gates": ["ready_real dataset only", "corpus snapshot present", "metrics include recall@k and MRR"],
+        "observability_requirements": ["run duration", "query count", "miss rate", "latency p50/p95"],
+        "rollback_or_human_review": ["revert to prior BM25 params if recall or latency gate fails"],
+    },
+    "real_embedding_provider_vector_store": {
+        "industry_references": [
+            {"name": "Qdrant hybrid queries", "url": "https://qdrant.tech/documentation/search/hybrid-queries/",
+             "relevance": "dense+sparse hybrid search and RRF/DBSF fusion choices"},
+            {"name": "OpenTelemetry semantic conventions", "url": "https://opentelemetry.io/docs/specs/semconv/",
+             "relevance": "runtime metric/trace shape for provider and retrieval operations"},
+        ],
+        "implementation_steps": ["declare real embedding provider using credential_source env var name",
+                                 "build persistent vector index", "run hybrid eval", "canary rollout with rollback"],
+        "minimum_evidence": ["provider card", "persistent index manifest", "hybrid eval run", "telemetry snapshot"],
+        "quality_gates": ["no in_memory store", "provider/index dimensions match", "recall and latency gates pass"],
+        "observability_requirements": ["embedding latency", "vector query latency", "error rate", "index version"],
+        "rollback_or_human_review": ["rollback to BM25-only if provider/store/index gate fails"],
+    },
+    "real_reranker_rrf": {
+        "industry_references": [
+            {"name": "SentenceTransformers retrieve-rerank", "url": "https://www.sbert.net/examples/sentence_transformer/applications/retrieve_rerank/README.html",
+             "relevance": "bi-encoder retrieval followed by CrossEncoder reranking"},
+            {"name": "Elasticsearch RRF", "url": "https://www.elastic.co/docs/reference/elasticsearch/rest-apis/reciprocal-rank-fusion",
+             "relevance": "rank_constant and rank_window_size controls for reciprocal rank fusion"},
+        ],
+        "implementation_steps": ["generate candidate top-k", "rerank only candidates with real cross-encoder",
+                                 "fuse BM25/vector/rerank rankings with RRF", "measure quality and p95 latency"],
+        "minimum_evidence": ["reranker provider card", "RRF config", "rerank eval card", "canary metrics"],
+        "quality_gates": ["MRR/nDCG/MAP lift declared", "latency p95 within budget", "RRF config reproducible"],
+        "observability_requirements": ["rerank latency", "candidate count", "provider errors", "quality deltas"],
+        "rollback_or_human_review": ["disable rerank if latency/cost rises without quality lift"],
+    },
+    "real_nli_semantic_conflict": {
+        "industry_references": [
+            {"name": "FEVER dataset", "url": "https://fever.ai/dataset/fever.html",
+             "relevance": "supports/refutes/not enough info claim verification labels"},
+            {"name": "SNLI", "url": "https://nlp.stanford.edu/projects/snli/",
+             "relevance": "entailment/contradiction/neutral NLI label pattern"},
+            {"name": "CFEVER", "url": "https://ojs.aaai.org/index.php/AAAI/article/view/29825",
+             "relevance": "Chinese fact verification benchmark reference"},
+        ],
+        "implementation_steps": ["declare real NLI/LLM provider", "map labels to supports/refutes/not_enough_info",
+                                 "validate policy thresholds", "run semantic citation/conflict eval"],
+        "minimum_evidence": ["semantic eval manifest", "three-verdict label coverage", "policy signoff"],
+        "quality_gates": ["per-label precision/recall/F1 present", "human escalation path present",
+                          "unsupported/refuted claims block or require review"],
+        "observability_requirements": ["verdict distribution", "abstention/refusal rate", "human escalation count"],
+        "rollback_or_human_review": ["route low-confidence/refuted claims to human review"],
+    },
+}
+
+
+def build_stage2b_industry_implementation_checklist(config: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Return industry-aligned implementation checklist for Stage 2B blockers."""
+    audit = build_external_dependency_audit(config)
+    sections = []
+    for blocker in audit["blockers"]:
+        bid = blocker["id"]
+        spec = _STAGE2B_INDUSTRY_IMPLEMENTATION_CHECKLIST_SPECS[bid]
+        sections.append({
+            "id": bid,
+            "roadmap_line": blocker["roadmap_line"],
+            "topic": blocker["topic"],
+            "industry_references": [dict(ref) for ref in spec["industry_references"]],
+            "implementation_steps": list(spec["implementation_steps"]),
+            "minimum_evidence": list(spec["minimum_evidence"]),
+            "quality_gates": list(spec["quality_gates"]),
+            "observability_requirements": list(spec["observability_requirements"]),
+            "rollback_or_human_review": list(spec["rollback_or_human_review"]),
+            "repo_guardrails": blocker["protected_by"],
+            "current_status": "ready_declared_metadata_only" if blocker["satisfied"] else "blocked_by_external_input",
+            "satisfied": blocker["satisfied"],
+        })
+    outstanding = [s["id"] for s in sections if not s["satisfied"]]
+    return {
+        "method": "stage2b_industry_implementation_checklist_v1",
+        "boundary": (
+            "deterministic metadata/checklist only; no runtime network, no provider/vector DB call, "
+            "no model download, no eval execution, no telemetry creation, no risk acceptance/approval "
+            "fabrication, no credential/.env read, and no ROADMAP parent auto-check"
+        ),
+        "checklist_doc": STAGE2B_INDUSTRY_IMPLEMENTATION_CHECKLIST_DOC,
+        "checklist_count": len(sections),
+        "sections": sections,
+        "outstanding_ids": outstanding,
+        "ready_for_stage2b_completion": not outstanding,
+        "roadmap_parent_items_checked": False,
+    }
+
+
 # --- Stage 2B evaluation-run contract / manifest (declared-shape) v1 ----------
 
 STAGE2B_EVAL_RUN_CONTRACT_DOC = "docs/STAGE2B_EVAL_RUN_CONTRACT.md"
