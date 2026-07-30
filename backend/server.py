@@ -8300,6 +8300,146 @@ def build_real_query_collection_protocol(config: dict[str, Any] | None = None) -
     }
 
 
+# --- Stage 2B evidence package validator (aggregate readiness) v1 ------------
+
+STAGE2B_EVIDENCE_PACKAGE_DOC = "docs/STAGE2B_EVIDENCE_PACKAGE_VALIDATOR.md"
+STAGE2B_EVIDENCE_PACKAGE_EXAMPLE_FILE = "examples/stage2b_evidence_package.example.json"
+
+# The seven evidence groups every blocker must produce, in fixed order.
+STAGE2B_EVIDENCE_GROUPS = (
+    "declared_artifacts", "eval_run_manifest", "observability_snapshot", "release_dossier",
+    "reproducibility_provenance", "risk_treatment", "industry_checklist",
+)
+
+# Per-blocker, per-group required-item summary (what evidence closes that group for
+# that blocker). Keyed by the external-dependency-audit blocker id.
+_STAGE2B_EVIDENCE_REQUIREMENTS = {
+    "real_query_set": {
+        "declared_artifacts": "ready_real 50-100 case query set (real_query_set artifact)",
+        "eval_run_manifest": "eval-run manifest whose dataset_readiness_status is ready_real",
+        "observability_snapshot": "query-set intake/coverage telemetry snapshot",
+        "release_dossier": "data card + provenance record for the anonymized set",
+        "reproducibility_provenance": "PROV entity/activity for collection + immutable set id/hash",
+        "risk_treatment": "real_query_set risk closed with de-identification evidence",
+        "industry_checklist": "collection/de-identification checklist section complete",
+    },
+    "real_query_bm25_calibration": {
+        "declared_artifacts": "ready_real set WITH corpus for BM25 sweep",
+        "eval_run_manifest": "BM25 sweep eval-run manifest (k1/b/threshold + recall@10/MRR)",
+        "observability_snapshot": "retrieval latency/quality telemetry for calibrated params",
+        "release_dossier": "calibration record + baseline comparison in the dossier",
+        "reproducibility_provenance": "sweep manifest + corpus snapshot id/hash",
+        "risk_treatment": "calibration risk closed (no regression vs baseline)",
+        "industry_checklist": "BM25 calibration checklist section complete",
+    },
+    "real_embedding_provider_vector_store": {
+        "declared_artifacts": "provider(credential_source) + persistent store + index rollout packet",
+        "eval_run_manifest": "hybrid eval-run manifest (recall@k/nDCG@k vs baseline)",
+        "observability_snapshot": "latency p50/p95 + provider error_rate telemetry",
+        "release_dossier": "model/provider card + store/index card",
+        "reproducibility_provenance": "index build manifest + embedding model/version id",
+        "risk_treatment": "vector risk closed within latency/error budget",
+        "industry_checklist": "vector rollout checklist section complete",
+    },
+    "real_reranker_rrf": {
+        "declared_artifacts": "cross-encoder provider(credential_source) + RRF fusion policy packet",
+        "eval_run_manifest": "rerank eval-run manifest (mrr/nDCG/MAP/recall@k/latency_p95)",
+        "observability_snapshot": "rerank latency p95 + top-k quality telemetry",
+        "release_dossier": "reranker model card + fusion config record",
+        "reproducibility_provenance": "rerank config + model/version id/hash",
+        "risk_treatment": "rerank risk closed (quality lift within latency budget)",
+        "industry_checklist": "rerank rollout checklist section complete",
+    },
+    "real_nli_semantic_conflict": {
+        "declared_artifacts": "NLI/LLM provider(credential_source) + label mapping + policy packet",
+        "eval_run_manifest": "per-label eval-run manifest (precision/recall/F1/calibration)",
+        "observability_snapshot": "verdict distribution + abstention/refusal telemetry",
+        "release_dossier": "NLI model card + decision policy + human-review record",
+        "reproducibility_provenance": "label mapping + model/version id + eval set hash",
+        "risk_treatment": "semantic-conflict risk closed (fabrication rate 0)",
+        "industry_checklist": "semantic conflict checklist section complete",
+    },
+}
+
+
+def build_stage2b_evidence_package_validator(config: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Aggregate all Stage 2B external-blocker evidence into one readiness report.
+
+    Reuses the existing external-dependency audit and the seven Stage 2B contract/
+    status helpers (artifact contracts, eval-run contract, observability, release
+    dossier, reproducibility/provenance, risk register, industry checklist) as the
+    single source of truth for each evidence group's current state. For every blocker
+    it lists, per evidence group, the required item that would close it. This is a
+    metadata/package validator only: it declares what evidence is needed and reports
+    each group's current readiness — it makes no provider call, downloads no model,
+    runs no eval, reads no artifact file/hash, reads no credential/.env, fabricates no
+    approval or risk acceptance, and checks no ROADMAP parent item.
+
+    ``ready_for_stage2b_completion`` is false by default and true only when every
+    evidence group is ready AND every external blocker is satisfied (declared metadata
+    shape only). Deterministic, stdlib only.
+    """
+    audit = build_external_dependency_audit(config)
+    artifact_contracts = build_stage2b_artifact_contracts(config)
+    eval_run = build_stage2b_eval_run_contract(config)
+    observability = build_stage2b_observability_contract(config)
+    release_dossier = build_stage2b_release_dossier(config)
+    reproducibility = build_stage2b_reproducibility_provenance(config)
+    risk_register = build_stage2b_risk_register(config)
+    industry_checklist = build_stage2b_industry_implementation_checklist(config)
+
+    # Current readiness of each evidence group (declared-metadata shape only).
+    group_ready = {
+        "declared_artifacts": artifact_contracts.get("ready_artifact_count", 0) >= len(audit["blockers"]),
+        "eval_run_manifest": bool(eval_run.get("has_real_eval_run")),
+        "observability_snapshot": bool(observability.get("observability_ready")),
+        "release_dossier": bool(release_dossier.get("ready_for_release")),
+        "reproducibility_provenance": bool(reproducibility.get("reproducibility_ready")),
+        "risk_treatment": bool(risk_register.get("all_risks_closed")),
+        "industry_checklist": bool(industry_checklist.get("ready_for_stage2b_completion")),
+    }
+
+    blocker_ids = [b["id"] for b in audit["blockers"]]
+    satisfied = set(audit["satisfied_ids"])
+    blockers = []
+    for b in audit["blockers"]:
+        bid = b["id"]
+        blockers.append({
+            "id": bid,
+            "roadmap_line": b["roadmap_line"],
+            "topic": b["topic"],
+            "satisfied": bid in satisfied,
+            "evidence_requirements": dict(_STAGE2B_EVIDENCE_REQUIREMENTS[bid]),
+        })
+
+    outstanding_groups = [g for g in STAGE2B_EVIDENCE_GROUPS if not group_ready[g]]
+    all_groups_ready = not outstanding_groups
+    all_blockers_satisfied = audit["all_external_dependencies_satisfied"]
+    ready = all_groups_ready and all_blockers_satisfied
+
+    return {
+        "method": "stage2b_evidence_package_validator_v1",
+        "boundary": (
+            "metadata/package validator only; aggregates declared evidence group readiness "
+            "from existing helpers and lists per-blocker required evidence; no runtime network, "
+            "no provider call, no model download, no eval execution, no artifact file/hash read, "
+            "no credential/.env read, no approval/risk-acceptance fabrication, and no ROADMAP "
+            "parent auto-check"
+        ),
+        "evidence_package_doc": STAGE2B_EVIDENCE_PACKAGE_DOC,
+        "example_file": STAGE2B_EVIDENCE_PACKAGE_EXAMPLE_FILE,
+        "required_evidence_groups": list(STAGE2B_EVIDENCE_GROUPS),
+        "evidence_group_ready": group_ready,
+        "outstanding_evidence_groups": outstanding_groups,
+        "blocker_ids": blocker_ids,
+        "blockers": blockers,
+        "all_evidence_groups_ready": all_groups_ready,
+        "all_blockers_satisfied": all_blockers_satisfied,
+        "ready_for_stage2b_completion": ready,
+        "roadmap_parent_items_checked": False,
+    }
+
+
 def add_evidence(item: dict[str, str]) -> dict[str, str]:
     item_id = str(uuid.uuid4())
     title = item.get("title", "").strip()

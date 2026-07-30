@@ -1,0 +1,104 @@
+{
+  "_note": "PLACEHOLDER/TEMPLATE-ONLY illustrative snapshot of the Stage 2B evidence package validator default state (build_stage2b_evidence_package_validator() with no config). It is NOT ready: every evidence group is missing and every blocker is unsatisfied because no real external input has been supplied. No real data, no secret values, no fabricated approval/risk acceptance. This documents the required evidence structure only.",
+  "is_template": true,
+  "method": "stage2b_evidence_package_validator_v1",
+  "ready_for_stage2b_completion": false,
+  "roadmap_parent_items_checked": false,
+  "required_evidence_groups": [
+    "declared_artifacts",
+    "eval_run_manifest",
+    "observability_snapshot",
+    "release_dossier",
+    "reproducibility_provenance",
+    "risk_treatment",
+    "industry_checklist"
+  ],
+  "evidence_group_ready": {
+    "declared_artifacts": false,
+    "eval_run_manifest": false,
+    "observability_snapshot": false,
+    "release_dossier": false,
+    "reproducibility_provenance": false,
+    "risk_treatment": false,
+    "industry_checklist": false
+  },
+  "blocker_ids": [
+    "real_query_set",
+    "real_query_bm25_calibration",
+    "real_embedding_provider_vector_store",
+    "real_reranker_rrf",
+    "real_nli_semantic_conflict"
+  ],
+  "blockers": [
+    {
+      "id": "real_query_set",
+      "roadmap_line": 97,
+      "satisfied": false,
+      "evidence_requirements": {
+        "declared_artifacts": "ready_real 50-100 case query set (real_query_set artifact)",
+        "eval_run_manifest": "eval-run manifest whose dataset_readiness_status is ready_real",
+        "observability_snapshot": "query-set intake/coverage telemetry snapshot",
+        "release_dossier": "data card + provenance record for the anonymized set",
+        "reproducibility_provenance": "PROV entity/activity for collection + immutable set id/hash",
+        "risk_treatment": "real_query_set risk closed with de-identification evidence",
+        "industry_checklist": "collection/de-identification checklist section complete"
+      }
+    },
+    {
+      "id": "real_query_bm25_calibration",
+      "roadmap_line": 100,
+      "satisfied": false,
+      "evidence_requirements": {
+        "declared_artifacts": "ready_real set WITH corpus for BM25 sweep",
+        "eval_run_manifest": "BM25 sweep eval-run manifest (k1/b/threshold + recall@10/MRR)",
+        "observability_snapshot": "retrieval latency/quality telemetry for calibrated params",
+        "release_dossier": "calibration record + baseline comparison in the dossier",
+        "reproducibility_provenance": "sweep manifest + corpus snapshot id/hash",
+        "risk_treatment": "calibration risk closed (no regression vs baseline)",
+        "industry_checklist": "BM25 calibration checklist section complete"
+      }
+    },
+    {
+      "id": "real_embedding_provider_vector_store",
+      "roadmap_line": 103,
+      "satisfied": false,
+      "evidence_requirements": {
+        "declared_artifacts": "provider(credential_source) + persistent store + index rollout packet",
+        "eval_run_manifest": "hybrid eval-run manifest (recall@k/nDCG@k vs baseline)",
+        "observability_snapshot": "latency p50/p95 + provider error_rate telemetry",
+        "release_dossier": "model/provider card + store/index card",
+        "reproducibility_provenance": "index build manifest + embedding model/version id",
+        "risk_treatment": "vector risk closed within latency/error budget",
+        "industry_checklist": "vector rollout checklist section complete"
+      }
+    },
+    {
+      "id": "real_reranker_rrf",
+      "roadmap_line": 107,
+      "satisfied": false,
+      "evidence_requirements": {
+        "declared_artifacts": "cross-encoder provider(credential_source) + RRF fusion policy packet",
+        "eval_run_manifest": "rerank eval-run manifest (mrr/nDCG/MAP/recall@k/latency_p95)",
+        "observability_snapshot": "rerank latency p95 + top-k quality telemetry",
+        "release_dossier": "reranker model card + fusion config record",
+        "reproducibility_provenance": "rerank config + model/version id/hash",
+        "risk_treatment": "rerank risk closed (quality lift within latency budget)",
+        "industry_checklist": "rerank rollout checklist section complete"
+      }
+    },
+    {
+      "id": "real_nli_semantic_conflict",
+      "roadmap_line": 114,
+      "satisfied": false,
+      "evidence_requirements": {
+        "declared_artifacts": "NLI/LLM provider(credential_source) + label mapping + policy packet",
+        "eval_run_manifest": "per-label eval-run manifest (precision/recall/F1/calibration)",
+        "observability_snapshot": "verdict distribution + abstention/refusal telemetry",
+        "release_dossier": "NLI model card + decision policy + human-review record",
+        "reproducibility_provenance": "label mapping + model/version id + eval set hash",
+        "risk_treatment": "semantic-conflict risk closed (fabrication rate 0)",
+        "industry_checklist": "semantic conflict checklist section complete"
+      }
+    }
+  ]
+}

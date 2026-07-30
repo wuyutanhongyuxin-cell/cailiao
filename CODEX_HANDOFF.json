@@ -1,64 +1,65 @@
 {
-  "status": "codex_implemented_after_claude_not_consuming_task",
-  "task_id": "cailiao-stage2b-industry-implementation-checklist-v1",
-  "phase": "Stage 2B industry implementation checklist.",
-  "baseline": "f9865b4 Add final completion blocker audit",
-  "summary": "Codex reviewed current Stage 2B gaps and web references, then dispatched and resent the task to Claude. Repeated polls showed no matching report and no WSL diff, so Codex added a deterministic industry implementation checklist mapping the five unresolved external blockers to implementation steps, evidence, quality gates, observability requirements, and rollback/human-review rules. No real parent item was checked.",
+  "status": "implemented_by_claude",
+  "task_id": "cailiao-stage2b-evidence-package-validator-v1",
+  "phase": "Stage 2B: deterministic evidence package validator aggregating all external-blocker evidence into one readiness report, reusing the audit + seven Stage 2B contract/status helpers. All five parent items REMAIN UNCHECKED; only the aggregate validator/CLI/doc/example/tests were added.",
+  "baseline": "8eafe392b44b8465185b3712463f25fa85e2c938 (Add Stage 2B industry implementation checklist)",
+  "summary": "Added build_stage2b_evidence_package_validator(config=None): a deterministic, stdlib-only aggregate that reuses build_external_dependency_audit and the seven Stage 2B helpers (artifact contracts, eval-run contract, observability, release dossier, reproducibility/provenance, risk register, industry checklist) as the single source of truth for each evidence group's readiness. Output has method=stage2b_evidence_package_validator_v1, evidence_package_doc, required_evidence_groups (exactly declared_artifacts/eval_run_manifest/observability_snapshot/release_dossier/reproducibility_provenance/risk_treatment/industry_checklist), blocker_ids (5 ids in existing order), per-blocker evidence_requirements mapping each group to its required item summary, evidence_group_ready flags, ready_for_stage2b_completion=false by default, and roadmap_parent_items_checked=false. Metadata/package validator only: no network, no provider call, no model download, no eval, no artifact file/hash read, no credential/.env read, no approval/risk-acceptance fabrication, no ROADMAP parent auto-check.",
   "changed_files": [
     "backend/server.py",
-    "tools/check_stage2b_industry_implementation_checklist.py",
-    "docs/STAGE2B_INDUSTRY_IMPLEMENTATION_CHECKLIST.md",
-    "tests/test_stage2b_industry_implementation_checklist.py",
+    "docs/STAGE2B_EVIDENCE_PACKAGE_VALIDATOR.md",
+    "examples/stage2b_evidence_package.example.json",
+    "tools/check_stage2b_evidence_package_validator.py",
+    "tests/test_stage2b_evidence_package_validator.py",
     "tools/run_quality_gates.py",
     "README.md",
     "docs/ROADMAP.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "backend/server.py: added build_stage2b_industry_implementation_checklist(config=None).",
-    "tools/check_stage2b_industry_implementation_checklist.py: added CLI; default exits 1 while Stage 2B is externally blocked.",
-    "docs/STAGE2B_INDUSTRY_IMPLEMENTATION_CHECKLIST.md: documented web-reviewed industry implementation checklist.",
-    "tests/test_stage2b_industry_implementation_checklist.py: added helper, doc, and CLI honesty tests.",
-    "tools/run_quality_gates.py, README.md, docs/ROADMAP.md: wired and documented the checklist."
-  ],
-  "web_references_reviewed": [
-    "NIST AI RMF/AIRC",
-    "BEIR and BEIR paper",
-    "Elasticsearch reciprocal rank fusion",
-    "Qdrant hybrid queries",
-    "SentenceTransformers retrieve-rerank",
-    "OpenTelemetry semantic conventions / GenAI metrics",
-    "FEVER, SNLI, CFEVER"
+    "backend/server.py: added STAGE2B_EVIDENCE_PACKAGE_DOC, STAGE2B_EVIDENCE_PACKAGE_EXAMPLE_FILE, STAGE2B_EVIDENCE_GROUPS (7, fixed order), _STAGE2B_EVIDENCE_REQUIREMENTS (5 blockers x 7 groups), and build_stage2b_evidence_package_validator(config=None) reusing the audit + seven helpers; ready_for_stage2b_completion true only when all groups ready AND all blockers satisfied; false by default; roadmap_parent_items_checked=false.",
+    "docs/STAGE2B_EVIDENCE_PACKAGE_VALIDATOR.md: evidence groups, blockers, readiness logic, and boundary.",
+    "examples/stage2b_evidence_package.example.json: template-only default-not-ready snapshot (is_template=true; all groups missing; all blockers unsatisfied).",
+    "tools/check_stage2b_evidence_package_validator.py: CLI (--config/--json); exit 0 only if ready_for_stage2b_completion, 1 otherwise (repo default -> 1), 2 on load error.",
+    "tests/test_stage2b_evidence_package_validator.py: 10 tests (method + default not ready; groups exact order; blocker_ids exact order + lines; each blocker maps all 7 groups; default all groups missing + blockers unsatisfied; evidence_group_ready keys; JSON serializable; doc lists groups; example template + not ready; CLI default exits 1).",
+    "tools/run_quality_gates.py: py-compile gate now includes the new test and CLI.",
+    "README.md and docs/ROADMAP.md document the validator as a checked sub-note; all real parent items stay unchecked."
   ],
   "not_implemented": [
-    "No real query set, provider connection, vector DB connection, model download, telemetry creation, risk acceptance, approval, or eval run was performed.",
-    "ROADMAP parent lines 97, 100, 103, 107, and 114 remain unchecked by design."
+    "No real data, provider call, model download, eval result, telemetry, connectivity, approval, risk acceptance, or credential; the validator only aggregates declared evidence-group readiness and lists required evidence.",
+    "All five Stage 2B real parent items (ROADMAP lines 97/100/103/107/114) remain unchecked by design.",
+    "ready_for_stage2b_completion=true (only via a fully-declared config all helpers accept) is a shape-completeness verdict, never live provider connectivity/eval.",
+    "No network, no provider call, no model download, no artifact file/hash read, no credential/.env read."
+  ],
+  "test_files": [
+    "tests/test_stage2b_evidence_package_validator.py"
   ],
   "required_test_commands_for_codex": [
-    "python -m unittest tests.test_stage2b_industry_implementation_checklist -v",
-    "python tools/check_stage2b_industry_implementation_checklist.py --json",
+    "python -m unittest tests.test_stage2b_evidence_package_validator -v",
+    "python -m unittest discover -s tests -v",
+    "python tools/check_stage2b_evidence_package_validator.py --json",
     "python tools/run_quality_gates.py --json",
     "python -m json.tool CODEX_HANDOFF.json",
     "git diff --check"
   ],
   "test_status": [
-    "python -m unittest tests.test_stage2b_industry_implementation_checklist -v: 5 tests OK.",
-    "python tools/check_stage2b_industry_implementation_checklist.py --json: expected exit 1; reported ready_for_stage2b_completion=false and 5 outstanding ids.",
-    "python tools/run_quality_gates.py --json: passed=true, 5 gates passed, 680 tests OK.",
+    "python -m unittest tests.test_stage2b_evidence_package_validator -v: 10 tests OK.",
+    "python -m unittest discover -s tests -v: 690 tests OK.",
+    "python tools/check_stage2b_evidence_package_validator.py --json: ready_for_stage2b_completion=false, 7 groups missing, 5 blockers unsatisfied (lines 97/100/103/107/114), roadmap_parent_items_checked=false, exit 1.",
+    "python tools/run_quality_gates.py --json: passed=true, all 5 gates passed; unittest gate ran 690 tests OK.",
     "python -m json.tool CODEX_HANDOFF.json: valid JSON.",
-    "git diff --check: passed."
+    "git diff --check: no whitespace/conflict issues."
   ],
-  "claude_monitoring": [
-    "Task file written to E:/tmp/without_human/tmp/cailiao-stage2b-industry-implementation-checklist-v1.md.",
-    "send-claude-task.ps1 returned sent=true and used_uia=true.",
-    "Three post-dispatch polls showed no matching report and no WSL diff.",
-    "Task was resent; resend returned sent=true and used_uia=true.",
-    "Post-resend poll still showed no matching report and no WSL diff.",
-    "Codex proceeded to avoid idle looping."
+  "roadmap_item_status": "ALL FIVE STAGE 2B REAL PARENT ITEMS UNCHECKED (lines 97/100/103/107/114). Only a checked sub-note for the evidence package validator was added.",
+  "risks": [
+    "ready_for_stage2b_completion=true is a declared-metadata-shape aggregate delegating to the audit + seven helpers; a fully-declared but wrong config would count as ready. It informs a human decision and never auto-checks a ROADMAP parent.",
+    "Each evidence group's readiness is exactly as strict as the helper it delegates to (declared-metadata shape); the validator adds aggregation, not new verification.",
+    "evidence_requirements are documentation strings describing what would close each group per blocker; they are not machine-validated artifact schemas.",
+    "Concurrency note: this repo has an active concurrent writer; this task was implemented on committed HEAD 8eafe39 and its files are additive. If a concurrent commit supersedes them, re-verify against the new HEAD.",
+    "Environment note: the local interpreter is python3 (no bare 'python' on PATH); the quality-gate runner honors PYTHON=python3, and a local 'python->python3' PATH shim lets its default-interpreter meta-test pass."
   ],
   "credentials": [
     "No credentials or .env files were read, created, or modified.",
-    "No external provider calls, model downloads, DB connections, telemetry creation, approval, risk acceptance, or real eval runs were performed.",
-    "Push/CI/sync status is verified by Codex after committing this handoff update."
+    "No external network calls, provider calls, model downloads, or eval runs were used for implementation or local tests.",
+    "Claude performed no Git push; Codex performs commit/push only after independent verification."
   ]
 }
