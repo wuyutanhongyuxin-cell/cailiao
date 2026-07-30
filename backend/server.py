@@ -7193,6 +7193,115 @@ def build_stage2b_standards_traceability(config: dict[str, Any] | None = None) -
     }
 
 
+# --- Stage 2B promotion gates / SLO policy v1 --------------------------------
+
+STAGE2B_PROMOTION_GATES_DOC = "docs/STAGE2B_PROMOTION_GATES.md"
+STAGE2B_PROMOTION_GATES_EXAMPLE_FILE = "examples/stage2b_promotion_gates.example.json"
+
+_STAGE2B_PROMOTION_GATE_SPECS = {
+    "real_query_set": {
+        "required_metrics_or_artifacts": [
+            "50-100 ready_real anonymized queries",
+            "qrels/relevance targets",
+            "anonymization/provenance review",
+        ],
+        "default_gate": "dataset_readiness_status == ready_real and query_count in [50, 100]",
+        "rollback_trigger": "PII leak, placeholder marker, provenance gap, or qrels coverage gap",
+        "evidence_source": "human action packet + real query set readiness summary",
+    },
+    "real_query_bm25_calibration": {
+        "required_metrics_or_artifacts": [
+            "BM25 sweep manifest",
+            "recall@10 / mrr / miss_rate for each k1/b/threshold candidate",
+            "chosen parameters with baseline comparison",
+        ],
+        "default_gate": "no recall@10 or MRR regression vs current lexical baseline; miss_rate <= baseline",
+        "rollback_trigger": "quality regression, unstable chosen threshold, or missing corpus snapshot",
+        "evidence_source": "BM25 sweep manifest + eval-run contract",
+    },
+    "real_embedding_provider_vector_store": {
+        "required_metrics_or_artifacts": [
+            "provider/store/index rollout packet",
+            "recall@k and nDCG@k baseline comparison",
+            "latency p50/p95 and provider error_rate",
+        ],
+        "default_gate": "hybrid/vector channel improves or preserves recall@10/nDCG@10 within latency/error budget",
+        "rollback_trigger": "latency p95 budget breach, provider error budget burn, index mismatch, or retrieval regression",
+        "evidence_source": "vector rollout packet + eval-run contract + observability snapshot",
+    },
+    "real_reranker_rrf": {
+        "required_metrics_or_artifacts": [
+            "rerank rollout packet",
+            "mrr / nDCG / MAP / recall@k",
+            "rerank latency_p95 and invocation/error rate",
+        ],
+        "default_gate": "rerank adds measurable precision/MRR lift over fused baseline without latency p95 breach",
+        "rollback_trigger": "quality lift absent, latency p95 breach, RRF config drift, or provider error spike",
+        "evidence_source": "rerank rollout packet + eval-run contract + canary observation",
+    },
+    "real_nli_semantic_conflict": {
+        "required_metrics_or_artifacts": [
+            "semantic rollout packet",
+            "supports/refutes/not_enough_info label coverage",
+            "per-label precision/recall/F1, calibration, refusal/abstention rate",
+            "citation traceability and key-fact fabrication audit",
+        ],
+        "default_gate": "three-verdict coverage, accepted per-label metrics, key-fact fabrication rate 0, citation traceability 100%",
+        "rollback_trigger": "unsupported/refuted claim missed, fabrication, low-confidence drift, or human-review backlog breach",
+        "evidence_source": "NLI rollout packet + semantic eval manifest + human review escalation log",
+    },
+}
+
+
+def build_stage2b_promotion_gates(config: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Return Stage 2B promotion/SLO gate policy for external blockers.
+
+    Policy metadata only. It aligns the existing audit and human-action packet to
+    explicit promotion gates, SLO-style rollback triggers, and expected evidence
+    sources. It never executes measurements, never reads credentials, never calls
+    providers, and never checks ROADMAP parent items.
+    """
+    audit = build_external_dependency_audit(config)
+    rows = []
+    for blocker in audit["blockers"]:
+        bid = blocker["id"]
+        spec = _STAGE2B_PROMOTION_GATE_SPECS[bid]
+        rows.append({
+            "id": bid,
+            "roadmap_line": blocker["roadmap_line"],
+            "topic": blocker["topic"],
+            "required_metrics_or_artifacts": list(spec["required_metrics_or_artifacts"]),
+            "default_gate": spec["default_gate"],
+            "rollback_trigger": spec["rollback_trigger"],
+            "evidence_source": spec["evidence_source"],
+            "repo_guardrails": blocker["protected_by"],
+            "current_status": "ready_for_promotion" if blocker["satisfied"] else "blocked_by_external_input",
+            "satisfied": blocker["satisfied"],
+        })
+    blocked_ids = [r["id"] for r in rows if not r["satisfied"]]
+    return {
+        "method": "stage2b_promotion_gates_v1",
+        "boundary": (
+            "deterministic promotion/SLO policy only; no runtime network, no provider call, "
+            "no model download, no eval execution, no credential/.env read, and no ROADMAP "
+            "parent auto-check"
+        ),
+        "gates_doc": STAGE2B_PROMOTION_GATES_DOC,
+        "example_file": STAGE2B_PROMOTION_GATES_EXAMPLE_FILE,
+        "reference_alignment": [
+            "NIST AI RMF / GenAI measurement and monitoring",
+            "BEIR / ir-measures retrieval metrics",
+            "OpenTelemetry latency/error observability",
+            "Google SRE SLO/error-budget promotion discipline",
+        ],
+        "gate_count": len(rows),
+        "gates": rows,
+        "blocked_ids": blocked_ids,
+        "ready_for_promotion": not blocked_ids,
+        "roadmap_parent_items_checked": False,
+    }
+
+
 # --- Stage 2B evaluation-run contract / manifest (declared-shape) v1 ----------
 
 STAGE2B_EVAL_RUN_CONTRACT_DOC = "docs/STAGE2B_EVAL_RUN_CONTRACT.md"

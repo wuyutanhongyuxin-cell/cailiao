@@ -1,0 +1,10 @@
+{
+  "is_template": true,
+  "purpose": "Example wrapper for Stage 2B promotion-gate evidence. Not real proof.",
+  "artifacts": {},
+  "notes": [
+    "Promotion gates require real external evidence before parent items can be considered.",
+    "This template intentionally leaves all blockers unresolved.",
+    "Never include credential values."
+  ]
+}
