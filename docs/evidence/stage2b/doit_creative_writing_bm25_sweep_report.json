@@ -1,0 +1,380 @@
+{
+  "method": "bm25_real_sweep_v1",
+  "boundary": "deterministic BM25 calibration over a ready_real anonymized set only; gated on readiness, no network/model call, no fabricated data",
+  "ran": true,
+  "refused": false,
+  "suite": "DoIT Creative Writing BM25 calibration query set",
+  "grid": {
+    "k1": [
+      0.9,
+      1.2,
+      1.5,
+      1.8
+    ],
+    "b": [
+      0.5,
+      0.75,
+      1.0
+    ],
+    "thresholds": [
+      0.0,
+      0.1,
+      0.2
+    ]
+  },
+  "candidate_count": 36,
+  "results": [
+    {
+      "k1": 0.9,
+      "b": 0.5,
+      "threshold": 0.0,
+      "title_recall_at_k": 0.92,
+      "chunk_recall_at_k": 0.0,
+      "title_mrr": 0.7648571428571428,
+      "miss_count": 8
+    },
+    {
+      "k1": 0.9,
+      "b": 0.5,
+      "threshold": 0.1,
+      "title_recall_at_k": 0.92,
+      "chunk_recall_at_k": 0.0,
+      "title_mrr": 0.7648571428571428,
+      "miss_count": 8
+    },
+    {
+      "k1": 0.9,
+      "b": 0.5,
+      "threshold": 0.2,
+      "title_recall_at_k": 0.92,
+      "chunk_recall_at_k": 0.0,
+      "title_mrr": 0.7648571428571428,
+      "miss_count": 8
+    },
+    {
+      "k1": 0.9,
+      "b": 0.75,
+      "threshold": 0.0,
+      "title_recall_at_k": 0.94,
+      "chunk_recall_at_k": 0.0,
+      "title_mrr": 0.7755238095238094,
+      "miss_count": 6
+    },
+    {
+      "k1": 0.9,
+      "b": 0.75,
+      "threshold": 0.1,
+      "title_recall_at_k": 0.94,
+      "chunk_recall_at_k": 0.0,
+      "title_mrr": 0.7755238095238094,
+      "miss_count": 6
+    },
+    {
+      "k1": 0.9,
+      "b": 0.75,
+      "threshold": 0.2,
+      "title_recall_at_k": 0.94,
+      "chunk_recall_at_k": 0.0,
+      "title_mrr": 0.7755238095238094,
+      "miss_count": 6
+    },
+    {
+      "k1": 0.9,
+      "b": 1.0,
+      "threshold": 0.0,
+      "title_recall_at_k": 0.95,
+      "chunk_recall_at_k": 0.0,
+      "title_mrr": 0.7801825396825397,
+      "miss_count": 5
+    },
+    {
+      "k1": 0.9,
+      "b": 1.0,
+      "threshold": 0.1,
+      "title_recall_at_k": 0.95,
+      "chunk_recall_at_k": 0.0,
+      "title_mrr": 0.7801825396825397,
+      "miss_count": 5
+    },
+    {
+      "k1": 0.9,
+      "b": 1.0,
+      "threshold": 0.2,
+      "title_recall_at_k": 0.95,
+      "chunk_recall_at_k": 0.0,
+      "title_mrr": 0.7801825396825397,
+      "miss_count": 5
+    },
+    {
+      "k1": 1.2,
+      "b": 0.5,
+      "threshold": 0.0,
+      "title_recall_at_k": 0.93,
+      "chunk_recall_at_k": 0.0,
+      "title_mrr": 0.7695238095238095,
+      "miss_count": 7
+    },
+    {
+      "k1": 1.2,
+      "b": 0.5,
+      "threshold": 0.1,
+      "title_recall_at_k": 0.93,
+      "chunk_recall_at_k": 0.0,
+      "title_mrr": 0.7695238095238095,
+      "miss_count": 7
+    },
+    {
+      "k1": 1.2,
+      "b": 0.5,
+      "threshold": 0.2,
+      "title_recall_at_k": 0.93,
+      "chunk_recall_at_k": 0.0,
+      "title_mrr": 0.7695238095238095,
+      "miss_count": 7
+    },
+    {
+      "k1": 1.2,
+      "b": 0.75,
+      "threshold": 0.0,
+      "title_recall_at_k": 0.93,
+      "chunk_recall_at_k": 0.0,
+      "title_mrr": 0.7821349206349207,
+      "miss_count": 7
+    },
+    {
+      "k1": 1.2,
+      "b": 0.75,
+      "threshold": 0.1,
+      "title_recall_at_k": 0.93,
+      "chunk_recall_at_k": 0.0,
+      "title_mrr": 0.7821349206349207,
+      "miss_count": 7
+    },
+    {
+      "k1": 1.2,
+      "b": 0.75,
+      "threshold": 0.2,
+      "title_recall_at_k": 0.93,
+      "chunk_recall_at_k": 0.0,
+      "title_mrr": 0.7821349206349207,
+      "miss_count": 7
+    },
+    {
+      "k1": 1.2,
+      "b": 1.0,
+      "threshold": 0.0,
+      "title_recall_at_k": 0.93,
+      "chunk_recall_at_k": 0.0,
+      "title_mrr": 0.7796785714285714,
+      "miss_count": 7
+    },
+    {
+      "k1": 1.2,
+      "b": 1.0,
+      "threshold": 0.1,
+      "title_recall_at_k": 0.93,
+      "chunk_recall_at_k": 0.0,
+      "title_mrr": 0.7796785714285714,
+      "miss_count": 7
+    },
+    {
+      "k1": 1.2,
+      "b": 1.0,
+      "threshold": 0.2,
+      "title_recall_at_k": 0.93,
+      "chunk_recall_at_k": 0.0,
+      "title_mrr": 0.7796785714285714,
+      "miss_count": 7
+    },
+    {
+      "k1": 1.5,
+      "b": 0.5,
+      "threshold": 0.0,
+      "title_recall_at_k": 0.93,
+      "chunk_recall_at_k": 0.0,
+      "title_mrr": 0.7829285714285714,
+      "miss_count": 7
+    },
+    {
+      "k1": 1.5,
+      "b": 0.5,
+      "threshold": 0.1,
+      "title_recall_at_k": 0.93,
+      "chunk_recall_at_k": 0.0,
+      "title_mrr": 0.7829285714285714,
+      "miss_count": 7
+    },
+    {
+      "k1": 1.5,
+      "b": 0.5,
+      "threshold": 0.2,
+      "title_recall_at_k": 0.93,
+      "chunk_recall_at_k": 0.0,
+      "title_mrr": 0.7829285714285714,
+      "miss_count": 7
+    },
+    {
+      "k1": 1.5,
+      "b": 0.75,
+      "threshold": 0.0,
+      "title_recall_at_k": 0.94,
+      "chunk_recall_at_k": 0.0,
+      "title_mrr": 0.7909523809523811,
+      "miss_count": 6
+    },
+    {
+      "k1": 1.5,
+      "b": 0.75,
+      "threshold": 0.1,
+      "title_recall_at_k": 0.94,
+      "chunk_recall_at_k": 0.0,
+      "title_mrr": 0.7909523809523811,
+      "miss_count": 6
+    },
+    {
+      "k1": 1.5,
+      "b": 0.75,
+      "threshold": 0.2,
+      "title_recall_at_k": 0.94,
+      "chunk_recall_at_k": 0.0,
+      "title_mrr": 0.7909523809523811,
+      "miss_count": 6
+    },
+    {
+      "k1": 1.5,
+      "b": 1.0,
+      "threshold": 0.0,
+      "title_recall_at_k": 0.93,
+      "chunk_recall_at_k": 0.0,
+      "title_mrr": 0.7664563492063492,
+      "miss_count": 7
+    },
+    {
+      "k1": 1.5,
+      "b": 1.0,
+      "threshold": 0.1,
+      "title_recall_at_k": 0.93,
+      "chunk_recall_at_k": 0.0,
+      "title_mrr": 0.7664563492063492,
+      "miss_count": 7
+    },
+    {
+      "k1": 1.5,
+      "b": 1.0,
+      "threshold": 0.2,
+      "title_recall_at_k": 0.93,
+      "chunk_recall_at_k": 0.0,
+      "title_mrr": 0.7664563492063492,
+      "miss_count": 7
+    },
+    {
+      "k1": 1.8,
+      "b": 0.5,
+      "threshold": 0.0,
+      "title_recall_at_k": 0.95,
+      "chunk_recall_at_k": 0.0,
+      "title_mrr": 0.7777460317460317,
+      "miss_count": 5
+    },
+    {
+      "k1": 1.8,
+      "b": 0.5,
+      "threshold": 0.1,
+      "title_recall_at_k": 0.95,
+      "chunk_recall_at_k": 0.0,
+      "title_mrr": 0.7777460317460317,
+      "miss_count": 5
+    },
+    {
+      "k1": 1.8,
+      "b": 0.5,
+      "threshold": 0.2,
+      "title_recall_at_k": 0.95,
+      "chunk_recall_at_k": 0.0,
+      "title_mrr": 0.7777460317460317,
+      "miss_count": 5
+    },
+    {
+      "k1": 1.8,
+      "b": 0.75,
+      "threshold": 0.0,
+      "title_recall_at_k": 0.95,
+      "chunk_recall_at_k": 0.0,
+      "title_mrr": 0.7711190476190477,
+      "miss_count": 5
+    },
+    {
+      "k1": 1.8,
+      "b": 0.75,
+      "threshold": 0.1,
+      "title_recall_at_k": 0.95,
+      "chunk_recall_at_k": 0.0,
+      "title_mrr": 0.7711190476190477,
+      "miss_count": 5
+    },
+    {
+      "k1": 1.8,
+      "b": 0.75,
+      "threshold": 0.2,
+      "title_recall_at_k": 0.95,
+      "chunk_recall_at_k": 0.0,
+      "title_mrr": 0.7711190476190477,
+      "miss_count": 5
+    },
+    {
+      "k1": 1.8,
+      "b": 1.0,
+      "threshold": 0.0,
+      "title_recall_at_k": 0.94,
+      "chunk_recall_at_k": 0.0,
+      "title_mrr": 0.7802182539682541,
+      "miss_count": 6
+    },
+    {
+      "k1": 1.8,
+      "b": 1.0,
+      "threshold": 0.1,
+      "title_recall_at_k": 0.94,
+      "chunk_recall_at_k": 0.0,
+      "title_mrr": 0.7802182539682541,
+      "miss_count": 6
+    },
+    {
+      "k1": 1.8,
+      "b": 1.0,
+      "threshold": 0.2,
+      "title_recall_at_k": 0.94,
+      "chunk_recall_at_k": 0.0,
+      "title_mrr": 0.7802182539682541,
+      "miss_count": 6
+    }
+  ],
+  "best": {
+    "k1": 0.9,
+    "b": 1.0,
+    "threshold": 0.0,
+    "title_recall_at_k": 0.95,
+    "chunk_recall_at_k": 0.0,
+    "title_mrr": 0.7801825396825397,
+    "miss_count": 5
+  },
+  "readiness": {
+    "method": "real_query_readiness_v1",
+    "boundary": "readiness classification only; never fabricates data; a placeholder/synthetic or under-50 set can never be classified ready_real",
+    "status": "ready_real",
+    "ready": true,
+    "case_count": 100,
+    "min_cases": 50,
+    "max_cases": 100,
+    "reasons": [
+      "100 anonymized cases with provenance in the 50-100 range"
+    ],
+    "validation": {
+      "passed": true,
+      "errors": [],
+      "warnings": [],
+      "case_count": 100,
+      "has_placeholder_marker": false
+    }
+  }
+}

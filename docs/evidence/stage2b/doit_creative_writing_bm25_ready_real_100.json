@@ -1,0 +1,2434 @@
+{
+  "method": "stage2b_doit_bm25_dataset_v1",
+  "metadata": {
+    "name": "DoIT Creative Writing BM25 calibration query set",
+    "version": "v1",
+    "description": "Public MIT DoIT Creative Writing user prompts paired with their public assistant answers as retrieval documents, for BM25 calibration.",
+    "source_url": "https://huggingface.co/datasets/ChiyuSONG/dynamics-of-instruction-tuning",
+    "source_file": "curated/1000/creative_writing_1000.json",
+    "license": "MIT",
+    "category": "Creative Writing",
+    "extraction_method": "doit_creative_writing_prompt_answer_bm25_v1",
+    "anonymized": true,
+    "is_template": false,
+    "boundary": "public real benchmark seed (MIT DoIT), not private production telemetry and not final production calibration by itself"
+  },
+  "record_count": 100,
+  "min_cases": 50,
+  "max_cases": 100,
+  "selection_stats": {
+    "scanned": 1000,
+    "creative_writing": 1000,
+    "rejected": 0,
+    "duplicates": 0,
+    "no_answer": 0
+  },
+  "set_hash": "sha256:fca0300eea0480089a2f44f47d60b9a4cb7cbbc5aa6193f13427fa43e4be464b",
+  "corpus_hash": "sha256:a8dd009e134ebdeb575524c8382ecec029d146e2a637b3071c2442d6c3390115",
+  "cases": [
+    {
+      "id": "doit-cw-001",
+      "query": "请针对制造业公司做一份资质获取的规划",
+      "query_sha256": "sha256:5439e0d1987ef4c8fe05a9f81ff33d730f2039f45d235e4ebd9f9dea5ad6297b",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-001"
+      ],
+      "answer_sha256": "sha256:dd9bc9ce7745cbb80bab3c76088216caea6b229dca066dcdcd3f2b76dfb8a359",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "401"
+    },
+    {
+      "id": "doit-cw-002",
+      "query": "以“如果我是中心总经理”为主题设计一个方案",
+      "query_sha256": "sha256:930e7f801729ed231d00e78d61faebf1f073096bb0ffec13a5a894ab6a87bafc",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-002"
+      ],
+      "answer_sha256": "sha256:48a5810f8cb39e8fecd5a1f4f9a3d7cfe9444d5ceb06e804165757b1e22d6781",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "1995"
+    },
+    {
+      "id": "doit-cw-003",
+      "query": "家电行业发展,要求1000字",
+      "query_sha256": "sha256:f872402b059584b05a1ea23ab9a2e10ad8bd2e18cfaac6ee7ecf27158dffe82e",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-003"
+      ],
+      "answer_sha256": "sha256:0979a799ff6deb1f2cbc66e53e0590d957e717080c5e3904f03035e9826fd398",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "111328"
+    },
+    {
+      "id": "doit-cw-004",
+      "query": "写一篇故事，关于会计这个职业",
+      "query_sha256": "sha256:160a43abed358e72ec81375d71f2c6bad42902989dc3cf470a6ad65b3597b83b",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-004"
+      ],
+      "answer_sha256": "sha256:44a9aefbc047335c16208bca2f005b2914600708e88ee7e1d86f60fc22291f0a",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "1996"
+    },
+    {
+      "id": "doit-cw-005",
+      "query": "请用800字说明为什么要研究ct企业一线员工绩效评估的优化对策",
+      "query_sha256": "sha256:5b590a6b6630cbaec9684ae258e2b45203b5176a533752c396b71180f5d22cac",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-005"
+      ],
+      "answer_sha256": "sha256:de9279cb97512e8fa76e183ad8e59bb45e8487397f8f74f0ab081d6d0cb7b801",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "2129"
+    },
+    {
+      "id": "doit-cw-006",
+      "query": "帮我写一条三八节放假通知，要求内容简洁明了",
+      "query_sha256": "sha256:ff2065a0519280bdc8acf52382d866fec81c1cd50c00867c6286c41d6b989fd6",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-006"
+      ],
+      "answer_sha256": "sha256:0ff255e995554ac5022eeda29a5330dfc94021901e42d5f2c899e3dfdcdf23a5",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "3135"
+    },
+    {
+      "id": "doit-cw-007",
+      "query": "请围绕“有山有水，有油菜花，有学生上学”为度假村写一篇宣传文章",
+      "query_sha256": "sha256:ce79f4d43b880bae0c584d4dfbf46f75a4ffb792fcc02182d4ae2694a24b4a10",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-007"
+      ],
+      "answer_sha256": "sha256:f53e430d6bc4e5b6b8c8b010cefa88ca45a8eaa48ed6ac5b58492e5216a60a01",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "815"
+    },
+    {
+      "id": "doit-cw-008",
+      "query": "请用小红书的话术写一段户外沙发的好评",
+      "query_sha256": "sha256:eaea19aae325c6f2be290039dadb2fde6b39068523994717828e08ed4316d1ea",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-008"
+      ],
+      "answer_sha256": "sha256:72821064b9588bb9a056be14482a240cb03ab92a5b7e499f1db43ce6b0d3a3b4",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "874"
+    },
+    {
+      "id": "doit-cw-009",
+      "query": "书写一份1000字的焙烤食品糖制品行业饼店工作委员会秘书长张新奇的2000年工作总结,要深刻,有条理有逻辑",
+      "query_sha256": "sha256:aa50057ac3e3d9ff082365c0423301cd2965d9e89bcf668ea80833763f0124fd",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-009"
+      ],
+      "answer_sha256": "sha256:55354873d692ee356ec7926103be0b3bec3d3a9ff1f63f4baa4af00350019ce5",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "1288965"
+    },
+    {
+      "id": "doit-cw-010",
+      "query": "请以“叶言不由分说运转灵气轰向鬼头”为开头写一篇故事，要注重细节描写，400字左右",
+      "query_sha256": "sha256:aa03a2f70bf76af6e8e896d08df9bc7ea764da272c0a064c057369eedcfb8345",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-010"
+      ],
+      "answer_sha256": "sha256:eecabe3dc462d11241c2d967fe24718b2d1ab16418dbfdc19fcc25cc6d9e7d75",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "2230"
+    },
+    {
+      "id": "doit-cw-011",
+      "query": "请帮我写一篇文章，内容包括“发挥‘定战略、作决策、防风险’作用”",
+      "query_sha256": "sha256:302d8c2e915f1ff4c3034fb0a2f3410a4046b1581c0b1cdcdb3e95ad353b7a59",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-011"
+      ],
+      "answer_sha256": "sha256:39d9f87dcb0faa76e9fcb98313b88c2e2a66cdb9de1b4d373d5bc3763ced00fb",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "869"
+    },
+    {
+      "id": "doit-cw-012",
+      "query": "请根据“双相情感障碍（Bipolar Disorder，BD）是一类既有躁狂发作或轻躁狂发作，又有抑郁发作的情感障碍。在全球范围内，BD 影响着超过 2.4％的人口 ； 2019 年，Lancet 报道我国BD的终生患病率和12个月患病率已达到0.6％和 0.5％ 。因此，BD是一个重大的公共卫生问题，因其常常导致认知和功能损害，给社会和家庭带来了沉重的负担和严重的危害。机体日常生理活动和能量代谢，包括进食、血压、核心体温、血糖水平、睡眠、情绪、激素分泌和氧化应激等多项生命活动都由生物节律所调控，一旦生物节律出现紊乱，则会严重影响机体的身心健康。昼夜节律紊乱是BD常见和重要的临床表现。正常的睡眠-觉醒周期对稳定情绪相当重要，因此当睡眠-觉醒周期被破坏时，常会引发抑郁情绪或躁狂的发作。”写一篇关于“双向情感障碍”的文章",
+      "query_sha256": "sha256:e3dcaa02f775082f68cd48c6870f30c008b71d98e25b4332a2b352991b927d2d",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-012"
+      ],
+      "answer_sha256": "sha256:0c249c9a8430f977b3ff8e1dd4a95bea3711112a7598ef022c92ad8175c97a42",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "767"
+    },
+    {
+      "id": "doit-cw-013",
+      "query": "帮我写一篇AI的短视频文案",
+      "query_sha256": "sha256:8530eca99fcd97c4beb4dc3008764c595607ce3b4cddd445bab63d06cda72b35",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-013"
+      ],
+      "answer_sha256": "sha256:1e7794d20d4f29d8c84c0ea9661e3a1c35c28667dedd50ededf4f175deac1e21",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "1891"
+    },
+    {
+      "id": "doit-cw-014",
+      "query": "请以以下内容为开头，写一篇题为《跟着北京网站优化公司仕言科技来谈谈超链接对于网站SEO优化的作用》的文章：对于广大站长来说，超链接是一种每天都要接触的链接形式，对于网站来说，SEO优化也很重要，超链接主要是指当前页面的一个链接，指向另一个页面，它是页面和页面之间的桥梁，除了链接页面，还可以链接图片、视频、文档和文件夹，跟着北京网站优化公司仕言科技来谈谈超链接对于网站SEO优化的作用。",
+      "query_sha256": "sha256:9fe58af9628e0ed627a0c7155ce43e10df2b2d9ffe3b57853abe9234072553f2",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-014"
+      ],
+      "answer_sha256": "sha256:d5ea4f3a57d510938eaeb9fa63a420742c43d698afebe60a4fba4c859333ca50",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "1509"
+    },
+    {
+      "id": "doit-cw-015",
+      "query": "请帮我写一篇10分钟的岗位晋升演讲稿，谢谢！",
+      "query_sha256": "sha256:65bd20c28d8c7fddb5d46353055718b4075acc481205040c87b49a8fe9ddd7d0",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-015"
+      ],
+      "answer_sha256": "sha256:d74190ed93ebefd6c14f766ecee9ac12ab66b2d4ede92e716d380a3edba0efa0",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "893"
+    },
+    {
+      "id": "doit-cw-016",
+      "query": "写一篇黄晓明的文章",
+      "query_sha256": "sha256:fd8a0951a91d85ac6eb21a0a79e6713f0b9aa6c33a6de63e4c54bd144108d8be",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-016"
+      ],
+      "answer_sha256": "sha256:8cfdda8ba24687bc36f66f2e5ab0d5ea3bd7d9aaf084fe4678686eed431d9721",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "2566"
+    },
+    {
+      "id": "doit-cw-017",
+      "query": "请帮我写一个一定会火的短视频脚本",
+      "query_sha256": "sha256:d73248d33bc3305105112dfc74de0611a81e244628aa231d9a70a413ea5bb53b",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-017"
+      ],
+      "answer_sha256": "sha256:c8bbda9a38b850a9d6ae4e71c07423ec27d1b2458e7b770a25962ab0d70ca555",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "608"
+    },
+    {
+      "id": "doit-cw-018",
+      "query": "写一篇软文：为什么高考日语比英语提分快？",
+      "query_sha256": "sha256:1e6ac47fad2092015fa29a2079db948be1fb1a1b3de8ff7453f4097e40e5b98f",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-018"
+      ],
+      "answer_sha256": "sha256:941fc466c98c96ea36ce3fa1714a602b7db403d13e9c2a52f38aae507cee86dc",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "1447"
+    },
+    {
+      "id": "doit-cw-019",
+      "query": "用 god 写一段英文",
+      "query_sha256": "sha256:7c4bb6f566d89a588372e81156465f158ec08f8a81f5505e6bae28092a5f773a",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-019"
+      ],
+      "answer_sha256": "sha256:6dcd57e897446ec2ff90de72ef51063e699ee4a2d0b32d172c26e7aa97ddd97b",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "2066"
+    },
+    {
+      "id": "doit-cw-020",
+      "query": "写一篇关于短视频的文章，要求内容包括：短视频是人们日常的主要娱乐方式，已经成为大众日常生活中的一部分。",
+      "query_sha256": "sha256:fc8c8a2b8960f2d947d1c107d5ae422f5870e64dece4d36e593e9367c5d6735c",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-020"
+      ],
+      "answer_sha256": "sha256:ed2dee29f4e320c554d7a73c446a2ef5e81e86e4bb50329f05ca731eecde3710",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "500"
+    },
+    {
+      "id": "doit-cw-021",
+      "query": "成都哪些小吃好吃？请写一篇成都小吃攻略",
+      "query_sha256": "sha256:bfd79f5e6bdfb471a69af370894be630ea9e26ff2d33f4b985cec4314389f1a5",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-021"
+      ],
+      "answer_sha256": "sha256:efbca49de5ae872aa117552e0c6c7728a3615707fc80d82ade8a28069a610466",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "2615"
+    },
+    {
+      "id": "doit-cw-022",
+      "query": "以“最熟悉的陌生人”为主题，写一篇文章",
+      "query_sha256": "sha256:2d60f94917ea851b5c166e31de7521e96daaefde935da794d6de8afa75545b95",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-022"
+      ],
+      "answer_sha256": "sha256:4b29e6efb2b29cfd293bcbc95c2bd41559cfe146e09f63fc9e3b1df55afc5856",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "15"
+    },
+    {
+      "id": "doit-cw-023",
+      "query": "写一篇不低于1000字的标题为“餐饮品牌设计和餐饮空间设计的关系”的文章",
+      "query_sha256": "sha256:61f2eea531df1d705ab0e959d16d7ccda92ec96bd872e280f13df391586d98ff",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-023"
+      ],
+      "answer_sha256": "sha256:0dd881c0be1473b46fee7efecc8db2f6134040b1238f100f8708c7bf3989bc12",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "1743"
+    },
+    {
+      "id": "doit-cw-024",
+      "query": "围绕“秋天，落叶”这两个关键词写一篇文章",
+      "query_sha256": "sha256:aa5a7957258455c6098012862c8101f826983c922c16c5711197dc092fa84144",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-024"
+      ],
+      "answer_sha256": "sha256:08121765c238f0f513bafff6c3821e76465028964b7668eeb5803fe49be423cb",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "1061"
+    },
+    {
+      "id": "doit-cw-025",
+      "query": "清远汇金融力量促知产转化，打造良好知产运营生态 1、立项该项目的作用 1、对接了企业完成广东股交挂牌展示 2、对接企业完成专利转化备案 3、下一步对企业继续服务的内容 4、该项目立项的意义 5、总结推广专利转化对接服务经验，广泛宣传专利 6、转化服务工作，在市级以上媒体平台宣传不少于 1 次。按照以上大纲，写一篇文章",
+      "query_sha256": "sha256:249cbbf3b010ac12125744f704a273a8dd13bdb4f104616cfa2553fc8a88874a",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-025"
+      ],
+      "answer_sha256": "sha256:92533f3c087345f95b36c15245099c90357060320713f6a1aa7c214ac491a6d9",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "2713"
+    },
+    {
+      "id": "doit-cw-026",
+      "query": "写一篇一千字的文章关于：孩子不爱吃饭，家长别着急，这三个方法教给你",
+      "query_sha256": "sha256:a5277298f184340d5096a2e8ac441e278362a02ea16941f77cedec23418d19d6",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-026"
+      ],
+      "answer_sha256": "sha256:c9701daa7e22db541fc0b2c6325d0447d6532f50e4ad282c55ceee0e6658df64",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "240"
+    },
+    {
+      "id": "doit-cw-027",
+      "query": "请根据短视频市场需求写一篇文章，600字左右",
+      "query_sha256": "sha256:5d8db34a7a4abd72cbbc398126637cb5c377067316fba6f3c103992cbbd98a86",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-027"
+      ],
+      "answer_sha256": "sha256:d6790e67b84ed18c1f6c134e40f041b09281e21e753369929f19a13e1858122f",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "1695"
+    },
+    {
+      "id": "doit-cw-028",
+      "query": "写一篇详细大纲关于：如何帮助孩子更好地学习中文？",
+      "query_sha256": "sha256:547817eca63d1bc0c70db7c13f58f31c4c7bfd0b44aae8e0c7f50236fb886b92",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-028"
+      ],
+      "answer_sha256": "sha256:c063d55db6202abda556b19ca825b538a5df6aea05f90dbea5ce0a19eab08d3f",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "152"
+    },
+    {
+      "id": "doit-cw-029",
+      "query": "请围绕“文化是带领还是引领？”写一篇文章",
+      "query_sha256": "sha256:056f5dd4d1162e9ac692a3b987e6a4ced7c5876289c4d818c56d2f6b2115d50a",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-029"
+      ],
+      "answer_sha256": "sha256:4158ee037c3b8110a29bf57a88f8bbcf52b81a3bad2e2a802ace15a366a711da",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "672"
+    },
+    {
+      "id": "doit-cw-030",
+      "query": "写一篇宋制汉服婚纱照的文案，要求不少于200字",
+      "query_sha256": "sha256:08eb359ac2d007c360f4dcfb86c7171843616e7461e9ea9933c07a58a17c1561",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-030"
+      ],
+      "answer_sha256": "sha256:e778ad6de2583e7d7742ef057502564f56c17b98e63b9990026d5c78f8f0b87d",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "1826"
+    },
+    {
+      "id": "doit-cw-031",
+      "query": "请帮我写一篇《物种起源》的学习心得",
+      "query_sha256": "sha256:7b57f3207d47f013a26bc291b43dfc417f314cd9ad1b9e820d7605f4261e34e1",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-031"
+      ],
+      "answer_sha256": "sha256:f9b7788daa93bf61a047d31f13d160be15aed7705fbea4bb3c07419dbf8de899",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "1470"
+    },
+    {
+      "id": "doit-cw-032",
+      "query": "请帮我写几条关于卧室全屋定制的注意事项",
+      "query_sha256": "sha256:c93241f74a3cca71da776ee0d2588eff4173b73c81f03950fee9a055213ab86e",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-032"
+      ],
+      "answer_sha256": "sha256:cb161d0967dec278d8a69e9222e949dd1dd7a96694a16eb18a6e9b4015544329",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "1769"
+    },
+    {
+      "id": "doit-cw-033",
+      "query": "“诚信、透明的发展理念，本旅游中心，与中国境内旅行社一起合作，”补全这段话",
+      "query_sha256": "sha256:c468eb18be45c38e31789868fdd7af93aa1c46e95bca7413fbb04835b1b3e930",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-033"
+      ],
+      "answer_sha256": "sha256:df6c12a2dcf556f3225da2fb5c70496149571c9e1572416fdd5efb89e8fd1c07",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "2983"
+    },
+    {
+      "id": "doit-cw-034",
+      "query": "请理解这段话“高考那年非典,数学很难,人心紧张,最终考的还不错, 而今都过往云烟”，写一篇作文",
+      "query_sha256": "sha256:2aba8578e5595343a452f736e2a6d79d81c68167b2461906c6336d11a5996fff",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-034"
+      ],
+      "answer_sha256": "sha256:2ef2d94afaf1584d93a6062cad5d8176d82d2fa035a31dfada1e208c5412aedb",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "143579"
+    },
+    {
+      "id": "doit-cw-035",
+      "query": "请帮我写一份同期举办展会的开展计划书",
+      "query_sha256": "sha256:8f39c329972e89c2cd189799f720249fc67135e84e64b0e1caf9c87cfbf00c55",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-035"
+      ],
+      "answer_sha256": "sha256:6c79e9fdd3c1d4624521107b90c42e36158a8fbae3dedd219203ac2e415b7e0f",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "613"
+    },
+    {
+      "id": "doit-cw-036",
+      "query": "请帮我写一篇物业品牌推广策划方案",
+      "query_sha256": "sha256:201e90f3b2397baa9bb1f235317648d49bcbdf754f77950c675ec2344fd878c4",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-036"
+      ],
+      "answer_sha256": "sha256:de9cd9a66a11c96d2ab9717a8f9b14ae3010c17e138d13780784448e43c14544",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "2277"
+    },
+    {
+      "id": "doit-cw-037",
+      "query": "写一篇自然教育基地环境介绍，字数要求不低于300",
+      "query_sha256": "sha256:cd5e01ca3b645474da5f3df06e865764759e9a074091e355e794ff794044c8ae",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-037"
+      ],
+      "answer_sha256": "sha256:f4a8ae60f1c14ad2de880d274dda2ffdba9c38306496f6f8405edbf79d4cfe95",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "1156"
+    },
+    {
+      "id": "doit-cw-038",
+      "query": "请帮我写一篇学完《论语诵读》对我的启示",
+      "query_sha256": "sha256:59238955251699dbf1cc56d61b080cba6dbacc252b1964af4bd8c694e492f9a6",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-038"
+      ],
+      "answer_sha256": "sha256:cf81e6cb79ee22c98996a6327ec763d9d85e9f8838cd58948e5645d041f9d626",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "2362"
+    },
+    {
+      "id": "doit-cw-039",
+      "query": "请帮我写一段雨水节气结合浴室取暖器很短很短的文案",
+      "query_sha256": "sha256:be5e7b7e50ffb602f5967b42a77102e6e9aaf96c3d64560ee728bc771d808da2",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-039"
+      ],
+      "answer_sha256": "sha256:a29eb1adc8eff68e859d3687967837a0918587dfe5d2a672d7bda4a5f15cc02f",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "2242"
+    },
+    {
+      "id": "doit-cw-040",
+      "query": "请帮我写一篇公司通过AEO认证的报道",
+      "query_sha256": "sha256:cd042b71eb10ccf8e2ca29b67a3fd2812d0356dffddac09e320be37ad3dd4edd",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-040"
+      ],
+      "answer_sha256": "sha256:35e0792f2571b54aaa8b5dcbf602a0c0bcdabfa2d7b1cd6913b7a908d1597171",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "2726"
+    },
+    {
+      "id": "doit-cw-041",
+      "query": "帮我写一篇关于M12航空连接器的论文，字数1000字",
+      "query_sha256": "sha256:86aae3e1079e1101ba9188f3974255088a7a943b604f429b8516090f1b2839cf",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-041"
+      ],
+      "answer_sha256": "sha256:e84301711e5a60746747ae535f5350f62708537c8c17dac96945c850bb3452f3",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "2817"
+    },
+    {
+      "id": "doit-cw-042",
+      "query": "请帮我写一篇关于感谢师恩活动的心得体会",
+      "query_sha256": "sha256:67e56df287ee325f8bb9a310d85e1e3e3d4101f6be06316fa1b010a227e48216",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-042"
+      ],
+      "answer_sha256": "sha256:38543aa0451d5ffe5225ec16f8c5527290673cd3d5a84f61be854e7d6c19d459",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "2594"
+    },
+    {
+      "id": "doit-cw-043",
+      "query": "写一首关于王阳明心学的诗歌",
+      "query_sha256": "sha256:2f6d72b5b9debd9e0f8f3ef22d7f5afee7a6e725a770334a101278348993cd51",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-043"
+      ],
+      "answer_sha256": "sha256:d7adcbf1154503237e011f12bce61c36ba91da24b1f0eeff4fd0d55e7591de2b",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "2719"
+    },
+    {
+      "id": "doit-cw-044",
+      "query": "写一篇情感小说，以如果注定和他没有结果，但是又特别爱她，你选择要过程还是转身就走？为开头",
+      "query_sha256": "sha256:921b61c9f60134b3fdd3622958f007e8d83261323f71d772068a32a23665532a",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-044"
+      ],
+      "answer_sha256": "sha256:2ace3e034135f772c1312170f89eaae8797636339b40b9d96abb822fe62135be",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "2106"
+    },
+    {
+      "id": "doit-cw-045",
+      "query": "写一篇吸引人的小短文,结尾加上,今天肯德基疯狂星期四,v我五十",
+      "query_sha256": "sha256:b8f1f8f8dbab5ca182b85cd635c7e1fd00a162a265b8e234a1a3fa8c8d5daa93",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-045"
+      ],
+      "answer_sha256": "sha256:cc4831db8a0a65e8ee631ecf8fe69cd5d6b7f55a0a7386aee8907b675db7718d",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "309329"
+    },
+    {
+      "id": "doit-cw-046",
+      "query": "请根据另外有个候选人,想从产品转UX,所以约了今天15点,魏欣三面下 我初面+max复面都是通过的写一篇故事:",
+      "query_sha256": "sha256:edeacd86b1068a58d18bb0d63f519e674c0619456f32536d7c51a7d7ac431868",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-046"
+      ],
+      "answer_sha256": "sha256:bfc95d16a93c8a6be7f5b700e7dde6a750aa2191d9f42b142ec8b8f5e5a3a231",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "145411"
+    },
+    {
+      "id": "doit-cw-047",
+      "query": "请帮我写一段洛阳三日游文案，200字左右",
+      "query_sha256": "sha256:a59fc5ec0e52de452d74e5182236c0e8f78cf913aa26071f081bc4bd9fede80a",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-047"
+      ],
+      "answer_sha256": "sha256:8ad7dc6509b4b17a94e04aa889e63fed11306877495ed12c92e2962c115ede28",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "1548"
+    },
+    {
+      "id": "doit-cw-048",
+      "query": "写一篇西藏的旅游攻略，包括吃、住、行，景点及特色",
+      "query_sha256": "sha256:30f1f82a76f0ac50a5b4d26ccf09135b15ca6ee00757c62a00e2dcf7beb97776",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-048"
+      ],
+      "answer_sha256": "sha256:47ba543200a141270a9089993ce7adf0fb54101fdc0acdb9beb5485e8b482149",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "2807"
+    },
+    {
+      "id": "doit-cw-049",
+      "query": "写一首关于春天的诗",
+      "query_sha256": "sha256:0fa5db3387597535835e1a3dae24ff5ee10586e989dc87c4ec3b2296c46a7b43",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-049"
+      ],
+      "answer_sha256": "sha256:89446664c00d4ccfcd97391c64ad80e9e8f02643a3025f77563ff3447e0e0e4b",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "1998"
+    },
+    {
+      "id": "doit-cw-050",
+      "query": "帮我写一篇500字的重庆旅游攻略",
+      "query_sha256": "sha256:c4bd0f2a2d29a1f3b54c5e459bee4af69576598a10d6e2a45ff38f6a47843870",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-050"
+      ],
+      "answer_sha256": "sha256:e3827a30ebd59c12f52266ff035c8a284a5ca6cf517234a3d2a86e10fb41a037",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "1514"
+    },
+    {
+      "id": "doit-cw-051",
+      "query": "以过年祝福为主题,为正正写一段贺年词:",
+      "query_sha256": "sha256:6ae49735411ed2ef1f8ff7519489860e28f93ba8dfe9109919fd6ce0abea1026",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-051"
+      ],
+      "answer_sha256": "sha256:11de0240bbe7228c596762e775e851dc5130fc4014a6fba01fcb6284d6a8f5d1",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "910437"
+    },
+    {
+      "id": "doit-cw-052",
+      "query": "以“新冠肺炎疫情成为淬炼网格员队伍的烈火熔炉”为题，写一篇文章",
+      "query_sha256": "sha256:9ca1ee0e251e89fd1e9f7384034e27f41a304bd076bcf445743436390b73ad03",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-052"
+      ],
+      "answer_sha256": "sha256:dc52193ea4cf5eecf7625857b07b7fae5901555fa6e580bda9498c4e21879099",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "1057"
+    },
+    {
+      "id": "doit-cw-053",
+      "query": "请根据“花瓶现代简约艺术摆件简花插客厅家居创意摆件软装饰品花瓶”帮我写一段好评",
+      "query_sha256": "sha256:f421336318730f3b39541b91d532bf72f191cad9f990994456bf15aab720f9f5",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-053"
+      ],
+      "answer_sha256": "sha256:f079782c62e13c1c9fc7716abfcd2347c92459a12a7c294fbf9e0b45a7d81e6a",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "2500"
+    },
+    {
+      "id": "doit-cw-054",
+      "query": "写一条家务手套的脚本",
+      "query_sha256": "sha256:7e824e87e66d384ffe1f9a2b964bc8e0a9e4dd8feba2a3f45e7c2192c78e5ae6",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-054"
+      ],
+      "answer_sha256": "sha256:9b4bcf8884ec05e62581a5e337a67fd14a1bff93f58735262e4784484065ac72",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "1686"
+    },
+    {
+      "id": "doit-cw-055",
+      "query": "请帮我写一段描写可爱的猫的文字，200字左右",
+      "query_sha256": "sha256:d50ecaac3824a256f448d0720eb2d256b3a100ad6554b7d26227b2ba312a2353",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-055"
+      ],
+      "answer_sha256": "sha256:4cb49583a6dabb2b80db609cacfb639ae1126fa4d9c397f62c0cde83232194d8",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "692"
+    },
+    {
+      "id": "doit-cw-056",
+      "query": "请以“有美人兮，见之不忘”为主题写一篇文章:",
+      "query_sha256": "sha256:8d6f39e60c5598fe953f64b8b11644a0c192dfb6ca96f6a5b59892adffe7e7b2",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-056"
+      ],
+      "answer_sha256": "sha256:a8abbf02b03908e6d65b3a45863d9345298dbb67e0f668c0ded2a163519db8ca",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "609868"
+    },
+    {
+      "id": "doit-cw-057",
+      "query": "请帮我写一条关于供暖的公关文案，300字左右",
+      "query_sha256": "sha256:70285c77c3a4fc700b148854394f9dbb56616c0c6b292db05cfd82bb2f603770",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-057"
+      ],
+      "answer_sha256": "sha256:6be1d0a310baa8067d6ae0e0d7cf14da3a9140c7665c16b6162e17e4124fd9af",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "2073"
+    },
+    {
+      "id": "doit-cw-058",
+      "query": "谈谈你参加儿童红歌演唱一周的收获",
+      "query_sha256": "sha256:4c8bfd6f938e79223be520adf2a9ed0555f3261cf87dda9ae4d56125523330f9",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-058"
+      ],
+      "answer_sha256": "sha256:1737ddca447fb94f3785d2320041d2edf0a043b25a8e9ff3cf3046f744a14d74",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "1224"
+    },
+    {
+      "id": "doit-cw-059",
+      "query": "请根据“惊蛰 创意海报 文案”以上关键词为图文广告公司写一段宣传文案",
+      "query_sha256": "sha256:e5a8daac0eddc7769fe03c5662119c2422de1ae63b29d2c7c7a9a7bd6a6cd273",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-059"
+      ],
+      "answer_sha256": "sha256:e114e4a34703eb9377f609223bf3e7ca52af0fcab0cdd532e917ac275d57b47b",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "511"
+    },
+    {
+      "id": "doit-cw-060",
+      "query": "请以“功能对等理论视角下汉译对比分析——以大陆和香港苹果官网iPhone14产品为例”为题写一篇文章",
+      "query_sha256": "sha256:ce4f23a97ef01102bbb010958b6de26fe4fa1f4b5d555edefc4ec7c9f1d87d9a",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-060"
+      ],
+      "answer_sha256": "sha256:a93ba39c1a07d8297a3489e835defdb6588acaaa4ea2551d324df8117930c586",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "1547"
+    },
+    {
+      "id": "doit-cw-061",
+      "query": "请帮我写一份工作报告，内容包括：三年的疫情，导致收入和财政收支状况、经济总趋势",
+      "query_sha256": "sha256:d7ce5e8616e812ad7d89d0e0a66d5999f48540c042621b2b75a8cff043c13f2d",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-061"
+      ],
+      "answer_sha256": "sha256:dd9089bcfe58c94a58735dd19ae5cce8dd7746b15d61e904fb44980d20b43471",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "2623"
+    },
+    {
+      "id": "doit-cw-062",
+      "query": "写一个2020年真皮休闲老爹鞋的广告标题和唯美文案",
+      "query_sha256": "sha256:81c61787a84e3bd608fba35ac3e09197f11f778eac574e89286b9072cd72392d",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-062"
+      ],
+      "answer_sha256": "sha256:193a375bd366cdb5f000bf6fa604d7c0433884df8c11473a35b956bd6cc4f18b",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "2968"
+    },
+    {
+      "id": "doit-cw-063",
+      "query": "针对现在大学生就业难的问题写一篇网评文章",
+      "query_sha256": "sha256:7803982f7231950a0aef0d290274e04d9b9983f0fde6f7063661109ab95a4652",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-063"
+      ],
+      "answer_sha256": "sha256:368445a0ee498daba0465591587c7369f63715948b76794f046feb33152315f7",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "120"
+    },
+    {
+      "id": "doit-cw-064",
+      "query": "请帮我写一段情人节礼物上的祝福语",
+      "query_sha256": "sha256:1004c00477b39950280d3d8827a0e612be75786de2a649091c3f47de36ddc973",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-064"
+      ],
+      "answer_sha256": "sha256:2a3730f748d4cd4220cb1305a739b07b80a463cb883b1dff3394f814f0f9ee88",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "2439"
+    },
+    {
+      "id": "doit-cw-065",
+      "query": "请写一篇自我介绍，内容包括：24岁，爱唱歌跳舞",
+      "query_sha256": "sha256:c68e284564b3ed328665e97658a82b8d4e7e4551f28f4659c5ef752a421211d7",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-065"
+      ],
+      "answer_sha256": "sha256:56b862ee4334ef77ef4530b1514296865138c2b9a800af37f005a9389b9b6fa2",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "581"
+    },
+    {
+      "id": "doit-cw-066",
+      "query": "请根据“方向感好是李昕嫣的一大特点，劳动工作中，涉及到地图或劳动区域的问题，大多是由李昕嫣来为大家带路和确定区域”写一篇文章",
+      "query_sha256": "sha256:82df4d95fcf9578d9833e0b676aca4b5e1a3ad1e965df4657777850cdd1378a3",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-066"
+      ],
+      "answer_sha256": "sha256:09a2d80d709f25a9f59d6c026049f6c1716c28e09caa02acab362b9150c7ed4d",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "669"
+    },
+    {
+      "id": "doit-cw-067",
+      "query": "写出来帮助家长做家务的感受，字数不低于200",
+      "query_sha256": "sha256:2b86d44990ecbf24a4686ded32a15efd0b71a95d3da759d0847d1d83e916d44a",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-067"
+      ],
+      "answer_sha256": "sha256:adcd597ba756f557c79f9724021809f678d812bc825a6d50e160c5966c279d61",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "1461"
+    },
+    {
+      "id": "doit-cw-068",
+      "query": "核算员工作小结:",
+      "query_sha256": "sha256:155f0d2466c2f8a877458ff544638422c6dd4aecd53a450654bd36842074db8a",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-068"
+      ],
+      "answer_sha256": "sha256:475f668e0cd54f0527f29a1a79758e4af064b50c3efc5c75e2279c28fd1733e6",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "102409"
+    },
+    {
+      "id": "doit-cw-069",
+      "query": "写一篇300字钓鱼日记",
+      "query_sha256": "sha256:2fb9ea98e3a75ae63b4ef19f921ec282a5618ab47788e1fb0769c61f322f32a0",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-069"
+      ],
+      "answer_sha256": "sha256:c1b7c198c8d56d78c0d620b2f11def289624abcdc3fce758c8ff2de7db633ec8",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "2290"
+    },
+    {
+      "id": "doit-cw-070",
+      "query": "帮我写一段AI做画的描述词",
+      "query_sha256": "sha256:6aae9cfac89efd7f1752102f8bc0fcb3e32dd1520544fa4d9f7a1f9972a68964",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-070"
+      ],
+      "answer_sha256": "sha256:8df8ec272a68b97f0cf427c31460a46c7e0981abb0176fe504e96383a60b9c57",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "2158"
+    },
+    {
+      "id": "doit-cw-071",
+      "query": "帮我围绕用户打造生态平台写一篇文章",
+      "query_sha256": "sha256:d382f2b8dde8b7f382c09adb1fa7523a7831c2290fe11b9b9f7b272e4ca41354",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-071"
+      ],
+      "answer_sha256": "sha256:83b5632e5cc66afd99d1f5d25ef80e73e90c4af3997dcb9fcd8f7007d0505a62",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "3147"
+    },
+    {
+      "id": "doit-cw-072",
+      "query": "写一个关于捐资助学的英语结束语:",
+      "query_sha256": "sha256:900204d73a99bfa5a3b9c022bac5843c46a369f3c84d26cd05ceb4c2b629f32b",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-072"
+      ],
+      "answer_sha256": "sha256:63de6561041a63a1b37266e578d97a557919e2f3023a5a1cf233be0aba77abf9",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "29551"
+    },
+    {
+      "id": "doit-cw-073",
+      "query": "写一篇文章大纲关于：泰戈尔文学中的面包与苦难",
+      "query_sha256": "sha256:c70a0faffb0c902a6dd9801b23eee9d3a9eda51002b5b375e7e89136fcb7c68b",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-073"
+      ],
+      "answer_sha256": "sha256:2840061fec63a4a862dfc186cc1a86ff96105cf88610619d20e25a8b024f2daf",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "176"
+    },
+    {
+      "id": "doit-cw-074",
+      "query": "写一篇关于宿迁外婆楼餐饮企业员工激励问题研究的文章",
+      "query_sha256": "sha256:a3c5012e01d95fd47cd746a48aaed7e0b816c9f9e20a4dcefd188439d573b0c6",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-074"
+      ],
+      "answer_sha256": "sha256:ce01b3c7b229a1d2be66f7ee2e465b1ed3856ab604ad0f82e3ace03c8253286e",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "1121"
+    },
+    {
+      "id": "doit-cw-075",
+      "query": "请以【市政中心安全巡查】为题写一篇简报",
+      "query_sha256": "sha256:61bdf6a369428ae319ff8ce74c634b1857aeb2d142e05683e42d13ec7726f923",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-075"
+      ],
+      "answer_sha256": "sha256:271586bc7a0f02c46a760c437d6a98caac773ba55686b1481ac36c64f32a2a31",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "1025"
+    },
+    {
+      "id": "doit-cw-076",
+      "query": "帮我想一个关于云闪付APP的推广文案",
+      "query_sha256": "sha256:2c95f2b560a0803d1df9fd183992ba31846c125e4d342a12f67e94bb827b2f37",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-076"
+      ],
+      "answer_sha256": "sha256:60cf39a67148a0c46dee07c49b1dac4c1694b994386f2ed37e37300743649943",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "1404"
+    },
+    {
+      "id": "doit-cw-077",
+      "query": "请根据“首先需要企业有品牌意识，同时这种品牌也必须要精准对接消费者，否则市场不支撑也难以成就品牌；其次是网页或者说企业信息输出途径选择。笔者将产品列在网页之后，因为对于网络营销来说，独特的媒体资源相对更重要。然而现阶段很多企业缺乏媒体策略，认为自媒体是低成本媒体，越全越好，实际上这是贪多心理，会导致推广部门效率低下，也容易导致媒体之间矛盾。”写一篇文章",
+      "query_sha256": "sha256:8fcdc0ca3ea402794432c5e10f6b5123862dec9bba81f113f301ae43f8f22808",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-077"
+      ],
+      "answer_sha256": "sha256:9c83577c656ca47af8ba3a1f04dd3ede0f9f5b83fd8b031abc4eeb945e744971",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "740"
+    },
+    {
+      "id": "doit-cw-078",
+      "query": "请用比喻和夸张修辞手法写一段关于唐山大地震发生时的惨烈景象的文字",
+      "query_sha256": "sha256:5e988c4cf8dd98ea3d923a07c0e823a821d8010565fdc84001f4dff14dd6e66e",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-078"
+      ],
+      "answer_sha256": "sha256:840453ea22fcf32a9f39ab0e9f898d942a7f078d030548b44aa4ccc38213dbd4",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "1815"
+    },
+    {
+      "id": "doit-cw-079",
+      "query": "写一句跟下面上联对仗的下联,上联：探索前人未达之境,下联是:",
+      "query_sha256": "sha256:b87900644683016c302fd495bc055f551da220b65fac4d48fe7815675c1a0342",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-079"
+      ],
+      "answer_sha256": "sha256:68df2314dc7c0d33abf1613d98a8430a3b328a05c920071182503ce15d7cd21e",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "220239"
+    },
+    {
+      "id": "doit-cw-080",
+      "query": "写一段关于2020华南口腔展在哪里承办?什么时候举办的介绍",
+      "query_sha256": "sha256:8632b99df6d907f16df995bfc1d01a69d9a8f2e5051365b5426fd6f924cfabd1",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-080"
+      ],
+      "answer_sha256": "sha256:b8f2a460b002567a5457ea27921397dc02f78fe91a5366cf5a24d5690d09d70b",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "2379"
+    },
+    {
+      "id": "doit-cw-081",
+      "query": "帮我写一篇大疆无人机的营销软文",
+      "query_sha256": "sha256:dd4684f103083a45ce4789b2a0abbe5eb658f6a646813f467fe559ec4dffc100",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-081"
+      ],
+      "answer_sha256": "sha256:b4f8ac631a0bd93ba913df2955d6e29f7f18409507728ee09c44bb90e356c82d",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "673"
+    },
+    {
+      "id": "doit-cw-082",
+      "query": "写一个校园爱情剧本，女主叫小美，字数不低于200",
+      "query_sha256": "sha256:ee9fc08fe14fa7d1799bab857c43a2f3ebba0b1fe90b65a7a49d06625d186308",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-082"
+      ],
+      "answer_sha256": "sha256:95d5f14842df603ed3b7fc163b94f5c7f65c03a0a456c8721ffe1a69b9f4f2cb",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "1166"
+    },
+    {
+      "id": "doit-cw-083",
+      "query": "写一段适合有钢琴伴奏的背景读出来的情人节表白的话（200字）",
+      "query_sha256": "sha256:863844ec6d324eb6144e7574312b9ca2d921b1cd3dc09e77084534e28fec8dab",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-083"
+      ],
+      "answer_sha256": "sha256:9655fe685ae366b12cb0d49e7f21345b396e5e9e1dccdb4137e4495eeadcda7d",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "419"
+    },
+    {
+      "id": "doit-cw-084",
+      "query": "写一篇一箭双雕的成语典故：一箭双雕是一个汉语成语,最早出自唐·李延寿《北史·长孙晟传》。 该成语的意思是指射箭技术高超,一箭射中两只雕。后比喻做一件事达到两个目的",
+      "query_sha256": "sha256:7bb086254b33544f7980d16d696b407556711f1aad20a12fe4b49f7f1591cfcf",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-084"
+      ],
+      "answer_sha256": "sha256:6ffe13d30eb69e5164036921b50cf83cb3f812e246c508814749948a2f851bf2",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "287481"
+    },
+    {
+      "id": "doit-cw-085",
+      "query": "近年来,浙江省着力强化创新驱动,深入实施人才强省,创新强省首位战略,深入实施“鲲鹏行动”“高层次人才特殊支持计划”等人才工程,全省高质量发展水平持续提升。????? 新时代浙江青年,在各行各业,不同领域开拓创新。如95后姑娘徐枫灿,在空军航空大学刻苦训练,满分通过考核,成为我国陆军首位初放单飞的女飞行员；90后青年工人杨杰,从一名普通的学徒工成长为“浙江工匠”,获得浙江省劳动模范称号；之江实验室智能超算研究中心团队,35岁以下成员占比近九成,勇闯国内智能超算领域“无人区”,斩获超算应用领域的国际最高奖项——戈登贝尔奖……?????? 以上材料对你未来发展有什么启示？请写一篇文章。【注意】①角度自选,立意自定,题目自拟。②明确文体,不得写成诗歌。 ③不得少于800字。 ④不得抄袭,套作。",
+      "query_sha256": "sha256:5d031cc6bf19ccfb5b0a532c9946359ce9ae7eba337ae5eb2476faea6728d370",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-085"
+      ],
+      "answer_sha256": "sha256:e18c7070d7652fdbcb924b0a7b31cf573b8b3ae84a1387f4dec42c1113209db2",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "76472"
+    },
+    {
+      "id": "doit-cw-086",
+      "query": "帮我写一个电影假装情侣解说文案 1000字",
+      "query_sha256": "sha256:8ada2e386925c691fb335dd1e15207d798d6d5e298afc24a4782a62aa38f1a4a",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-086"
+      ],
+      "answer_sha256": "sha256:7f02e6ed0537e17f4ec87a045f628614525de51e4b7d9f0657f7188b434a709d",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "1136"
+    },
+    {
+      "id": "doit-cw-087",
+      "query": "写一篇关于矛盾纠纷一站式化解平台实体化建设的文章",
+      "query_sha256": "sha256:7d9242486f77a5a5c2b1fe043ce8b8eb2f25e3abcda2be71c00f4f16b5836abf",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-087"
+      ],
+      "answer_sha256": "sha256:804cf499ecd778a1a0a3352c611a5e20b0ddb5581e626f02c607816c7bd3a461",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "277"
+    },
+    {
+      "id": "doit-cw-088",
+      "query": "请帮我写一篇年中的自我评价，500字左右",
+      "query_sha256": "sha256:e47ce4de48a57d89b13c8bf713645b4c421c391fbfa35efa58917e0c7a19b098",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-088"
+      ],
+      "answer_sha256": "sha256:e1309dd20d52f915a5764cb9cbe13abcb7468e63a677124dec722e815c572ea3",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "691"
+    },
+    {
+      "id": "doit-cw-089",
+      "query": "围绕“用户旅程 CDP”这几个关键词，写一篇文章",
+      "query_sha256": "sha256:fff3384fa66c0b852c8c7024f47252415d436c11e7f7a6d6e78aeab2ad9c5aec",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-089"
+      ],
+      "answer_sha256": "sha256:793b6dedb70f7ec78dadf23f5b85b9d1df8f11d70aa5307189b932c4c5f264f2",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "114205"
+    },
+    {
+      "id": "doit-cw-090",
+      "query": "帮我写一篇关于网球馆运营方案",
+      "query_sha256": "sha256:5b0ed037579315379d622cc14412b341efadc25c01445d907a3a7bc0c2e125a1",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-090"
+      ],
+      "answer_sha256": "sha256:947bb12b2759f1fdf74d1aad8b2eb6fdc8292af77220befb4a61c26cc7e4058d",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "3084"
+    },
+    {
+      "id": "doit-cw-091",
+      "query": "请以“英国航母在南海“逼退中国潜艇”？真相是……”为题写一篇新闻稿",
+      "query_sha256": "sha256:ac74e370dbd200901ce4a46b0e2a1416f6f88731809d906564154ed496ac2d28",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-091"
+      ],
+      "answer_sha256": "sha256:b4ed92e3815c5d1ed0d676eeb9b17a42eee61f79bc5821ad78176badd426b6ef",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "1556"
+    },
+    {
+      "id": "doit-cw-092",
+      "query": "请帮我写一封信，内容包括：对老公为家庭的辛苦付出表达感激",
+      "query_sha256": "sha256:6f39553aa444efc1d5cefbff677c172dfe244d7f90d41b234649515dc6ecb830",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-092"
+      ],
+      "answer_sha256": "sha256:c47b705bedb10bd5ec6f7b0cec18334b6a585a3ca2bdd7977d166af0f065a0da",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "1803"
+    },
+    {
+      "id": "doit-cw-093",
+      "query": "请帮我写一份智能煲汤锅方案，800字左右",
+      "query_sha256": "sha256:972072252cb74f6994575c79ff79cc370ea21279d2bdb97aa52e4349a2d1ac9d",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-093"
+      ],
+      "answer_sha256": "sha256:03c203fd2620092a431091fd9e79f2b3bcdc36642a2c578466ab9e23b1a62a07",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "2401"
+    },
+    {
+      "id": "doit-cw-094",
+      "query": "写一个 小男孩去月球旅行的故事",
+      "query_sha256": "sha256:b425455c215825815e882678776f296a3e6e33b60b15bb32f0f3dbfae4fb2b54",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-094"
+      ],
+      "answer_sha256": "sha256:4ebe1d80a68a65ccb04c5a01cc9b5644ef5514ae229f5bc08e3ff23ae0c1bc7d",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "1496"
+    },
+    {
+      "id": "doit-cw-095",
+      "query": "我在抖音上发布了一个摩比斯美国技术中心介绍视频，请帮我写一段介绍",
+      "query_sha256": "sha256:0a527d08c78f5489c8fa6ac4d091ca7d9dfddeabcc44d2f1bba965dcff6baaec",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-095"
+      ],
+      "answer_sha256": "sha256:a1165e5a270e37b754610c06e0d8301a344a7970d9a0ffa1d343b31d8749e146",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "778"
+    },
+    {
+      "id": "doit-cw-096",
+      "query": "请围绕“高质量的信息既要满足用户需求，又要符合客观实际”写一篇文章",
+      "query_sha256": "sha256:5963b9460c91e002d5633744af363a848185a390aee0d9f7a81df3be30b46831",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-096"
+      ],
+      "answer_sha256": "sha256:7434b55c33fbece69f60e98e34217514a563520f80b2118b4d14e695a88e26af",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "1646"
+    },
+    {
+      "id": "doit-cw-097",
+      "query": "请帮我写一份办公室主任工作责任书",
+      "query_sha256": "sha256:09e3a63d30542b25809fe1c5f4e15bcdab2de9806abc80fafead69966eb6e084",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-097"
+      ],
+      "answer_sha256": "sha256:ca5dd3d8e0223df5f5e88284a11a5af11e6a35bdca4d1fabb80f99ce437e3c46",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "742"
+    },
+    {
+      "id": "doit-cw-098",
+      "query": "来个肯德基疯狂星期四的文案",
+      "query_sha256": "sha256:a34c30d95f0aef04819ae3b03a518ebdfbdb58fa9b582c24f524ad4b1d79892a",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-098"
+      ],
+      "answer_sha256": "sha256:cf07bceed30b9ac32dd4a47ef4c68522b7f2ca16aa640fa3fac59c9eda88a9ee",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "422"
+    },
+    {
+      "id": "doit-cw-099",
+      "query": "我要去马尔代夫旅游，请给我罗列一个1-7天的旅游计划",
+      "query_sha256": "sha256:73695d9417356865cbcc3fe39a7a403015879254ae990b6142da2e6547a7f6be",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-099"
+      ],
+      "answer_sha256": "sha256:523419ff6f023c3e9797ae1b0e0d2012d63b532584a5b3b1aa3149d5741127d2",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "402"
+    },
+    {
+      "id": "doit-cw-100",
+      "query": "英国女王去世,写一篇文章",
+      "query_sha256": "sha256:b9187de1c1e39fec60b6e06698204e06a3d10d1c2b1ac3592e5d8563c7a024f5",
+      "provenance": {
+        "source": "curated/1000/creative_writing_1000.json",
+        "collected_at": "2026-01-01T00:00:00Z",
+        "anonymized": true
+      },
+      "relevant_titles": [
+        "doit-cw-doc-100"
+      ],
+      "answer_sha256": "sha256:f04463859dfd23e00b43ab6b1ad108536af3bf08bd4d5928f5c663d8c99a7fe1",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "source_idx": "376903"
+    }
+  ],
+  "corpus": [
+    {
+      "id": "doit-cw-corpus-001",
+      "title": "doit-cw-doc-001",
+      "text": "一、制造业公司资质规划概述 资质是衡量制造业公司实力、技术、管理等综合能力的重要标准，获取相应的资质证书有助于提升公司形象、拓展业务领域、提高竞争力。本规划旨在为制造业公司梳理适合其发展的资质证书，制定获取资质的具体步骤和计划。 二、资质规划目标 1. 获取国家相关部门颁发的资质证书，提高公司在行业内的竞争力。 2. 提升公司管理水平，优化公司运营效率。 3. 拓展公司业务领域，增加公司收入来源。 三、资质规划内容 1. 国家级资质 （1）工程施工总承包资质 （2）专业承包资质 （3）设备制造资质 2. 行业级资质 （1）质量管理体系认证（ISO9001） （2）环境管理体系认证（ISO14001） （3）职业健康安全管理体系认证（OHSAS18001） 3. 专项资质 （1）研发机构资质 （2）高新技术企业资质 （3）绿色制造企业资质 四、资质规划实施步骤 1. 内部自查与评估 （1）收集资质申请相关政策、法规和要求。 （2）组织内部评估，查找公司在管理、技术、人员等方面的不足。 （3）制定整改措施，提升公司综合能力。 2. 资料准备 （1）梳理资质申请所需的各类文件、资料和证明。 （2）对照资质申请要求，对公司资料进行修订、完善。 （3）将资料编制成电子版和纸质版，准备递交资质申请。 3. 申请递交与审核 （1）按照资质申请流程，将资料递交至相关部门。 （2）关注申请进度，配合相关部门进行审核。 （3）如有需要，对审核意见进行整改并重新递交资料。 4. 资质获得与持续改进 （1）领取资质证书，及时更新公司宣传资料。 （2）加强内部管理，确保资质持续有效。 （3）定期关注政策动态，为公司发展获取新的资质证书。 五、资质规划时间表 1. 第1-3个月：内部自查与评估、资料准备。 2. 第4-6个月：申请递交与审核。 3. 第7-9个月：资质获得与持续改进。 六、资质规划预期效果 1. 公司实力得到客观认可，业务拓展更具竞争力。 2. 提高公司内部管理水平，优化公司运营效率。 3. 增加公司收入来源，实现公司可持续发展。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-002",
+      "title": "doit-cw-doc-002",
+      "text": "方案名称：全面提升中心绩效 一、项目背景： 假设我担任中心总经理职位，负责管理和协调一个涉及多个部门和业务的中心。在现代社会竞争激烈的环境下，提高中心的整体绩效和效率至关重要。为此，我将设计并实施一项以全面提升中心绩效为目标的方案。 二、项目目标： 1. 提高中心员工的工作效率与积极性； 2. 提升中心整体业务水平与竞争力； 3. 加强中心各部门间的沟通与协作； 4. 优化中心的运营流程与管理制度。 三、具体措施： 1. 员工培训与激励： （1）定期组织各类业务培训，提高员工的业务能力； （2）建立激励机制，将员工的工作绩效与奖励挂钩，激发员工的工作积极性； （3）重视员工的个人成长与发展，为员工提供晋升空间和学习机会。 2. 业务创新与拓展： （1）研究市场趋势，及时调整业务战略，寻求新的业务增长点； （2）加强与外部合作伙伴的联系，积极争取合作项目； （3）关注行业动态，将先进的管理理念和技术应用到中心业务中。 3. 沟通与协作： （1）定期召开中心例会，分享各部门工作进展和经验； （2）建立跨部门合作机制，推动中心各部门之间的资源共享和信息交流； （3）鼓励员工提出改进建议和意见，完善中心的管理和运营。 4. 流程优化与制度完善： （1）审查现有的运营流程，精简不必要的环节，提高工作效率； （2）建立健全管理制度，规范中心的运作和管理； （3）完善考核机制，确保各部门的工作质量和进度。 四、项目实施与监督： 1. 制定具体的实施计划和时间表，明确各部门和岗位的工作职责； 2. 设立项目监督小组，负责对整个项目的推进情况进行跟踪和监督； 3. 定期收集员工反馈，了解方案实施过程中的问题和困难，及时调整和完善； 4. 对项目成果进行评估，总结经验教训，为后续的管理工作提供参考。 通过以上措施的实施，我相信中心的整体绩效和竞争力将得到全面提升，为公司的发展做出更大的贡献。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-003",
+      "title": "doit-cw-doc-003",
+      "text": "随着人们生活水平的不断提高，家电产品已经成为了现代家庭必不可少的一部分。在过去几十年里，家电行业已经经历了很大的变化和发展。从最初的黑白电视机到如今的智能家电，家电行业已经变得更加智能、节能、环保和舒适。在这篇文章中，我将探讨家电行业的发展趋势、市场前景和未来发展方向。 一、发展趋势 1. 智能化 智能化是家电行业发展的主要趋势之一。智能家电的普及和发展，为人们提供了更加便捷、舒适、安全和节能的生活方式。智能家电可以通过互联网连接，实现远程控制、智能化识别、数据共享等功能，可以更好地满足人们的需求。 2. 环保节能 环保节能是家电行业发展的另一个趋势。随着环保意识的不断提高，人们对于家电产品的环保性和节能性要求越来越高。现代家电产品采用了更加高效的能源利用方式和环保材料，能够更好地保护环境和节约能源。 3. 多元化 多元化是家电行业发展的另一个趋势。随着人们生活方式和消费习惯的不断变化，家电行业也在不断创新和发展。现代家电产品不仅能够满足人们的基本需求，还可以为人们提供更多的娱乐和生活方式选择。 二、市场前景 1. 中国市场 中国是世界上最大的家电市场之一，家电行业在中国的发展前景非常广阔。随着中国人口结构的变化和消费水平的提高，家电行业将会迎来更加广阔的市场空间和机遇。 2. 国际市场 随着全球化的不断推进，家电行业也在向国际市场扩张。现代家电产品的质量和技术水平已经得到了全球认可，未来家电行业将会面临更多的国际竞争和合作机会。 三、未来发展方向 1. 智能化发展 智能化将会是家电行业未来发展的主要方向之一。随着互联网技术的不断发展和应用，智能家电产品将会更加普及和完善。未来智能家电将会实现更加智能化的功能，更好地服务人们的生活。 2. 环保节能发展 环保节能将会是家电行业未来发展的另一个重要方向。随着环保意识的不断提高，人们对于家电产品的环保性和节能性要求越来越高。未来家电产品将会更加环保和节能，更好地保护环境和节约能源。 3. 多元化发展 多元化将会是家电行业未来发展的另一个方向。随着人们生活方式和消费习惯的不断变化，家电行业也在不断创新和发展。未来家电产品将会更加多元化，更好地满足人们的需求。 总之，家电行业是一个非常重要的行业，随着人们生活水平的不断提高，家电行业将促进社会经济的发展，为消费者提供更多的选择，提升了消费者的生活质量。此外，家电行业的发展也将创造大量就业机会，为社会增添了新的就业机会。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-004",
+      "title": "doit-cw-doc-004",
+      "text": "从前，有一个小镇，镇子里住着一个名叫李明的年轻人。他从小就有个梦想，就是成为一名出色的会计师。为了实现这个梦想，李明辛勤学习，努力克服各种困难。终于，他通过了全国会计师考试，成为了一名合格的会计师。 有一天，李明的一个朋友张强找到了他，希望他能帮忙解决一个难题。张强的父亲经营着一家规模不小的企业，但最近公司业绩一落千丈，他怀疑是财务出了问题，希望李明能帮忙查一查。李明答应了，他决定运用自己的会计专业知识，帮助张强把企业的财务问题查个水落石出。 李明开始着手调查企业的财务情况，他首先查看了企业的账簿，发现了许多疑点。经过仔细分析，他发现企业的成本管理十分混乱，很多费用都没有合理核算，导致企业盈利能力大大降低。此外，他还发现企业存在严重的税收问题，一些应该享受税收优惠政策的业务并没有充分利用，使企业损失了大量的资金。 经过李明的悉心指导，张强的父亲开始对企业的财务进行全面改革。他采纳了李明的建议，将会计团队进行了重组，加强了内部审计，制定了详细的成本控制措施，合理利用税收优惠政策。在李明的帮助下，企业的财务状况逐渐好转，业绩也逐步回升。 这次经历让李明深知会计工作的重要性，他意识到一个优秀的会计师不仅要熟练掌握会计技能，还要具备敏锐的洞察力和强烈的责任心。为了更好地发挥自己的专业优势，李明决定继续深造，提升自己的业务能力。他参加了许多会计培训课程，逐渐成为了一名受人尊敬的会计专家。 几年后，李明开设了自己的会计事务所，为众多企业提供专业的财务咨询和服务。他的事务所声誉日益显赫，吸引了越来越多的客户前来寻求帮助。每当客户在财务问题上陷入困境，都会想起李明这位会计大侠，相信他一定能帮助他们化险为夷。 这个小镇上的人们都为李明感到自豪，他们觉得这个小镇有这样一位优秀的会计师，是他们的福气。而李明，也一直坚守着自己的初心，帮助更多的企业解决财务难题，实现自己的会计梦想。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-005",
+      "title": "doit-cw-doc-005",
+      "text": "在当今社会，企业的竞争愈发激烈，企业的发展和进步离不开员工的努力与付出。作为企业的基石，一线员工在企业的各项业务中发挥着关键作用，他们的工作表现和业绩直接影响着企业的整体绩效。因此，研究CT企业一线员工绩效评估的优化对策显得尤为重要。 首先，优化一线员工的绩效评估制度有助于提高员工的工作积极性。一个科学、合理且公正的绩效评估体系，能够让员工明确自己的工作目标和职责，使得员工在工作过程中能够更好地规划和调整自己的工作方法和步骤。同时，合理的绩效评估也会激发员工的工作热情，提高工作效率，使得企业的整体竞争力得到提升。 其次，优化绩效评估对策有利于激发员工的创新能力。在一个不断变革的时代，企业要想保持竞争优势，必须具备创新能力。通过改进绩效评估体系，对员工的创新成果给予更高的权重和评价，鼓励员工勇于尝试新方法、新技术，从而推动企业的技术进步和业务拓展。 再者，优化绩效评估可以帮助企业更好地留住人才。人才是企业发展的核心竞争力，而合理的绩效评估制度能够让员工在企业中感受到自己的价值和成就感，从而提高员工的忠诚度和凝聚力。同时，良好的绩效评估体系还能吸引更多优秀人才加入企业，为企业的持续发展提供人才保障。 另外，优化绩效评估有助于提升企业的管理水平。一个科学合理的绩效评估制度，可以让管理层更好地了解员工的需求和问题，及时发现和解决企业的管理漏洞。同时，通过绩效评估结果，管理层可以针对性地进行人员调整和资源配置，从而提高企业的整体运营效率。 此外，优化绩效评估对策还有助于企业建立良好的企业文化。一个公正、透明的绩效评估体系，能够让员工感受到企业的公平和正义，有利于树立良好的企业形象，提升员工的归属感。同时，企业文化的建设对于企业的长远发展具有深远影响，有助于企业在市场竞争中保持优势地位。 总之，研究CT企业一线员工绩效评估的优化对策具有重要意义。通过改进和完善绩效评估体系，可以提高员工的工作积极性和创新能力，留住和吸引人才，提升企业的管理水平和企业文化建设，从而为企业的长远发展奠定坚实基础。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-006",
+      "title": "doit-cw-doc-006",
+      "text": "尊敬的同事们： 根据公司安排，2022年3月8日（星期二）为国际劳动妇女节，全体女同事将享受半天假期。请大家提前做好工作安排，合理安排时间，度过一个愉快的节日。 祝大家节日快乐！ 公司管理层",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-007",
+      "title": "doit-cw-doc-007",
+      "text": "欢迎来到美丽的度假村，这里是大自然的天堂，是您休闲度假的理想之地。在这片神奇的土地上，有山有水，有油菜花，有学生上学，一幅生机盎然的田园画卷正在您面前徐徐展开。 沐浴在阳光下的度假村，群山环抱，青山绿水，景色优美。山峦起伏，形态各异；溪水潺潺，清澈见底。踏青登山，您将沿着蜿蜒曲折的山路前行，一路上您将看到郁郁葱葱的绿树、鸟语花香，您可以尽情徜徉在大自然的怀抱，让身心得到彻底的放松。 油菜花的季节，度假村呈现出一片金黄。无论走到哪里，您都能看到大片大片的油菜花田，花海连绵，金灿灿的一片。微风吹过，油菜花随风摇曳，散发出淡淡的清香，如诗如画。这里的油菜花不仅美丽，还能为人们提供营养丰富的食用油，成为当地农民的致富之源。 度假村的学生们，在这样美好的环境中求学成长。清晨，孩子们背着书包，踏着朝霞，沿着曲径通幽的小路去上学。在这样充满生机与活力的环境中，孩子们犹如沐浴在知识的海洋中，快乐成长。他们的欢笑声，无疑给这个度假村增添了一道靓丽的风景线。 在这个度假村里，您将享受到大自然赋予的美景，感受山水油菜花的诗意，感受学生们的朝气与活力。这里是您放松身心、回归自然的绝佳去处，诚邀您带上亲朋好友，一同来度假村感受大自然的魅力，共度美好时光。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-008",
+      "title": "doit-cw-doc-008",
+      "text": "在这个美好的夏日，我终于找到了心仪已久的户外沙发，真的非常满意！我从小红书上看到了很多网友们对这款户外沙发的好评，就忍不住入手了，结果真的没有让我失望！这款户外沙发的颜值真的超高，放在阳台上，整个空间瞬间焕发出生机。最让我喜欢的是这款沙发的材质，防水防晒，即使在烈日下晒一整天，沙发也不会变形，非常适合户外使用。坐在这款沙发上晒太阳，品一杯茶，享受午后的宁静时光，真是一件美好的事情。再也不用担心沙发被雨水淋湿，晾晒起来也非常方便。而且这款沙发的舒适度也非常高，坐在上面非常放松，真的是让人一试难忘。感谢小红书给我这个好的推荐，让我的生活更加美好！如果你也在寻找一款颜值与实用并重的户外沙发，那么这款绝对值得入手！强烈推荐！",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-009",
+      "title": "doit-cw-doc-009",
+      "text": "尊敬的领导、各位同事： 我是焙烤食品糖制品行业饼店工作委员会秘书长张新奇。在过去的一年里，我和我的团队在饼店工作委员会的各项工作中，取得了一系列的成果。现在，我将结合实际情况，对2000年的工作进行总结。 一、工作回顾 在过去的一年中，饼店工作委员会的工作涵盖了市场调研、产品研发、品牌推广、客户服务等多个方面。其中，我们最为重要的工作是对市场需求进行分析，不断优化产品结构，提高客户满意度。 在产品研发方面，我们通过深入调研市场需求，不断开发新品种，不断提高产品质量，为顾客提供更好的产品。同时，我们加强了与供应商的合作，确保了原材料的质量和供应的及时性，保障了生产的正常进行。 在品牌推广方面，我们通过各种宣传渠道，如报纸、电视、互联网等，将我们的品牌推向更广泛的消费者群体。我们也积极参加各种展会和活动，加强与顾客的互动，提高品牌知名度和美誉度。 在客户服务方面，我们注重了解顾客需求，不断优化服务流程，提高服务质量。我们建立了客户反馈机制，及时处理客户的投诉和建议，保持良好的客户关系。 二、工作成果 在过去的一年中，我们的工作取得了以下成果： 1.产品质量得到了进一步提高，受到了广大消费者的认可和好评。 2.品牌知名度和美誉度得到了进一步提高，市场份额得到了稳步增长。 3.客户满意度得到了进一步提高，客户投诉率得到了有效控制。 4.组织了多次内部培训和外部交流活动，提高了员工的专业素质和团队合作能力。 5.取得了多项专利和技术创新成果，提高了公司的核心竞争力。 三、存在的问题 在工作中，我们也面临了一些问题，主要包括： 1.市场竞争加剧，需要进一步优化产品结构，提高品牌知名度和美誉度。 2.客户服务流程还需进一步优化，加强客户满意度管理。 3.员工队伍建设需要加强，提高员工的专业素质和团队合作能力。 4.企业文化建设还需加强，形成具有公司特色的企业文化。 四、工作展望 在未来的工作中，我们将继续以市场需求为导向，不断优化产品结构，提高产品质量和品牌知名度。同时，我们将加强客户服务管理，不断提高客户满意度。我们还将加强员工队伍建设，提高员工的专业素质和团队合作能力。我们将继续推进企业文化建设，形成具有公司特色的企业文化。 在新的一年里，我们将以更高的热情、更饱满的信心、更扎实的工作作风，为实现公司的发展目标而不懈努力！谢谢！",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-010",
+      "title": "doit-cw-doc-010",
+      "text": "叶言不由分说运转灵气轰向鬼头，鬼头被轰飞出去，叶言的身边现出一道黑影，那是他的身份，他是一个鬼使。 叶言见此情形，心中一阵恐惧，不过他也清楚自己必须坚持到底，他召唤出一道灵气，笼罩住鬼头，使其无法动弹。 鬼头怒吼着，叶言看到一只手从鬼头身上伸出，抓起了一块石头，向叶言扔来。叶言看着，石头穿过他的身体，他感觉到身体一阵剧痛，叶言立刻想起他的神力，运转灵气，将石头反弹回去，把鬼头击倒在地。 鬼头只能眼睁睁看着叶言拿起了石头，叶言紧握着石头，将它们一一放在鬼头身上，将其封印。 封印完毕，叶言看着这只被封印的鬼头，不禁心中一阵畏惧，但他深知自己必须坚持到底，将这只鬼头封印起来。 经过一晚上的努力，叶言终于封印住了这只鬼头，他松了口气，回到了家中。 叶言看着自己的双手，他不禁想起了他的身份，他是一个鬼使，他能够控制灵气，封印鬼头，使它们不会再危害他的家人和朋友。 从此，叶言开始了他的修炼之路，学习更多的灵气之术，保护家人和朋友，以及所有被鬼头侵害的人。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-011",
+      "title": "doit-cw-doc-011",
+      "text": "发挥“定战略、作决策、防风险”的作用：关键在于前瞻规划与全面防范 在当今快速发展的经济社会中，我们面临着越来越多的挑战和机遇。面对这些挑战和机遇，我们必须把握发展大势，制定正确的战略，作出明智的决策，防范各种风险。因此，发挥“定战略、作决策、防风险”的作用，对于提高企业竞争力和应对外部环境变化具有重要意义。 首先，我们要明确战略目标，为企业发展定下基调。一个明确的战略目标能够帮助企业明确方向，激发员工的工作热情和积极性，增强企业的凝聚力。我们应该根据市场需求、行业特点、自身优势等因素，制定符合企业实际的发展战略。在战略制定过程中，我们还要注重战略的灵活性，以便能够根据市场环境的变化及时调整战略。 其次，在制定战略的基础上，我们要加强决策力。决策是实现战略目标的关键环节，是管理者在关键时刻做出抉择的能力。我们要建立完善的决策机制，加强信息收集和分析能力，充分了解市场动态和竞争态势，以确保决策的科学性和准确性。同时，我们还要注重提高决策的执行力，确保决策能够真正落地生根，为企业发展注入持续动力。 最后，我们要全面防范风险，为企业发展保驾护航。风险无处不在，防范风险是企业发展的重要课题。我们要建立健全的风险防范体系，加强对市场、技术、人才、政策等方面的风险识别和评估，提前采取有效措施，降低风险带来的损失。同时，我们还要加强风险应对能力，提高在突发事件面前的快速反应和处理能力，确保企业在各种风险面前能够稳健发展。 总之，发挥“定战略、作决策、防风险”的作用，关键在于前瞻规划与全面防范。我们要充分发挥这三个方面的作用，才能在竞争激烈的市场中脱颖而出，为企业创造持续的竞争优势。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-012",
+      "title": "doit-cw-doc-012",
+      "text": "双向情感障碍：一个严重的公共卫生问题 双向情感障碍（Bipolar Disorder，BD）是一种极具挑战性的心理疾病，严重影响患者的生活质量，给家庭和社会带来沉重的负担。据统计，全球有超过2.4%的人口受到BD的困扰，我国的患病率也在逐年上升。本文将从双向情感障碍的特点、昼夜节律紊乱以及防治措施等方面进行探讨。 一、双向情感障碍的特点 双向情感障碍的典型特点是躁狂发作和抑郁发作交替出现。在躁狂期，患者会表现出兴奋、亢奋、过度自信、言语增多等症状；在抑郁期，患者则会出现情绪低落、兴趣丧失、自责自罪等表现。这种情感波动对患者的工作、学习和人际关系造成极大的困扰，甚至可能导致自杀等严重后果。 二、昼夜节律紊乱与双向情感障碍 生物节律是调控机体各项生理活动的重要机制，包括进食、血压、核心体温、血糖水平、睡眠、情绪、激素分泌和氧化应激等。昼夜节律是生物节律中的重要组成部分，关系到睡眠-觉醒周期的正常运作。 双向情感障碍患者常常伴有昼夜节律紊乱，表现为睡眠质量下降、入睡困难、早醒等。研究发现，正常的睡眠-觉醒周期对稳定情绪具有重要作用。当昼夜节律紊乱时，容易诱发抑郁情绪或躁狂发作，加重疾病的病程和病情。 三、双向情感障碍的防治措施 针对双向情感障碍的特点和病因，我们可以从以下几个方面入手，帮助患者改善症状、提高生活质量： 1.心理治疗：心理治疗是双向情感障碍治疗的重要组成部分，包括认知行为疗法、家庭治疗等。心理治疗旨在帮助患者认识和应对自己的情绪波动，提高应对压力的能力，改善人际关系。 2.药物治疗：药物治疗是控制双向情感障碍症状的主要手段，包括抗抑郁药、抗躁狂药和稳定剂等。患者在医生的指导下进行药物治疗，可有效缓解症状，延缓病程。 3.调整生活作息：保持规律的作息，尤其是睡眠-觉醒周期，有助于稳定昼夜节律，减少情绪较大波动。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-013",
+      "title": "doit-cw-doc-013",
+      "text": "AI短视频文案： AI，即人工智能，是当今科技领域的热门话题。它的出现让我们的生活变得更加智能化、便捷化。AI可以在医疗、金融、交通等领域发挥重要作用，甚至可以帮助我们解决一些复杂的问题。 在未来，AI将会成为人们生活中必不可少的一部分。它将与我们共同生活、学习和工作。我们可以用它来创建更加安全、高效和智能的社会。 让我们期待着AI未来所带来的惊喜和变革吧！",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-014",
+      "title": "doit-cw-doc-014",
+      "text": "对于广大站长来说，超链接是一种每天都要接触的链接形式，对于网站来说，SEO优化也很重要，超链接主要是指当前页面的一个链接，指向另一个页面，它是页面和页面之间的桥梁，除了链接页面，还可以链接图片、视频、文档和文件夹，跟着北京网站优化公司仕言科技来谈谈超链接对于网站SEO优化的作用。 首先，超链接对于网站的结构起到了重要作用。通过合理的超链接，可以让搜索引擎更好地理解网站的结构和内容，从而有利于网站的收录。一般来说，我们会在首页设置指向重要栏目和内容的链接，以便搜索引擎能快速找到并抓取这些页面。此外，还可以设置面包屑导航，帮助搜索引擎和用户快速了解当前页面的位置。 其次，超链接对于网站的内部权重分配也有很大影响。在一个网站中，有些页面对于网站的整体优化来说是非常重要的，需要重点关注。通过合理设置超链接，我们可以将网站的权重分配到这些关键页面，从而提高它们在搜索引擎中的排名。例如，可以在首页或者高权重的栏目页设置指向这些页面的链接。 此外，超链接还可以帮助搜索引擎发现新的内容。当我们更新网站内容时，可以通过在已有的页面中设置超链接，指向新发布的页面。这样，当搜索引擎抓取原有页面时，就可以顺着超链接找到新的页面，并将其加入到索引库中。这对于网站的收录和排名都是非常有利的。 当然，设置超链接的时候也需要注意一些问题。比如，不要设置过多的无关链接，否则会导致搜索引擎对网站的评价降低。同时，链接的锚文本也要尽量与被链接页面的内容保持一致，这样才能提高链接的相关性，对SEO优化起到正向作用。 总之，超链接对于网站SEO优化起到了非常重要的作用，可以说是优化的基石。站长们在进行网站优化时，一定要重视超链接的设置，合理运用超链接，才能使网站在搜索引擎中获得更好的排名和展示效果。在这个过程中，选择一家专业的网站优化公司，如仕言科技，可以为站长们提供更专业的建议和服务，帮助网站获得更好的优化效果。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-015",
+      "title": "doit-cw-doc-015",
+      "text": "尊敬的领导，亲爱的同事们： 大家好！今天我非常荣幸能够站在这里，向大家分享我的岗位晋升心得。在此之前，请允许我向组织和领导表示衷心的感谢，感谢你们给我这次难得的机会，让我在新的岗位上继续为公司的发展贡献自己的力量。同时，也感谢我的同事们在过去的工作中给予我的支持与帮助。 我入职公司已经五年的时间，从一个基层员工逐渐晋升为现在的部门主管，这期间，我收获了许多成长与经验。今天，我想跟大家分享三个方面的心得，希望对你们有所帮助。 首先，勇于承担责任。在岗位晋升的过程中，我深刻认识到，一个人的成长离不开承担责任。在工作中，我们应该主动承担责任，敢于担当，不把自己局限在职责范围之内，要勇于拓展工作领域，挑战自我。只有这样，才能在实践中不断锻炼自己，提升自己的综合能力。当然，在承担责任的同时，我们还要学会承担风险。遇到问题时，要勇于承认错误，敢于改正，这样才能真正地从失败中成长。 其次，注重团队合作。一个人的力量再强大，也难以支撑整个团队的成功。我在晋升过程中深刻体会到，团队的力量是无穷的。我们应该学会倾听团队成员的意见，尊重他们的观点，通过沟通与协作，将大家的智慧凝聚在一起，共同为公司的发展贡献力量。同时，要懂得发挥每个成员的优势，让他们在适合的岗位上发挥出最大的价值。 最后，保持学习和创新。时代在进步，科技在发展，作为职场人，我们要不断地学习新知识、新技能，适应新的工作环境。只有保持一颗积极向上的学习心态，才能在激烈的竞争中立于不败之地。此外，我们还要善于创新，敢于挑战传统，用新的思维和方法解决问题，为公司创造更多的价值。 总之，我的岗位晋升离不开领导的栽培和同事们的支持。在新的岗位上，我会以更加饱满的热情投入工作，带领团队共同创造美好的未来。同时，也希望大家能够一起努力，勇攀事业的高峰，为公司的繁荣和发展作出更大的贡献。 谢谢大家！",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-016",
+      "title": "doit-cw-doc-016",
+      "text": "黄晓明：华语影坛的璀璨之星 作为华语影坛的当红炸子鸡，黄晓明凭借其出众的演技和帅气的外貌，在观众心中留下了深刻的印象。从出道至今，黄晓明已经出演了很多经典的影视作品，如《神雕侠侣》、《赌神》、《全球热恋》等等。本文将对黄晓明的演艺生涯和个人生活进行简要介绍。 黄晓明，1977年11月13日出生于中国山东省青岛市，是一位享誉国际的华语演员。他的演艺生涯始于1998年，在那年的电视剧《爱情宝典》中担任男主角。凭借该剧，黄晓明初露锋芒，逐渐崭露头角。 然而，真正让黄晓明成为家喻户晓的明星的作品是2003年的《神雕侠侣》。在这部金庸武侠经典的改编剧中，黄晓明饰演了主人公杨过，与李若彤饰演的小龙女搭档，成功塑造了一个深入人心的角色。从此，黄晓明稳坐一线明星地位，拥有了大量粉丝。 黄晓明在荧幕上的成功也带动了他在大银幕上的发展。他在2005年参演了电影《青蛇》，与蔡依林、林青霞共同出演。此后，黄晓明开始参演了更多的电影，如《赌神》、《建国大业》、《全球热恋》等。他的表演范围也从武侠、爱情扩展到了动作、喜剧等多个领域，使得他的演技得到了更全面的锻炼和提升。 在黄晓明的个人生活方面，他与妻子杨颖（Angelababy）的爱情故事也是娱乐圈的佳话。两人于2015年结婚，育有一子。黄晓明和杨颖的婚礼被誉为“世纪婚礼”，吸引了大量媒体和粉丝关注。此外，黄晓明还热衷于公益事业，多次参加各类慈善活动，为贫困地区的儿童提供帮助。 总的来说，黄晓明凭借其在演艺圈的辉煌成就和积极向上的个人形象，赢得了广泛的尊重和喜爱。未来，我们有理由相信，黄晓明将继续为观众带来更多精彩的作品和感人至深的表演。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-017",
+      "title": "doit-cw-doc-017",
+      "text": "标题：震惊！地铁上的神秘歌手 场景1： （画面：一辆拥挤的地铁） 旁白：在这座繁忙的城市，地铁是许多人的必经之地。然而在这熟悉的地铁上，却发生了一件让人惊艳的事情。 场景2： （画面：一个年轻人戴着口罩和帽子，穿着普通衣服，背对着镜头站在地铁上） 旁白：这个年轻人看似普通，但在他身上却隐藏着一个惊人的秘密。 场景3： （画面：地铁开始缓缓启动，年轻人开始唱歌） 旁白：随着地铁的启动，年轻人突然开始唱歌，而他的嗓音令人惊艳。 场景4： （画面：周围的乘客逐渐被吸引，纷纷拿出手机开始录制） 旁白：周围的乘客被他的歌声吸引，纷纷拿出手机记录下这美好的瞬间。 场景5： （画面：地铁驶入站台，年轻人唱完最后一句歌，微笑鞠躬） 旁白：在地铁即将到站的时候，年轻人唱完最后一句歌，礼貌地向周围的乘客鞠躬致谢。 场景6： （画面：年轻人走出地铁站，脱下口罩和帽子，露出脸庞，原来他是一位知名歌手） 旁白：而当他走出地铁站，摘下伪装，我们惊讶地发现，他竟是我们熟悉的某位歌手。 结尾： 旁白：这段神秘地铁歌手的视频在网络上迅速传播，让更多人感受到了音乐的魅力。而这位歌手也再次证明了，真正的才华和美好，无处不在。 （字幕：地铁歌手，让人为之动容的一段表演，让我们共同感受音乐的力量！）",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-018",
+      "title": "doit-cw-doc-018",
+      "text": "随着国际化进程的不断加快，语言成为了连接世界的重要桥梁。越来越多的中学生在选择外语课程时，不再局限于传统的英语课程，而是开始尝试日语、韩语等其他语种。在这些新兴的外语课程中，日语尤为受到青睐。那么，在高考中，为什么选择学习日语比英语更容易提分呢？下面就来为大家详细解答。 首先，日语与汉语的亲缘关系较近。日语和汉语都属于同一语系，很多日语词汇和汉语词汇在音韵、形态上有很高的相似度。此外，日语汉字的使用也让很多学生感到亲切。这意味着对于许多汉语母语的学生来说，学习日语要比学习英语更容易。这也使得学生们在高考中选择日语比英语更容易取得高分。 其次，日语的学习资源丰富。随着中日两国交流的不断增多，中文与日语的学习资源也越来越丰富。不仅有大量的日语教材、辅导书籍，还有许多网络平台提供日语学习资料。这为广大日语学习者提供了便利条件，学生们可以根据自己的兴趣和需求选择合适的资源进行学习。 再者，日语专业的竞争相对较小。相较于英语专业，学习日语的人数相对较少。因此，在高考中选择日语的考生也相对较少，竞争压力相对较小。这使得在高考中选择日语的考生更容易在众多考生中脱颖而出，取得理想的成绩。 最后，学习日语有助于拓展就业和升学选择。随着中日两国经济、文化交流的不断加强，掌握日语的人才需求也越来越大。学好日语不仅有助于提高高考成绩，还能为今后的就业和升学提供更多选择。在众多外企、跨国公司和中日合资企业中，懂日语的人才具有较大的竞争优势。此外，学习日语还能为学生们提供更多留学日本的机会，拓宽视野，提高综合素质。 综上所述，学习日语在高考中比英语更容易提分，这得益于日语与汉语的亲缘关系、丰富的学习资源、相对较小的竞争压力以及对未来就业和升学的有利影响。因此，对于广大中学生来说，在高考中选择学习日语无疑是一个明智的选择。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-019",
+      "title": "doit-cw-doc-019",
+      "text": "God is the creator and sustainer of all things. He is the source of love, mercy, and justice, and He works in the lives of all people to bring about His perfect plan. He is the ultimate source of hope, and He brings light to darkness and joy to sadness. He is the source of all wisdom and knowledge, and He provides us with the strength and courage to face life's challenges. He is a faithful companion who will never leave us or forsake us.",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-020",
+      "title": "doit-cw-doc-020",
+      "text": "短视频：大众生活中不可或缺的娱乐方式 随着科技的进步和互联网的普及，人们的生活节奏越来越快，对于休闲娱乐的需求也在不断地增加。而在诸多娱乐方式中，短视频已然成为了大众日常生活中的一部分，且越来越受到人们的喜爱。 短视频作为一种全新的视听体验，因其时长短、制作简便、观看便捷等特点，深受大众喜爱。无论是在等待公交、地铁的空闲时间，还是在餐厅等候用餐的闲暇时光，人们都可以轻松地打开手机，通过各种短视频平台观看自己感兴趣的内容。短视频不仅给人们提供了丰富多样的娱乐选择，也给许多优秀的创作者提供了展示自己才华的平台。 短视频内容丰富多彩，涵盖了各种类型，如搞笑、美食、旅行、科技、教育等。观众可以根据自己的兴趣爱好，选择不同类型的短视频进行观看。在这个碎片化信息时代，短视频能够帮助人们快速获取到想要的信息，满足人们对知识和娱乐的需求。 此外，短视频平台还具有很强的互动性。观众可以通过弹幕、评论、点赞等方式，与创作者互动交流，分享自己的观点和看法。同时，许多平台还开放了创作者入驻，让更多的人有机会参与到短视频的制作中，发挥自己的创意，分享自己的生活。 正是因为短视频具备了这些特点，使得它在短时间内迅速成为了人们日常生活中的主要娱乐方式之一。而随着科技的不断发展，人工智能、虚拟现实等技术的逐步应用，相信短视频将会以更加丰富的形式，为人们的生活带来更多的乐趣。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-021",
+      "title": "doit-cw-doc-021",
+      "text": "成都是一个小吃天堂，有很多美食值得品尝。以下是一些必尝的成都小吃： 1. 麻辣烫：成都的麻辣烫非常有名，是一种辣味浓郁的汤料煮熟的各种食材，包括肉、菜、豆腐等。建议去火锅店里尝试。 2. 火锅：成都火锅也是非常有名的，有麻辣和清汤两种口味。吃火锅的时候，可以点一些牛肉、羊肉、肥肠等。 3. 抄手：成都的抄手是一种非常有特色的小吃，是一种瘦肉馅包在面皮里，再加上一些花椒油和醋，非常好吃。 4. 糯米饭：成都的糯米饭非常有名，是一种用糯米做成的饭团，里面包裹着各种馅料，例如肉、蛋、豆腐等。 5. 烤肉串：成都的烤肉串非常好吃，可以尝试一些牛肉、羊肉、猪肉等不同口味的肉串。 6. 酸辣粉：成都的酸辣粉是一种非常受欢迎的小吃，是一种酸辣口味的米粉，配上一些豆芽、木耳、肉丝等。 7. 麻婆豆腐：成都的麻婆豆腐是一种非常有名的川菜，是一种豆腐配上麻辣的肉末和豆瓣酱做成的菜品。 以上就是一些成都必尝的小吃，如果你去成都旅游，一定要尝试一下。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-022",
+      "title": "doit-cw-doc-022",
+      "text": "最熟悉的陌生人 在这个熙熙攘攘的世界里，每个人都在忙碌地过着自己的生活。在这过程中，我们会遇到无数的陌生人，有的只是匆匆一瞥，便从此消失在茫茫人海之中。但总有那么一些人，虽然与我们素昧平生，却在某种程度上成为了我们最熟悉的陌生人。 这些人可能是我们每天乘坐地铁上下班时，总能在同一节车厢见到的乘客。也许我们从未交流过，但每天见面的频率让我们对彼此的面孔已经熟悉得不能再熟悉。在这个城市中，我们都是过客，彼此擦肩而过，默默承受着生活的重压。在茫茫人海中，我们彼此成为了彼此生活中不可或缺的一部分，却从未对彼此敞开心扉。 这些人也可能是我们在社交媒体上关注的网友。我们每天都能看到他们分享的生活点滴，却从未与他们真正交流过。我们知道他们的喜好、兴趣和生活状态，甚至可能比他们的现实朋友还要了解。然而，在这个虚拟世界中，我们始终保持着一定的距离，互不打扰。 还有一些最熟悉的陌生人，可能就在我们的家庭、亲友圈子里。我们在一起共度无数个日夜，然而，当我们开始关注自己的生活时，就会发现与这些熟悉的陌生人之间的沟通已经越来越少。我们开始陌生起来，对彼此的关心和了解逐渐淡薄，而生活中的琐事犹如一堵墙，将我们与他们隔离开来。 有人说，最熟悉的陌生人是一种无奈，因为我们并不想与他们保持距离，但生活却让我们不得不如此。而这种无奈，或许也正是当代社会普遍存在的现象。在这个快节奏的时代，人与人之间的距离似乎越来越远。我们过于关注自己的生活，却忽略了身边那些熟悉的陌生人。 然而，生活总会给我们带来惊喜。有时候，一个简单的微笑、一个关切的问候，就能拉近我们与最熟悉的陌生人之间的距离。当我们勇敢地走出舒适区，去了解和关心那些与我们生活息息相关的陌生人时，我们会发现，原来他们并不遥远。而那些曾经陌生的面孔，也会在我们的生活中留下美好的回忆。 最熟悉的陌生人，他们是生活中的调色板，为我们的生活增添了不少色彩。在这个世界上，每个人都值得被了解和关心，让我们从现在开始，去关注那些最熟悉的陌生人，去用心感受生活中的每一份温暖和美好。 我们可能会认为，这些人与我们之间的距离很遥远，但实际上，我们可能与他们共同面对着许多相同的问题和挑战。我们可能会发现，在我们需要帮助的时候，这些人会成为我们最亲密的伙伴。 所以，对于这些最熟悉的陌生人，我们应该多加关注，多一些沟通和交流，尝试去了解他们的故事和经历。也许，我们会惊讶地发现，他们也是我们生活中最重要的人之一。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-023",
+      "title": "doit-cw-doc-023",
+      "text": "餐饮品牌设计和餐饮空间设计的关系 随着社会的发展和经济的繁荣，餐饮行业也日益成为一个竞争激烈的市场。在这个市场中，品牌和空间设计的关系越来越受到人们的关注。品牌设计是企业为了提高知名度和竞争力而进行的一种商业行为，空间设计是为了提供良好就餐环境和舒适的用餐体验而进行的一种设计行为。这两者相互影响、相辅相成，共同构建了餐饮企业的核心竞争力。 一、餐饮品牌设计与餐饮空间设计的内在联系 餐饮品牌设计与餐饮空间设计之间有着密切的内在联系，两者共同构建了餐饮企业的形象与氛围。品牌设计通过LOGO、色彩、字体等视觉元素，传达出企业的文化、定位、特色等信息，使消费者在众多品牌中能迅速识别并产生认同感。而空间设计则是通过布局、装修、照明等方面，创造出具有特色的就餐环境，让消费者在品尝美食的同时，享受到一种独特的氛围与情感体验。 从这个意义上讲，品牌设计与空间设计是相互渗透、相互促进的。品牌设计为空间设计提供了方向和基调，空间设计则通过实际操作，将品牌的文化、价值观具体呈现给消费者，使之形象鲜明、深入人心。餐饮品牌要想在市场中脱颖而出，必须在品牌设计与空间设计上下功夫，实现二者的高度统一。 二、餐饮品牌设计与餐饮空间设计的互动关系 餐饮品牌设计与餐饮空间设计之间存在着密切的互动关系，一个成功的餐饮品牌，往往是品牌设计与空间设计相辅相成、相得益彰的结果。品牌设计可以为空间设计提供创意来源和风格指引，空间设计则可以强化品牌形象，增加品牌的辨识度和影响力。 1. 品牌设计为空间设计提供创意来源和风格指引 餐饮品牌的LOGO、色彩、字体等视觉元素，往往会在空间设计中得到体现。这些元素可以成为空间设计的创意来源，指导设计师对空间进行布局、装修、照明等方面的设计。例如，品牌LOGO中的某种元素，可以作为装饰品或者家具的形状，贯穿在整个空间中，形成独特的设计语言。这样，品牌设计与空间设计就能形成一个整体，为消费者提供统一且独特的就餐体验。 2. 空间设计强化品牌形象，增加品牌辨识度和影响力 空间设计不仅是品牌形象的具体呈现，更是品牌文化、价值观的载体。餐饮空间设计不仅要满足消费者的用餐需求，还要与品牌设计相匹配。比如，一个以高端、奢华为主打的餐饮品牌，店面的空间设计就应该突出这种气质，采用豪华、精致的装修风格，让消费者在用餐的同时感受到品牌的高端定位和品质。而一个以亲民、实惠为主打的餐饮品牌，店面的空间设计就应该更加亲切、自然，采用舒适、简约的装修风格，符合消费者的用餐需求。因此，空间设计的布局、装修风格、氛围等因素都会影响到品牌形象的传达和消费者的认知。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-024",
+      "title": "doit-cw-doc-024",
+      "text": "秋天，是一个充满诗意的季节，万物在这个季节里都变得如此柔美。在这个季节里，最让人陶醉的莫过于满地的落叶了。 初秋时分，树叶开始逐渐由绿变黄，仿佛是大自然打翻了调色盘，把五彩斑斓的颜料洒满了大地。阳光穿过云层，洒在这片五彩斑斓的世界，显得格外迷人。这时的树叶，如同一个个害羞的少女，羞涩地低垂着头，等待着最后的离别。 渐渐地，树叶开始纷纷飘落。这是大地的一场狂欢，是岁月的一曲离歌。那些美丽的落叶，带着无尽的遗憾与惋惜，离开了枝头，开始了它们最后的旅程。 漫步在满地落叶的小路上，踩在落叶之上，仿佛听到了岁月的嘈杂声，那是树叶的呢喃，是岁月的叹息。那些曾经在枝头嬉笑的树叶，如今已化作泥土，成为了滋养大地的养分。 秋天的落叶，见证了时光的流转。那些曾经欢快的身影，如今已成了一段段青涩的记忆。它们在岁月的长河中，如同那最美的风景，成为了我们心中永恒的记忆。 那些曾陪伴我们走过春夏的树叶，在秋天也该离去。我们不应悲伤，因为那些曾经美丽的时光，已经永远留在了我们的记忆里。让我们珍惜眼前的美好，感叹大自然的神奇，感恩生命的每一次奇遇。 秋天的落叶，总是让人感慨万千。它们告诉我们，生命虽短暂，但只要活得精彩，便不会留下遗憾。当我们老去的那一天，也许会像那落叶一样，化作岁月的养分，滋润后人的生命。 让我们一起走过这个秋天，去感受那片片落叶带给我们的诗意与感动。让我们记住那些陪伴过我们的美好，感激生命的每一个阶段，去珍惜每一次的遇见。在秋天的落叶中，去寻找生命的意义，去追求那永恒的美好。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-025",
+      "title": "doit-cw-doc-025",
+      "text": "清远汇金融力量促知识产权转化，打造良好知识产权运营生态 近年来，随着知识产权意识的不断增强，越来越多的企业开始关注并参与知识产权运营。为了更好地促进知识产权的转化与应用，清远市积极推动金融力量与知识产权运营相结合，着力打造良好的知识产权运营生态。 该项目立项的作用主要体现在以下几个方面： 1. 通过该项目的实施，帮助企业完成广东股交挂牌展示，提高企业知识产权运营的透明度和规范性，为企业创新发展注入新动力。 2. 对接企业完成专利转化备案，使企业的知识产权能够真正发挥其经济价值，提高企业的市场竞争力。 3. 在项目实施过程中，不仅提供资金支持，还为企业提供专业的知识产权运营服务，包括专利申请、专利运营、专利维护等方面的支持，降低企业知识产权运营的难度和风险。 4. 该项目立项的意义在于，通过金融力量的介入，推动知识产权运营市场的规范发展，为企业提供更加便捷、高效的知识产权服务，激发企业创新活力，进而推动整个清远市经济的快速发展。 5. 通过总结和推广专利转化对接服务的经验，进一步强化企业知识产权意识，提高企业知识产权运营能力，形成良性竞争格局。 6. 通过在市级以上媒体平台上对专利转化服务工作进行宣传，提高社会对知识产权运营的关注度，为构建清远市知识产权运营生态营造良好的社会氛围。 总之，清远市通过汇聚金融力量，大力推动知识产权运营与金融相结合，以项目化的方式帮助企业解决知识产权运营过程中的困难和问题，为企业创新发展提供有力支持。通过这一系列举措，有望打造出清远市独具特色的知识产权运营生态，推动清远市经济持续健康发展。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-026",
+      "title": "doit-cw-doc-026",
+      "text": "在现代社会中，孩子不爱吃饭已经成为很多家长头疼的问题。尤其是在快节奏的生活压力下，家长们越来越无法抽出时间来关注孩子的饮食。那么，孩子不爱吃饭，家长们应该怎么做呢？以下三个方法教给你。 一、调整孩子的饮食习惯 1. 定时定量。养成良好的饮食习惯是解决孩子不爱吃饭的根本。家长们应该从小培养孩子按时吃饭的习惯，既不拖延，也不让孩子暴饮暴食。每次吃饭时，家长们应该尽量保持宁静舒适的环境，避免影响孩子的食欲。 2. 丰富餐桌。让孩子吃得更健康，家长们应该尽量多样化饮食，既增加孩子对食物的兴趣，又满足孩子的营养需求。适当增加水果、蔬菜、肉类、蛋类等食物，使孩子在享受美食的同时，也能保证身体健康。 3. 研究孩子的口味。家长们要关注孩子的口味喜好，了解孩子喜欢吃什么，讨厌吃什么。针对孩子的喜好，家长们可以尝试做一些特色菜肴，让孩子更愿意吃饭。 二、引导孩子正确对待食物 1. 做好榜样。家长是孩子的第一个榜样，家长们要正确对待自己的饮食，从而影响孩子。如果家长在孩子面前嫌弃某种食物，孩子就容易对这种食物产生抵触情绪。因此，家长们要保持对各种食物的平等对待，这样才能教育孩子正确对待食物。 2. 避免过度宠爱。家长们要避免过度宠爱孩子，否则孩子会越来越挑食。在孩子不爱吃饭的情况下，家长们不应该过分迁就孩子，而是要引导孩子正确认识食物的价值，让孩子懂得珍惜。 3. 参与烹饪。让孩子参与家里的烹饪过程，让他们了解食物的来源和制作过程。这样一来，孩子会对食物有更深入的了解，从而增加对食物的兴趣，让他们更愿意吃饭。 三、创造良好的饮食氛围 1. 和谐的家庭氛围。家庭是孩子成长的重要环境，一个和谐的家庭氛围对孩子的成长和饮食习惯有着至关重要的影响。家长们要努力营造一个温馨、和谐的家庭氛围，让孩子在这样的环境中健康成长。 2. 适当的表扬和鼓",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-027",
+      "title": "doit-cw-doc-027",
+      "text": "随着移动互联网的高速发展，短视频已成为人们生活中不可或缺的一部分。在这个碎片化的信息时代，短视频以其快速、直观、易于传播的特点，受到了越来越多用户的喜爱。根据艾瑞咨询的数据显示，截至2018年，我国短视频用户规模已达到4.2亿，预计2020年将达到5.5亿。在如此庞大的市场需求下，短视频行业的前景可谓一片大好。 首先，短视频行业得益于移动互联网技术的不断创新。4G、5G等高速网络技术的普及使得短视频的传播速度大大提高，人们可以随时随地观看和分享自己喜欢的短视频内容。此外，手机硬件设备的更新换代也为短视频创作提供了更为便捷的条件。高清摄像头、强大的处理器等硬件配置使得短视频拍摄与制作变得越来越简单。 其次，短视频行业受益于社交媒体的普及。微信、微博等社交平台为短视频提供了极大的传播空间。用户在这些平台上可以轻松地分享自己的短视频作品，使得短视频迅速传播开来。此外，抖音、快手等短视频平台的出现，使得短视频创作与分享变得更加专业化、娱乐化，满足了用户对于个性化内容的需求。 短视频行业的蓬勃发展也催生了诸多商业机会。广告、电商等领域开始将短视频作为营销的新途径，为品牌宣传和产品推广带来了全新的视觉体验。短视频中的植入式广告、短视频直播购物等商业模式，为广告商和商家提供了更加精准的营销渠道。此外，一些短视频平台还推出了短视频创作者的分成制度，激励用户不断创作出优质内容，为行业注入源源不断的活力。 然而，短视频行业的发展也面临着一些挑战。如何确保短视频内容的健康与积极，成为了监管部门和平台企业需要面对的问题。此外，短视频行业竞争激烈，各大平台争夺用户市场份额，导致了同质化竞争现象严重。如何在保持自身特色的基础上，提高用户粘性和活跃度，是短视频平台需要思考的问题。 展望未来，短视频行业将持续保持高速增长态势。一方面，技术创新将为短视频带来更多可能性，例如虚拟现实、人工智能等前沿技术的应用，将使得短视频内容更加丰富多样。另一方面，随着用户对个性化需求的不断提升，短视频将朝着更加细分的方向发展。各类垂直领域的短视频平台将不断涌现，满足用户的个性化需求。 总之，短视频市场在技术创新和发展在稳步向前。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-028",
+      "title": "doit-cw-doc-028",
+      "text": "一、引言 1.1 学习中文的重要性 1.2 家长对孩子学习中文的支持和引导作用 二、为孩子营造良好的中文学习环境 2.1 家庭环境中的中文元素 2.1.1 挂中文书画、对联等 2.1.2 中文书籍、杂志等 2.1.3 中文电视、电影、音乐等 2.2 与中文母语者交流 2.2.1 结识中文母语者的家庭 2.2.2 参加中文学习和交流活动 三、培养孩子学习中文的兴趣和动力 3.1 以游戏、竞赛等形式让孩子体验中文的乐趣 3.2 将孩子的兴趣爱好与中文学习结合 3.3 为孩子设立中文学习目标和奖励机制 3.4 鼓励孩子参加中文才艺比赛、演讲比赛等活动 四、选择合适的中文学习教材和课程 4.1 选择适合孩子年龄和水平的教材 4.2 注重教材的实用性和趣味性 4.3 结合线上和线下的学习资源 4.4 寻找专业的中文教师和课程 五、培养孩子的中文阅读和写作能力 5.1 从简单的中文绘本、故事书开始 5.2 鼓励孩子阅读各种类型的中文书籍和文章 5.3 定期组织家庭中文写作活动 5.4 帮助孩子总结和拓展中文词汇、句式等知识点 六、提高孩子的中文听说能力 6.1 定期观看中文电影、电视剧、动画片等 6.2 鼓励孩子参加中文朗诵、演讲等活动 6.3 学习中文歌曲、诗词等 6.4 创设家庭中文角，鼓励孩子用中文表达自己的想法和感受 七、参与孩子的中文学习过程 7.1 定期了解孩子的中文学习进度和难点 7.2 陪伴孩子一起学习中文，共同进步 7.3 与孩子分享自己的中文学习经验和感悟 7.4 尊重和理解孩子的中文学习兴趣和需求 八、总结 8.1 家长对孩子学习中文的关键作用 8.2 为孩子提供全面的中文学习支持和指导 8.3 培养孩子成为终身中文学习者",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-029",
+      "title": "doit-cw-doc-029",
+      "text": "文化：带领还是引领？ 在这个多元化、高度发展的社会里，文化早已成为了人类生活中不可或缺的一部分。它既带领我们前进，又引领我们的方向。然而，在这个瞬息万变的时代，我们不禁要思考一个问题：文化到底是带领我们还是引领我们呢？ 首先，我们来探讨一下文化的带领作用。自古以来，文化就像一位慈祥的长者，引导我们走在正确的道路上。它传承着人类的智慧和经验，为我们提供了解决问题的方法。正是因为有了文化的带领，我们的社会得以稳定发展，不断壮大。在我们成长的过程中，我们通过学习、实践和模仿，将文化内化为自己的知识和品质，从而更好地适应社会、为社会发展做出贡献。 然而，随着时代的变迁，人们逐渐意识到，单纯依赖文化的带领已经无法满足我们不断追求进步的渴望。在这个日新月异的世界里，我们需要更加主动地去发掘、创造新的文化，以适应不断变化的时代。这时，文化便发挥着引领的作用。 文化引领，意味着我们需要主动地去创新、拓展。在这个过程中，我们要学会跳出传统的框架，勇敢地尝试新的事物。当然，这并不是说我们要摒弃传统文化，而是要在传统文化的基础上进行创新和发展。正如鲁迅先生所说：“世界上的一切光荣和骄傲，都来自于一个‘敢’字。”我们要敢于挑战现状，敢于创新发展，这样，文化才能更好地引领我们走向繁荣和进步。 同时，文化引领还意味着我们需要拥抱多元文化。在全球化的背景下，各种文化相互碰撞、融合，产生出丰富多彩的文化景观。我们要学会尊重和包容其他文化，从而为自己的文化发展注入新的活力。只有将多元文化融入到我们的生活中，我们才能拓宽视野、增长见识，进而更好地应对各种挑战。 综上所述，文化既带领我们走过了漫长的岁月，又引领我们前进。在未来的道路上，我们要学会在传承和创新中寻找平衡，勇敢地拥抱多元文化。这样，我们才能更好地把握文化的双重作用，让文化在带领和引领中为我们的生活、社会的发展创造更多的可能性。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-030",
+      "title": "doit-cw-doc-030",
+      "text": "宋制汉服婚纱照，让爱恋回归最美的时光 穿越千年的时空，将爱情镌刻在古典的油墨与华美的红尘里。我们恍若穿越回到了千年之前的宋朝，让爱情在那个时代的光辉里熠熠生辉。我们将梦想穿上华丽的盛装，跳动在每一个美好的瞬间，用心临摹宋朝的美丽，让我们在古朴、典雅的宋制汉服婚纱照中，感受爱情最浪漫的瞬间。 宋制汉服，带给我们无尽的想象空间，轻轻拾起岁月的风景，重温那些恍若隔世的繁华。古朴的色彩与典雅的线条交织出一幅恋人们心中的美景，一抹嫣红一丝素静，都将成为我们生命中最璀璨的瞬间。 在这样一个独具特色的宋制汉服婚纱照拍摄中，新人们仿佛置身于一个如诗如画的世界，犹如宋词中的豪放、柔情、婉约、清新，这样的婚纱照无疑为新人们留下了永恒的纪念。 沐浴在浓郁古韵的氛围中，让古色古香的风格陪伴着我们的爱情，让古典之美融入每一张照片。从此，我们将把这份深情，在时间的长河中永远流传。 让我们穿越时空，回到那个古老的时代，用最美的风景，定格最美的时光，让爱情在这千年古韵的宋制汉服婚纱照中，熠熠生辉。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-031",
+      "title": "doit-cw-doc-031",
+      "text": "《物种起源》学习心得 《物种起源》是查尔斯·达尔文的经典著作，对生物学的发展产生了深远的影响。通过对这本书的学习，我对物种的形成和演化有了更为深刻的认识，明白了物种的多样性是如何产生的，以及物种形态和习性的变化与环境的密切关系。以下为我在学习过程中的几点心得。 首先，《物种起源》提出了物种形成和演化的核心原理——自然选择。自然选择指的是生物在自然环境中，适应性强的个体更容易生存、繁殖，将其优良特性传给下一代。这个过程在很长的时间尺度上不断发生，最终导致物种的演化和形成。这个观点颠覆了我之前对物种形成的认识，让我意识到物种的形成是一个漫长的、自然的过程，而不是某个神秘力量的安排。 其次，通过学习《物种起源》，我明白了物种演化的非线性过程。物种在演化过程中会因为环境的变化、资源的竞争等多种原因，出现适应性的变化。这些变化不是简单的直线发展，而是根据外部条件的变化和内部遗传信息的多样性，不断产生新的物种形态和习性。这让我认识到生物演化的复杂性，以及生物多样性的价值。 再者，学习《物种起源》使我对生物的共同起源有了更为深刻的认识。在书中，达尔文提到物种起源于一个共同的祖先，然后通过演化逐渐分化出不同的物种。这使我认识到生物之间的亲缘关系，以及物种之间的联系。这有助于我在研究生物学时，更好地理解和分类各种生物。 最后，《物种起源》使我明白了人类在生物界的地位。我们并非生物界的主宰，而是与其他生物共同演化、共同生存的一员。这让我更加珍惜生物多样性，尊重和保护其他生物，以及珍惜自然资源，以实现人与自然的和谐共生。 总之，《物种起源》这本书对我的启发很大，它不仅使我明白了物种形成和演化的原理，还让我认识到生物多样性的价值和人类在生物界的地位。这对我今后的学习和生活都将产生深远的影响。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-032",
+      "title": "doit-cw-doc-032",
+      "text": "1. 了解自己的需求：在进行全屋定制之前，首先要明确自己的需求，包括家具的风格、材质、功能等，以便能够更好地满足自己的生活需求。 2. 量房与设计：在进行全屋定制前，需要邀请专业的量房师进行量房，并根据实际情况设计合适的家具布局方案。在设计过程中，要充分考虑居住者的生活习惯和使用需求。 3. 选材与预算：全屋定制的材料种类繁多，价格也各不相同。在选材时，要充分考虑自己的预算和对材质的要求，选择性价比高的材料。同时，要注意材料的环保性能，确保家具对居住者的身体健康无害。 4. 定制家具的质量：在选择全屋定制家具时，要注意家具的质量，尤其是五金件、板材等易损件。一定要选择品牌口碑好、质量有保障的家具厂家。 5. 安装与售后服务：全屋定制的家具安装是一个非常重要的环节，要确保家具安装牢固、美观。在签订合同时，要了解厂家的售后服务承诺，确保在家具出现问题时能够得到及时的解决。 6. 合理利用空间：全屋定制要充分利用空间，合理规划收纳和功能区域，使卧室空间既美观又实用。 7. 注重家具的颜色搭配：全屋定制时，要注意家具的颜色搭配，尽量保持整体风格的统一和协调。颜色搭配得当，可以使卧室空间更加温馨舒适。 8. 保持通风与采光：在进行全屋定制时，要注意保持卧室的通风与采光，确保居住者的生活品质。 9. 选择定制公司时，一定要选择有信誉的、有经验的、有良好口碑的公司，以确保定制的质量和售后服务。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-033",
+      "title": "doit-cw-doc-033",
+      "text": "我们坚持以诚信、透明的发展理念，以追求客户满意为核心，致力于为客户提供优质、安全、便捷的旅游服务，力争让每一位游客享受到安全、舒适、实惠的旅游体验。我们与中国境内旅行社紧密合作，建立长期的战略合作关系，实现双方的共赢，共同提升中国旅游业的服务水平。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-034",
+      "title": "doit-cw-doc-034",
+      "text": "2003年高考，注定写进历史。只有亲身经历过那年高考的人，才深有体会。不得不说，那年的考生真是命运多舛，让很多人不堪回首甚至羞于启齿。 从那年开始，全国高考时间破天荒地提前了一个月，由每年的7月7日改到6月7日，复习时间缩短一个月。那年第一次在全国实行3+X的考试方式，两天考完四门结束。那年高考还遇上了非典，进考场前量体温。那年的考题因为全国卷被盗，临时换了备用卷,题目难度陡升，高考数学创下了有史以来全国最低的平均分。 2003年春夏之交，一场发源于广东一带的非典迅速蔓延至全国，每天都有新增确诊病例。一旦发现非典感染患者、疑似感染患者或者与感染患者有接触的人，都需要立即隔离。恐慌气氛笼罩了整个中国。 校园算是人群活动最密集的地方，也是非典重点预防范围。学校教室要大扫除并消毒，学生每天定时量体温并上报数据。 为了保障校园安全，学校开始采取封闭式管理，走读生不能走读了，寄宿生为主的毕业班学生不能随意外出接触社会人员，每天宿舍、教室、食堂三点一线。这件事给面临高考的高三学生带来了恐慌和更大的压力。 距离高考一个月时，非典疫情严重的地区，不少学校不得不放假，学生回家自主复习。 2003年6月7日，考生终于迎来了非典笼罩下的高考。为保障考生安全，所有考生进考场前，必须测量体温。一旦发现学生体温异常，则要隔离开考试。 好不容易进了考场，在紧张气氛中绷紧了神经的考生算可以松一口气了。然而，高考前夕，四川南充有个叫杨博的考生盗窃了试卷，导致试题泄密，教育部临时启用了备用卷，出题人把试卷设计得很难。 拿到数学试卷的那一刻，大多数考生被题目打了个措手不及，完全蒙圈了。因为，题目确实太难了，超出了考试大纲范围。这是自1978年恢复高考以来，数学最难的一次。考场里已经有人在哭，还有人主动放弃考试，提前交卷。考完数学走出考场，不少考生哭成一片，尤其是女生。当年数学能及格已经很不容易了，不少平时数学学得好的同学发挥失常。 与数学的难相比，理科综合则完全不守常规，解答一个小题必须运用三门课的知识。有一道题目大约是说青蛙的运动神经脉冲和能量转化，难倒了无数考生。 影响很多考生人生轨迹的，不仅是难到出名的试题，还有填志愿。 那时是考试后估分填志愿。估分是个误差极大的技术活，不仅要记住客观题的答案，还要估计作文等主观题的得分情况。考生不仅要精准估自己的分数，还要参考往年高考录取分数线填志愿。 不过，很多人考砸了，尤其是数学，高考估分比模拟考试少几十分，甚至上百分。平时成绩还不错的考生，填志愿过于保守，没考上心仪的大学。平时成绩一般的考生抱着赌一把、不行就复读的心态填了名校，结果很多名校没招满，意外被录取了。 2003年高考，改变了无数人的命运，高考成绩成了不少考生多年的遗憾。不少人超常发挥考上心仪的大学，不少人发挥失常与理想的大学失之交臂，相当多考生选择复读。 虽然2003年高考很残酷，考生从未有过这样的经历，但是也是一种考验。经历了高考，不管结局如何，考生都会从中收获很多，学会成长，学会面对。高考成败不能决定考生未来的命运。是金子总会发光的，只要不放弃，就会有成功的那一天。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-035",
+      "title": "doit-cw-doc-035",
+      "text": "尊敬的负责人： 感谢贵公司选择我们作为同期举办展会的合作伙伴。我们将竭尽全力为您提供最优质的服务，使您的展会取得圆满成功。 以下是我们的开展计划书： 一、展会时间及地点 时间：2021年6月1日至6月3日 地点：上海国际展览中心 二、展会主题 本次展会的主题为“科技创新与未来发展”。我们将聚焦人工智能、5G通信、物联网等领域的前沿技术，展示最新的科技成果和应用，推动科技创新和未来发展。 三、展会规模 展览面积：10000平方米 展位数量：300个 参展企业：200家 四、展会策划 1.宣传推广 我们将通过网络、电视、报纸等多种媒体渠道进行广泛宣传，吸引更多的观众和参展商。 2.专业论坛 我们将邀请业内知名专家和企业代表，组织相关论坛和研讨会，分享最新科技成果和应用，促进行业交流和合作。 3.现场活动 我们将组织丰富多彩的现场活动，如VR体验、科技竞赛等，吸引观众参与，增强互动性和趣味性。 五、服务保障 1.场馆搭建 我们将在场馆内搭建展台和布置展品，确保展览效果和观众体验。 2.展品运输 我们将提供展品运输和存储服务，确保展品安全有序地运输到展馆。 3.安保服务 我们将提供安保服务，确保展会期间的安全和秩序。 六、预算 本次展会的预算为1000万元，其中包括场馆租赁、展品搭建、宣传推广、专业论坛、现场活动等各项费用。 七、总结 我们相信，本次展会将为企业提供一个交流合作的平台，推动科技创新和未来发展。我们将尽最大努力为您提供最优质的服务，期待与您的合作共赢。 谢谢！",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-036",
+      "title": "doit-cw-doc-036",
+      "text": "物业品牌推广策划方案 一、项目背景 随着城市化进程的不断加快，人们对生活品质的要求也在逐步提高。物业管理作为提升住宅小区及商业区域的品质保障，已经成为了城市发展的重要组成部分。在这个市场环境下，我们需要制定一套完善的物业品牌推广策划方案，提升品牌知名度，吸引更多客户。 二、市场分析 1. 市场需求 随着社会经济水平的提升，消费者对物业服务的需求也越来越高。他们不仅需要基本的物业管理服务，更加关注物业服务的品质和附加价值。因此，我们需要提供高品质、个性化的物业服务，满足消费者的多样化需求。 2. 市场竞争 物业市场竞争激烈，各家物业公司纷纷推出各种优惠政策和服务承诺来吸引客户。因此，我们需要制定有针对性的推广策划方案，提升品牌形象，以脱颖而出。 三、目标定位 1. 目标客户群 我们的目标客户群主要为中高端住宅小区及商业区域的业主和租户，他们对物业服务的品质有较高要求，希望获得更为舒适便捷的居住和办公环境。 2. 品牌定位 我们的品牌定位为高品质、专业化的物业服务提供商。我们将通过提供专业、优质的物业管理服务，满足客户对高品质生活的追求。 四、推广策略 1. 品牌形象塑造 通过设计独特的企业标识、统一的企业形象及宣传物料，传达我们的专业化、高品质服务理念，树立品牌形象。 2. 线上推广 利用互联网平台，包括官方网站、社交媒体、行业论坛等，发布企业资讯、服务案例，提高品牌曝光度。同时，利用网络广告投放，吸引潜在客户关注。 3. 线下推广 组织举办各类业主活动，提高业主对物业公司的认可度。参加行业展会、论坛，与同行业交流，提高品牌知名度。 4. 公关活动 与当地政府、媒体建立良好关系，积极参与社会公益活动，树立良好的社会形象。 5. 服务创新 通过对市场需求的不断研究，不断创新物业服务，提高服务品质，满足客户的个性化需求。 五、落地执行 1. 制定详细的推广策划方案，明确各项推广活动的目标、时间、预算等，确保推广工作有序进行。 2. 成立专门的推广团队，负责推广方案的执行和监控，确保推广效果达到预期。 3. 定期对推广效果进行评估和总结，不断优化推广策略，提高推广效果。 通过以上策划方案的实施，相信我们的物业品牌将逐步走入市场，提升知名度，吸引更多的潜在客户，同时提升物业品牌的知名度和形象，扩大市场份额，实现品牌推广的目标。同时，我们需要对推广效果进行评估，及时调整策略，不断提高品牌的竞争力。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-037",
+      "title": "doit-cw-doc-037",
+      "text": "位于美丽的郊外，自然教育基地环境优美，拥有丰富的生态资源和多样的自然景观，为广大市民提供了一个亲近自然、感受大自然魅力的好去处。基地总面积达数百亩，分为多个区域，包括森林生态区、湿地生态区、草原生态区、花卉园艺区等。各个区域都有独特的生态特点，让游客尽情领略大自然的美好。 森林生态区占地面积较大，绿树成荫，林木茂密。这里生长着各种树种，如松树、橡树、杨树等，还有一些珍稀的植物资源。在这片森林中，游客可以感受到清新的空气和宁静的氛围，还可以进行徒步、观鸟等户外活动。在初春时节，樱花、桃花、杏花等盛开，春光明媚，美不胜收。 湿地生态区是基地的另一大特色，这里有各种湖泊、河流、沼泽等水域，形成了丰富的水生生态系统。在这里，游客可以欣赏到美丽的荷花、睡莲等水生植物，还可以观赏到各种鸟类、鱼类等生物。此外，基地还开设了湿地科普教育活动，让游客在游玩的同时，了解湿地生态的保护意义和生态知识。 草原生态区则是一个广阔的绿色海洋，草地上生长着各种草本植物，如苜蓿、狗尾草等。在这里，游客可以欣赏到壮观的草原景色，还可以体验放风筝、野餐等户外活动。此外，草原生态区还经常举办各种生态主题活动，如观赏蝴蝶、捉蜻蜓等，让游客更加亲近自然。 花卉园艺区则是一个色彩斑斓的世界，种植着各种美丽的花卉植物，如牡丹、玫瑰、郁金香等。这里的花卉品种繁多，花期错落，游客可以四季欣赏到美丽的花卉景色。此外，基地还开展各种花卉主题活动，如花卉摄影大赛、花卉知识讲座等，让游客在欣赏花卉美景的同时，增加科普知识。 总之，自然教育基地环境优美、生态多样，为市民提供了一个放松身心、亲近自然的好去处。在这里，游客不仅可以感受大自然的魅力，还可以参与各种生态科普活动，提高环保意识，增强生态文明建设。希望更多的市民来到这里，感受自然的魅力，共同呵护美丽的生态环境。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-038",
+      "title": "doit-cw-doc-038",
+      "text": "学完《论语诵读》，让我对孔子的智慧和儒家思想有了更深入的理解。这部充满智慧的书籍给我带来了许多启示，对我的人生观、价值观产生了深远的影响。以下是我从《论语诵读》中得到的一些启示： 首先，孔子强调“仁爱”和“忠诚”的价值观。仁爱意味着对人的关爱，对待别人要像对待自己一样，始终关注他人的需求，尊重他人，善待他人。忠诚是指对自己的信仰、道义和事业要忠诚不二，遵守信用，守住底线，坚定信念。在现实生活中，我们应该将这两个品质内化为自己的行为准则，不仅要关爱家人、朋友，还要关爱社会、关爱国家，做一个有道德、有担当的人。 其次，《论语诵读》让我明白了学习的重要性。孔子说：“温故而知新，可以为师矣。”学习不仅仅是为了获得知识，更重要的是通过学习不断更新自己的认知，提高自己的素质。在现代社会，我们更应该珍惜求知的机会，不断提高自己的知识水平和能力，为实现个人价值和社会进步贡献自己的力量。 再者，孔子倡导的“礼”的精神也给了我很大的启示。在孔子看来，礼是一种规范人们行为的道德规范，是维护社会和谐、促进人际关系和谐的重要手段。我们应该在生活中遵循礼的要求，对长者尊敬、对同辈友爱、对晚辈关爱，做到有礼貌、有敬意，这样才能让我们的人际关系更加融洽。 最后，《论语诵读》教会我要有“道”的追求。所谓“道”，就是一种正确的人生观和价值观，是引导我们走向美好未来的指南针。我们要在自己的人生道路上，不断追求道，明确自己的人生目标，坚守道义，勇往直前，这样才能实现自己的人生价值。 总之，《论语诵读》给我带来了许多宝贵的启示，使我更加明确了人生的方向和目标。在今后的日子里，我将继续学习孔子的智慧，将其运用到自己的生活中，做一个有道德、有智慧、有担当的人。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-039",
+      "title": "doit-cw-doc-039",
+      "text": "雨水节气来临，悠悠细雨滋润万物，让浴室取暖器为您带来舒适的温暖，享受雨季里的惬意时光。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-040",
+      "title": "doit-cw-doc-040",
+      "text": "公司顺利通过AEO认证，迈向国际贸易新高峰 近日，经过全体员工的共同努力，我公司成功地通过了AEO（Authorized Economic Operator）认证，正式成为具备国际贸易资质的企业，这将为我公司在国际市场的拓展及业务发展提供重要支持。 AEO，即经认证的经济操作者，是一种全球范围内的海关认证制度，旨在提高跨境贸易的安全性和便利性。企业获得AEO认证意味着在全球范围内获得海关的信任和认可，将享有通关便利、优先检查等一系列政策优势。 据了解，我公司在AEO认证过程中，积极配合海关相关部门的工作，严格按照AEO认证要求开展自查自纠，并通过了现场核查及审核。最终，我公司以良好的信用记录、完善的管理制度和强大的综合实力，成功获得AEO认证。 这次AEO认证的成功，标志着我公司在国际贸易领域迈出了关键一步。未来，我公司将继续深化与各国海关的合作，全面提升供应链安全管理水平，优化国际贸易业务流程，努力打造具有国际竞争力的现代物流企业。 作为一家有着国际视野的企业，我公司一直以来坚持走开放、合作、共赢的道路，致力于为客户提供优质、高效的服务。获得AEO认证后，我公司将充分发挥政策优势，提高业务竞争力，为国际贸易的繁荣做出积极贡献。 再次感谢全体员工在AEO认证过程中付出的努力和辛勤工作，让我们携手共进，迎接新的挑战，共创美好未来！",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-041",
+      "title": "doit-cw-doc-041",
+      "text": "论M12航空连接器 本文旨在探讨M12航空连接器的基本概念、用途、特性、制造厂家以及如何正确选择这类连接器。 M12航空连接器是一种圆形连接器，也叫圆柱形针电连接器。它由一个固定端电连接器（称为插座）和一个自由端M12航空插头电连接器（称为插头）组成，可以通过插头、插座和插合和分离来实现电路的连接和断开。 M12航空连接器的主要用途是连接电气线路，可以用来传输数据和电源，广泛应用于工业、汽车、智能家居、医疗、军事等领域。它具有优良的绝缘性能、良好的耐热性能、抗紫外线性能和耐腐蚀性能，能够满足各种环境条件下的工作要求。 此外，M12航空连接器的可靠性也很重要，关键是要正确选择合适的连接器，确保满足应用需求。合理的设计和严格的质量控制是提高可靠性的关键，而各种材料的选择也是非常重要的。M12航空连接器在各种电气线路中有着重要的作用，具有优良的绝缘性能、良好的耐热性能、抗紫外线性能和耐腐蚀性能，能够满足各种环境条件下的工作要求。正确选择合适的连接器，确保质量满足要求，是提高M12航空连接器的可靠性的关键。 以下部分为详细论述： M12航空连接器是一种特殊的连接器，它主要用于航空应用，如飞机发动机系统和控制系统，电子仪器，空中交通控制系统等。它具有许多优势，如防水性能，抗振动，耐温度和防爆能力。 M12航空连接器的特点是，它具有较小的外形尺寸，高度集成度，耐高压，耐高温，防护性能，耐湿度，耐热和抗振动等优点，可以满足不同环境条件下的连接要求。此外，M12航空连接器还具有低接触电阻，可靠性高，使用寿命长等特点，这使得它在航空领域的应用变得更加广泛。 M12航空连接器的应用非常广泛，可以用于飞机发动机系统，控制系统，电子仪器，空中交通控制系统，飞机舱内的灯具和空调系统等。它的优点是，在航空应用中，由于它的小体积，低接触电阻，高可靠性，使用寿命长等特点，可以有效改善飞机性能，降低维护成本，增加可靠性，从而提高飞机的安全性。 M12航空连接器的缺点也是存在的，如它的连接性能会受到温度的影响，可能会导致连接器的损坏；另外，它的安装也比较困难，必须要有专业的人员来安装，这增加了维护成本。 总之，M12航空连接器是一种重要的航空连接器，它具有许多优点。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-042",
+      "title": "doit-cw-doc-042",
+      "text": "感谢师恩活动心得体会 在我国有句古话：“一日为师，终身为父”。教师是我们成长过程中最重要的引路人，他们传授给我们知识，教会我们做人的道理，陪伴我们走过人生中最美好的时光。为了表达我们对老师的感激之情，我们学校举办了一场感谢师恩活动。这次活动让我深刻体会到了老师的伟大，也让我更加懂得了感恩的重要。 活动当天，学校精心策划了丰富多彩的节目。同学们表演了歌舞、诗朗诵、小品等节目，为老师们献上一场视听盛宴。我们通过自己的努力，把最美好的一面展示给老师，希望能让他们在繁重的教学工作之余，感受到我们对他们的感激之情。 除了精彩的表演，我们还为老师们送上了一份特别的礼物。我们制作了一张巨幅的感谢卡，上面写满了同学们对老师的感谢与祝福。当我看到卡片上的每一句诚挚的话语，心中涌动着无尽的感激之情。正是因为有了老师的辛勤付出，我们才能在学习、生活等方面取得成绩。这份礼物虽然微不足道，但却承载了我们对老师的敬意与感激。 在活动的最后，学校领导为老师们颁发了荣誉证书，感谢他们为学校和同学们作出的巨大贡献。当看到领导将荣誉证书交到老师手中时，我的眼前浮现出一个个操劳在教学一线的身影。他们不仅是我们的知识传授者，更是我们成长道路上的陪伴者。老师们把自己的青春献给了教育事业，他们的付出值得我们深深感激。 通过这次活动，我更加深刻地体会到了老师的伟大和我们学生应有的感恩之心。感谢老师们为我们付出的一切，希望在今后的学习生活中，我们能更加珍惜老师的教诲，不辜负他们的期望，努力学习，成为有用之才。同时，我们也要学会感恩，感恩身边的每一个人，用一颗感恩的心去回报他们的付出。最后，再次感谢所有教师，祝愿他们身体健康，工作顺利！",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-043",
+      "title": "doit-cw-doc-043",
+      "text": "心学宗师王阳明， 道尽人生千态百行。 问心而知，观影斟酌， 昼夜扪心，探源究理。 忧患困厄皆由心生， 欢愉安宁亦悟于心。 静心而思，千里远行， 浮生若梦，仁爱为行。 仰望青天，心如明月， 宁静致远，岂止于梦。 随时而遇，化险为夷， 无忧无虑，惟行积善。 王阳明心学传万代， 世间苍生心迹永恒。 尘埃落定，宇宙长空， 仰望星辰，心学无疆。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-044",
+      "title": "doit-cw-doc-044",
+      "text": "如果注定和他没有结果，但是又特别爱她，你选择要过程还是转身就走？ 安娜站在雨中，泪水与雨水交织在一起，模糊了她的视线。她想起了两年前的那个夏天，那时候她与杰克初次相遇，是那么美好，那么令人陶醉。 杰克总是一副阳光灿烂的笑容，他们在彼此的笑声中度过了许多难忘的时光。从相识到相知，从相知到相爱，安娜感觉她已经找到了属于自己的幸福。 然而，幸福并没有持续太久。在一次偶然的机会，安娜发现了杰克身患绝症的事实。她明白，与杰克相爱的时间已经所剩无几。在悲伤中，她反复问自己：如果注定和他没有结果，但是又特别爱她，她选择要过程还是转身就走？ 安娜在挣扎中找到了答案。她选择陪伴杰克度过他的生命中的最后一段时光。在那段时间里，他们彼此相守，陪伴对方走过一个又一个春夏秋冬。 也许这段感情没有永远，但在有限的时间里，他们努力地去爱，去珍惜。在杰克离世前的那段时间，他们经历了太多的泪水和欢笑，每一刻都刻骨铭心。 杰克离世后，安娜痛苦地度过了一段时间。然而，在思念杰克的日子里，她渐渐明白，爱一个人并不需要拥有永远，只要曾经拥有过那么一段时间的真挚相爱，就足够了。 岁月流转，安娜重新站起来，继续寻找属于她的幸福。而她与杰克的那段感情，已经成为了她心中最美好的回忆，永远珍藏。 所以，如果注定和他没有结果，但是又特别爱她，那么就去勇敢地追求吧。因为，在有限的生命里，我们最应该珍惜的，是那些曾经拥有过的美好时光。而爱，也许正是让我们勇敢地走下去的力量。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-045",
+      "title": "doit-cw-doc-045",
+      "text": "大家好，我是野菜公主宝钏，如今我孤生一人已经挖了18年的野菜，身上的衣服也好久没换，实在是穷的没钱。前几日薛平贵给我发短信说他当了西凉王，要封我做皇后，叫我等他。可是我哪有力气再等下去。你愿意帮我找找夫君吗,助我实现心愿。今天肯德基疯狂星期四,v我五十",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-046",
+      "title": "doit-cw-doc-046",
+      "text": "刚刚我才得知另个候选人是从产品转向UX领域的，但是这个时候我已经通过了初面和max复面的面试，约好了下午三点去面试，而现在我正在等待与魏欣进行第三轮面试。我感到有些紧张，因为我知道这是我加入这个公司的最后一道关卡。 当我走进面试室时，我看到了魏欣的笑脸。魏欣向我表示欢迎，并要求我谈谈自己对UX领域的理解和看法。这时候我开始讲述我如何在产品工作中发现了用户体验的重要性，并逐渐对UX产生了浓厚的兴趣。我还提到了自己曾经阅读的UX相关书籍和博客，并在实践中积累了一些经验。 魏欣认真地听着，看起来很满意我的回答。然后，魏欣要求我解决一个实际的UX设计问题。这个问题与公司的一个新产品相关，魏欣想听听我和这位候选人如何应对这种情况。 这位候选人认真地思考了一会儿，然后提出了他的设计想法。我也思考了一会开始描述用户的需求和痛点，然后提出了几个解决方案。魏欣听起来很满意，并开始提出一些深入的问题，以了解我对设计过程的理解和思考方式。 我回答得非常流利和自信。我展示了自己对UX设计的深入理解，以及如何应用这些理念来解决实际问题。魏欣看起来很高兴，并表示我已经通过了最后一轮面试。 另一位候选人感到难过。他知道自己在面试中表现得不如我。他决定继续学习和实践，以便以后有机会为公司和用户服务。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-047",
+      "title": "doit-cw-doc-047",
+      "text": "洛阳三日游，充满着精彩的瞬间。一路上，洛阳的景色给我们带来了不少惊喜。早上，我们来到了老城区，游览了名胜古迹如西湖公园、龙门景区、洛阳城墙等，感受了洛阳的历史文化。中午，我们到西工区吃了本地特色美食，口味独特，别有一番风味。晚上，我们乘坐游船漫游洛阳河，一边欣赏美丽的夜景，一边品尝洛阳特色小吃，美味极了！随着夜幕的降临，我们来到洛阳湖，观赏了美丽的日落，让人流连忘返。第三天，我们来到高新区，参观了科技博物馆，深入了解了洛阳的科技发展，让我们感受到洛阳的进步。总之，这次洛阳三日游，让我们在游玩中学习，在感受中体会，给我们留下了美好的回忆。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-048",
+      "title": "doit-cw-doc-048",
+      "text": "西藏旅游攻略——神秘的高原世界 西藏，这片神秘的高原，以其独特的自然风光、深厚的宗教文化吸引了无数游客。来到这里，您将感受到不一样的风情，体验高原的雄伟壮观。下面就为您详细介绍西藏的吃、住、行以及景点和特色。 一、吃：西藏的特色美食 1. 藏式餐饮：在拉萨等地，有许多特色的藏式餐馆，推荐品尝青稞酒、酥油茶、糌粑等藏式特色食品。 2. 拉萨八廓街：这里汇集了各种风味的小吃，如藏式面食、糍粑、炒菜等，一定要尝尝哦！ 3. 清真餐馆：由于西藏有一定数量的回族人口，因此清真餐馆也比较常见，推荐品尝牛羊肉、羊杂碎等美食。 二、住：西藏的住宿选择 1. 拉萨市区：推荐入住拉萨市区，附近有许多星级酒店、快捷酒店、青年旅舍等住宿选择，价格适中，交通便利。 2. 雪山脚下：如果您想要感受雪山的壮丽，可以选择入住林芝地区的酒店，靠近雅鲁藏布江大峡谷、南迦巴瓦峰等美景。 3. 圣湖边：纳木措湖、羊卓雍措等圣湖附近也有不少酒店、客栈，住在这里可以欣赏到湖泊的美丽景色。 三、行：西藏的交通出行 1. 飞机：拉萨贡嘎机场是西藏最大的机场，有多个城市的航班可以到达。抵达拉萨后，可以选择租车、包车、乘坐当地公交等方式出行。 2. 火车：青藏铁路是连接青海和西藏的重要通道，乘坐火车可以欣赏沿途的壮丽风光。 3. 自驾游：如果您喜欢自驾游，可以从成都、昆明等地出发，沿途欣赏高原风光，但需注意高原反应和安全驾驶。 四、景点：西藏的必游景点 1. 布达拉宫：位于拉萨市区，是西藏最著名的标志性建筑，拥有悠久的历史和丰富的文化底蕴。 2. 大昭寺：位于拉萨市区，是西藏最重要的佛教寺庙之一，内有释迦牟尼的真身像。 3. 羊卓雍措：被誉为“天上的珍珠”，湖光山色，美不胜收。 4. 纳木措：位于拉萨北部，是世界上海拔最高的大型湖泊，湖水清澈，风光秀美。 5. 林芝：被誉为西藏的“江南”，盛产桃花，四季风光各异。 祝您有一个愉快的西藏之旅！",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-049",
+      "title": "doit-cw-doc-049",
+      "text": "春暖花开时节来， 绿叶嫩芽满园栽。 鸟儿啼唤晨曦光， 蝶舞蜜蜂采花忙。 轻风拂面送清香， 万物复苏迎新章。 杨柳依依映水边， 桃红梨白各自妆。 踏青赏花伴笑语， 幸福温馨洋溢怀。 沐浴阳光享诗意， 与春天共舞梦飞扬。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-050",
+      "title": "doit-cw-doc-050",
+      "text": "重庆旅游攻略： 一、交通 去重庆旅游最方便的交通方式就是飞机，因为重庆有一个国际机场，每天有很多航班飞往重庆，从大部分城市到重庆的航班都很可靠。 另外，重庆的铁路系统也很发达，很多大城市都有到重庆的高铁和动车，而且价格也不贵，是一个很不错的出行方式。 二、景点 去重庆旅游，不能错过最著名的景点：重庆大足石刻、长江索道、渝中区大坪步行街、观音桥、磁器口、解放碑和重庆熊猫基地等。 这些景点都具有重庆的历史文化底蕴，如果想深入了解重庆的历史文化，一定要去参观这些景点。 三、美食 去重庆旅游，一定要尝尝重庆的美食，重庆的美食有很多，有火锅、烤鱼、小吃等，口味都很独特，而且价格也很实惠，特别受到游客的欢迎。 如果想了解重庆的美食文化，一定要去尝试，相信你会爱上重庆的美食。 四、购物 去重庆旅游，一定要去购物，重庆有很多著名的商场，有美罗、解放碑广场、大坪步行街等，这些商场里有各种各样的商品，可以满足游客的购物需求。 重庆的小吃也很有特色，像是重庆小面、豆花、毛血旺等，都是重庆的特色小吃，游客可以去尝试。 五、娱乐 去重庆旅游，不能错过娱乐项目，重庆有",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-051",
+      "title": "doit-cw-doc-051",
+      "text": "新春到来喜洋洋，岁月如歌美满长。祝福正正团圆美满天天乐，幸福安康步步强。愿你工作顺利，生活愉快，心想事成，家庭和睦，身体健康。祝愿正正在新的一年里，一切顺心如意，幸福快乐！",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-052",
+      "title": "doit-cw-doc-052",
+      "text": "新冠肺炎疫情成为淬炼网格员队伍的烈火熔炉 自2019年底新冠肺炎疫情爆发以来，这场突如其来的灾难牵动着全国人民的心。在这场抗击疫情的战斗中，有一群身影在疫情防控的一线默默付出，他们是基层的网格员。面对这场疫情，他们迅速组织起来，成为了疫情防控的重要力量。新冠肺炎疫情成为了淬炼网格员队伍的烈火熔炉，让他们在这场抗击疫情的战斗中展现出英勇无畏、敢打敢拼的精神风貌。 首先，网格员们充分发挥了自身的优势，在做好疫情防控的同时，为居民提供贴心服务。他们深入了解社区居民的需求，帮助居民解决生活困难，如代购物品、协助解决家庭矛盾等，让居民们感受到了党和政府的关爱。 其次，在疫情防控工作中，网格员们克服了种种困难，勇往直前。面对重重压力，他们挺身而出，加入疫情防控一线，践行着“人民利益高于一切”的初心。他们不畏艰险，带着责任和使命感投身疫情防控工作，成为了疫情防控的中坚力量。 此外，网格员们在疫情防控工作中表现出了极强的协作精神。在疫情防控的关键时刻，他们积极协作，加强了与卫生、公安、市政等部门的沟通协调，形成了全方位、立体式的疫情防控工作体系，为疫情防控工作提供了有力的保障。 最后，疫情考验了网格员们的意志品质。面对疫情，他们不慌不乱，冷静应对，充分发挥了网格员在社区疫情防控工作中的关键作用。他们用实际行动诠释了“忠诚、担当、奉献”的价值观，为抗击疫情作出了积极贡献。 总之，新冠肺炎疫情成为了淬炼网格员队伍的烈火熔炉。在这场抗击疫情的战斗中，他们顽强拼搏，克服困难，为疫情防控工作作出了重要贡献。这场疫情让我们看到了基层网格员的担当精神，也让我们更加坚信，有这样一群英勇无畏的网格员在基层，我们一定能够战胜疫情，迎接美好的未来。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-053",
+      "title": "doit-cw-doc-053",
+      "text": "这款花瓶的设计非常符合现代简约的审美观念，线条简洁，造型优雅，既有艺术感又不失实用性。放在客厅或家居环境中，无论是作为摆件还是花插，都能为整个空间增添一份别致的韵味。此外，这款花瓶的创意设计使其成为了一件独具特色的软装饰品，让人耳目一新。总之，这款花瓶无论从品质、设计还是价位来说，都非常值得购买，强烈推荐给大家！",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-054",
+      "title": "doit-cw-doc-054",
+      "text": "主持人：各位观众朋友们，大家好！今天给大家介绍一款非常实用的家居用品——家务手套！ 画面：一位家庭主妇正在忙碌地做家务，清洁卫生间、洗碗、拖地等。 旁白：在我们日常生活中，家务是一项必不可少的工作。但很多时候，家务劳动会让我们的双手受到伤害。有了这款家务手套，您再也不用担心这些问题了！ 画面：展示家务手套的特点。 旁白：这款家务手套采用高品质PVC材质制作，弹性十足，耐用又防水。加厚设计，有效保护您的双手免受磨损和划伤。另外，手套内部采用柔软亲肤的绒布衬里，舒适透气，不易引起过敏。舒适度更上一层楼！ 画面：演示戴着家务手套做各种家务的场景。 旁白：无论是洗碗、擦地、清洁家具还是浇花，戴上这款家务手套，您都可以轻松应对。防滑颗粒设计，不仅增加了手套的摩擦力，还能让您在操持家务时更加稳定、安全。在洗涤碗具时，我们可以在手套内侧涂上适量洗涤剂，然后用手套轻松清洗碗具。由于手套具有防水、防油的特性，可以保护我们的手部免受碗具划伤或洗涤剂刺激。在清洁厨房时，我们可以使用家务手套擦拭台面、炉灶等部位。同样地，手套的防水、防油特性可以有效保护我们的手部。在洗衣服时，我们可以使用家务手套在洗衣池中搓揉衣物。手套的耐磨特性可以保证手套的使用寿命，同时也可以减少手部的磨损。最后，我们需要注意家务手套的清洁和保养。使用后，我们需要将手套反过来晾干，避免内侧潮湿。如果手套表面有污垢，可以使用清洁剂进行清洗。 画面：一个幸福的家庭，一位美丽的家庭主妇，笑容满面。 旁白：选对家务手套，让您的生活更美好。快来购买这款家务手套，为您的双手加把锁，享受轻松的家务时光吧！ 主持人：各位观众朋友们，让我们用这款家务手套呵护双手，爱护家人，共享美好生活！祝大家生活愉快！",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-055",
+      "title": "doit-cw-doc-055",
+      "text": "这只猫有着柔软的棕色毛发，像是一团柔软的棉花糖，小巧的身材却散发着自信的气息。它的眼睛像两颗晶莹的黑宝石，透露着聪明和好奇。每当它发现了新鲜的事物，它会好奇地用小爪子抓住，然后咬一口，然后再把它放回原处。它的耳朵像两片蝴蝶翅膀，灵敏地转动着，听着周围的声音。它的尾巴是柔软而灵活的，像是一个调皮的小玩具，总是摇摆着，像是在和你打招呼。这只猫总是会给人带来快乐和温暖，它是一只真正可爱的猫。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-056",
+      "title": "doit-cw-doc-056",
+      "text": "有一美人兮，见之不忘。 …… 《红楼梦》中有对王熙凤“未见其人，先闻其声”的描述，而你于我，则是“未见其人，先闻其名”。 与你相遇在某人情意缭绕的文字笔墨中。透过你晶莹成串的泪珠，感受到一个小女人的柔情；望着你渐行渐远的背影，好像望见了爱情的模样。那日，你和初升的朝阳平行，投射出万丈光芒，散发着对美好未来的憧憬。 我在想：这是怎样的一位女子？ 想必她有一个素色的行囊，有一张木香弥散的画板，几支高低不一、笔尖磨的圆润的画笔、一部小巧实用的相机和一袭水墨铺染的长裙相伴行至远方。 她会画下青色的天际线和昏黄的夕阳；她会着白色的雪纺衫、黑色的齐膝裙，踏着“噔噔”作响的木板桥，将心事放逐于湖上。 微风，拂过她的发丝，摇晃起细细波纹，摇乱了佳人倩影。 与你再相遇于友人的不经意漫谈中。你很忙，忙工作、忙学习，有点儿“神龙见首不见尾”的意味。即便偶尔有那么一两丝空闲时间，你也不予声张。独自坐在书房，捧一卷诗集，闻一股幽香，赏一处蒹葭苍苍，漫游于一段古人情殇，任多情洒满长廊。 冬去春来，春末夏至，苞朵肆开。我与你的“接触”日愈增多，为此，我是多么的欢喜！每日翻看你的照片，放大、再放大，将你由内而外散发的美仔细观摩似乎已经成为我的必修课。 上天偏爱，岁月它也跟着巧言令色，给了你一副四十岁却仍精致焕彩的姣好容颜，你的身材也完全没有这个年龄段女人常有的臃肿肥硕，腹有诗书气自华吧！你的一举一动、一颦一笑依似当年舞台上那个伴着音乐节拍翩然而起跳一支傣族舞的妙龄女子。聚光灯下，你的面色依旧从容淡然。那种落落大方、端庄典雅的美，是我这一介小小书生不敢妄议评判的。若非要说出点什么不同，那就应该是岁月赐予了你几分成熟的魅力，少了几分年少轻狂、跌跌撞撞的稚气。 于我，你是谜，是秘。 如若说，你行走在诗行，那么，你的声音就是歌。 我喜欢听你诵读诗歌。那一首《哥哥，今夜的月色破了》饱含真情的吟诵出一女子在夜深时分对远方情哥哥的思念；听一曲《虞姬别霸王》，你凄楚哀伤的一句“霸王，我是你的女人”，荡气回肠，用凄美的声音演绎了一场英雄美人的旷世绝恋；《我想和你虚度时光》让心欢快跳跃在胸膛。我想和你虚度时光，在时光虚度中慢慢读你、懂你。 翠绿蕾丝礼服的高傲、黄底大花连衣裙的美艳、正装的标致、桃粉薄纱长裙的优雅、黑底缀花旗袍的雍容华贵、黑色及踝呢子大衣的神秘、卡其色长裙的知性……这些衣饰的美丽全因你，赞不足兮！ 如果要给你贴上明确的标签，你是阳光明媚，你是优雅如书，你是才情如诗，你是热情如火，你是温婉如水…… 女子如你，美兮快兮!",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-057",
+      "title": "doit-cw-doc-057",
+      "text": "尊敬的各位用户，随着寒冬的来临，我们深感到供暖的重要性，为了让广大用户度过一个温暖的冬季，我们将会全力以赴确保供暖服务的稳定、安全和及时。 首先，我们将积极配合政府相关部门，做好供暖前期的准备工作。对于老旧小区和远离热源的地区，我们将加大改造力度，确保供暖管网的畅通无阻。对于新建小区，我们将在保证施工质量的基础上，尽快完成供暖设施的建设，为用户提供舒适的居住环境。 其次，我们将对供暖系统进行全面检查，确保设备运行安全可靠。在供暖期间，我们将定期对设备进行维护保养，确保供暖系统正常运行。同时，我们将加强与各相关单位的协调配合，确保供暖所需的能源、原材料等供应充足。 此外，我们将优化供暖服务质量，提升用户满意度。为了让用户真正感受到温暖，我们将实行24小时值班制度，随时接受用户的咨询和反馈，及时解决用户在供暖过程中遇到的问题。同时，我们将充分倾听用户的需求，不断改进供暖服务，让用户的生活更加美好。 最后，我们诚挚地希望各位用户能够给予我们支持与理解，我们将竭诚为您提供优质的供暖服务，让大家在寒冬中感受到家的温暖。让我们携手共进，共同度过一个温馨、舒适的冬季！",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-058",
+      "title": "doit-cw-doc-058",
+      "text": "在参加儿童红歌演唱一周的活动中，我收获颇丰。首先，我对红歌有了更深入的了解，红歌作为一种特殊的歌曲类型，它传承了中华民族的优秀文化，激发了人们的爱国情怀。通过这次活动，我学会了很多经典的红歌，例如《歌唱祖国》、《社会主义好》等等，这些歌曲不仅有优美的旋律，而且歌词充满正能量，唱起来让人感到无比振奋。 其次，这次活动提高了我的演唱水平和舞台表现力。在为期一周的集训过程中，我和其他小伙伴们一起努力学习，不断地尝试、调整和纠正，从而使我的嗓音更加悦耳、表情更加丰富。与此同时，我还学会了如何在舞台上展示自己的魅力，如何与观众互动，让观众感受到我的感情和热情。 此外，参加这次活动，还锻炼了我的团队协作能力。在排练过程中，我们需要互相配合、协作，才能确保整个表演的顺利进行。每个人都是一个不可或缺的部分，大家齐心协力，共同努力，才能取得好的成绩。这让我深刻体会到了团结的力量，同时也让我更加珍惜与小伙伴们的友谊。 总之，参加儿童红歌演唱一周的活动，让我在增长知识、提高演唱水平的同时，还锻炼了团队协作能力，结识了很多新朋友，是一次非常宝贵的经历。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-059",
+      "title": "doit-cw-doc-059",
+      "text": "春雷响，万物苏，感受大自然的无尽魅力，一起来欣赏惊蛰创意海报的独特韵味！ 在这个充满生机的季节里，我们的创意海报将为您带来全新的视觉盛宴。惊蛰，一个充满生机的时刻，也是我们为您展现无限创意的最佳时机。在这个时刻，我们将用一幅幅富有创意的海报，为您展现大自然的奥妙之美。 我们的创意团队凭借敏锐的观察力和无限的创意，为您量身定制独一无二的惊蛰创意海报。从概念构思到视觉呈现，我们始终秉持着对品质的追求和对客户的承诺，让您在这个生机勃勃的季节里，感受到创意的无穷魅力。 翻开一张张充满生机的创意海报，仿佛能听到春雷滚滚，感受到大地回春。让我们携手共赴一场视觉盛宴，享受这个属于创意的惊蛰时刻！ 不论您是企业品牌，还是个人需求，我们都能为您量身打造最具惊艳的惊蛰创意海报。走进我们的创意世界，让我们一起感受大自然的神奇，展现出无尽的创意之美。期待与您共同谱写这个充满生机的惊蛰篇章！",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-060",
+      "title": "doit-cw-doc-060",
+      "text": "功能对等理论视角下汉译对比分析——以大陆和香港苹果官网iPhone14产品为例 引言 随着科技的发展，智能手机已经成为人们生活中必不可少的一部分。苹果公司的iPhone作为智能手机市场的领导者，其产品在全球范围内拥有大量的消费者。作为中华文化的两个重要组成部分，大陆和香港地区的苹果官网在汉译方面存在着一定的差异。本文从功能对等理论的角度，以iPhone14产品为例，对比分析大陆和香港苹果官网的汉译策略，旨在探讨如何更好地实现跨文化交际。 1. 功能对等理论简介 功能对等理论（Functional Equivalence Theory）是德国著名翻译学家赫尔曼·诺德（Hermann N?rd）提出的翻译理论，主张翻译的目的是使目标文化的受众能够理解和接受源语言的内容，而不是强调源语言和目标语言的形式一致。根据功能对等理论，翻译过程中应考虑以下几个方面：（1）源语言文本的功能；（2）目标语言文本的功能；（3）源语言和目标语言的文化差异。 2. 大陆和香港苹果官网iPhone14产品汉译对比分析 2.1 词汇选择 词汇选择是翻译过程中的一个重要环节。在大陆和香港苹果官网的iPhone14产品介绍中，词汇选择存在一定的差异。例如，在大陆官网中，“iPhone 14”的正式名称为“iPhone 14”，而在香港官网中则为“iPhone 14”。这主要是因为大陆和香港地区在词汇使用上存在差异，香港地区更倾向于使用英文词汇。 2.2 语法结构 从语法结构的角度看，大陆和香港苹果官网在汉译iPhone14产品介绍时存在一定差异。以产品特点为例，大陆官网的表述为“iPhone 14拥有前所未有的性能”，而香港官网则为“iPhone 14具备前所未有的性能”。尽管两者在语法结构上有所不同，但其实际表达的意义相同，体现了功能对等理论的要求。 2.3 文化差异 文化差异是影响翻译的重要因素。在汉译iPhone14产品介绍时，大陆和香港苹果官网均考虑到了各自地区的文化特点。以颜色选择为例，大陆官网将“Graphite”译为“石墨烯”，而香港官网将其译为“石墨”。这主要是因为大陆和香港地区在颜色命名上有所不同，翻译时需考虑目标受众的认知习惯。 3. 结论 通过对大陆和香港苹果官网iPhone14产品汉译的对比分析，可以发现两者在词汇选择、语法结构和文化差异方面存在一定差异，但这些差异并未影响到目标受众对产品的理解。这充分体现了功能对等理论的翻译理论",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-061",
+      "title": "doit-cw-doc-061",
+      "text": "尊敬的领导： 以下是关于过去三年疫情对我公司收入和财政收支状况、经济总趋势的工作报告。 一、疫情背景 自2019年底以来，全球范围内爆发的新冠病毒疫情（COVID-19）对各行各业产生了严重影响。随着疫情的蔓延，政府采取了一系列严格的防控措施，如封城、限制人员流动等，导致经济活动受到严重抑制。在这种背景下，我公司的收入和财政收支状况也受到了一定程度的影响。 二、收入与财政收支状况分析 1.收入状况 受疫情影响，我公司在过去三年的收入出现了波动。2019年底至2020年上半年，随着疫情爆发，我公司业务遭受重创，收入大幅下滑。随着疫情防控措施的逐步解除，2020年下半年，公司收入逐渐回升。2021年，随着疫苗的普及和各项政策的推动，公司收入逐步稳定，但仍未完全恢复至疫情前水平。 2.财政收支状况 疫情对公司财政收支状况产生了严重影响。2020年上半年，受收入下滑影响，公司支出大幅减少，财政状况紧张。为应对这一情况，公司积极采取措施，如降低成本、优化资源配置等，以减轻财政压力。随着疫情的缓解，2021年公司财政收支状况逐渐改善，但仍存在一定压力。 三、经济总趋势分析 1.国内经济趋势 受疫情影响，国内经济增速在2020年上半年出现下滑。随着疫情控制和政府采取积极的财政、货币政策，经济逐渐恢复。2021年，国内经济保持稳中向好的发展态势，但受全球疫情和国际经济环境的影响，仍面临一定的不确定性。 2.全球经济趋势 疫情导致全球经济受到严重冲击，多国经济增速放缓。在全球疫苗接种和各国政府积极采取措施的推动下，2021年全球经济逐渐回暖。然而，全球疫情防控形势仍不容乐观，国际贸易、投资等领域的不稳定因素较多，对我公司经营带来一定风险。 四、总结 1.总结 过去三年，我公司在疫情冲击下，收入与财政收支状况波动较大，但通过积极应对，逐步恢复。当前，国内外经济趋势呈现出一定的复苏迹象，但仍存在不少不确定因素。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-062",
+      "title": "doit-cw-doc-062",
+      "text": "标题：2020年真皮休闲老爹鞋，时尚与舒适的完美结合！ 文案：踏上2020年的时尚潮流，选择我们的真皮休闲老爹鞋，让您从此迈入舒适与时尚的双重境界！独特的鞋型设计，精选上等真皮，质感与美观兼具；橡胶防滑鞋底，抓地力强，走路更稳定；内里舒适透气，让您的双脚时刻保持清爽干燥。无论是休闲还是商务场合，都能轻松驾驭，展现您的独特魅力。走在时尚的前沿，选择真皮休闲老爹鞋，让您的脚步更加自信、从容！",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-063",
+      "title": "doit-cw-doc-063",
+      "text": "标题：大学生就业难：问题根源与化解之道 在当今社会，随着科技的发展、市场经济的变革，许多行业正在发生剧变，大学生就业难问题也日益严重。毫无疑问，大学生是国家未来的栋梁之才，他们的就业问题事关国家经济的发展和社会的稳定。那么，大学生就业难究竟是由哪些因素造成的呢？我们又该如何解决这一问题？ 一、问题根源 1.大学生就业观念的转变 随着现代社会的进步，越来越多的年轻人开始追求个性化、多样化的发展，他们不再满足于传统的就业观念，更加注重个人兴趣、价值观和发展空间。在这种情况下，大学生对就业的要求变得更高，使得找到一个理想的工作变得愈发困难。 2.高校扩招导致的就业压力 近年来，随着高校扩招政策的实施，大学生的数量急剧增加，而市场对人才的需求却没有相应的增长，导致供需失衡，使得大学生就业面临严峻的形势。 3.教育与市场的脱节 当前，一些高校的专业设置和人才培养与市场需求脱节，导致很多毕业生所学专业难以在市场上找到对口的岗位。这种状况使得大学生找工作变得更加困难。 二、化解之道 1.高校要加强与企业的合作 高校要紧密结合市场需求，积极与企业合作，通过产学研结合的方式，培养出更符合市场需求的人才。同时，高校要不断更新课程体系，加强实践教学，提高学生的实际操作能力和综合素质。 2.引导大学生调整就业观念 要积极引导大学生树立正确的就业观念，鼓励他们将兴趣和实际情况结合，充分发挥自己的优势，寻找适合自己的职业发展道路。同时，要引导他们把就业当作是一个过程，而非终点，培养自主创业、适应市场变化的能力。 3.政府要加大对就业的扶持力度 政府要加大对大学生就业的扶持力度，通过举办就业招聘会、创业辅导等活动，为大学生提供更多的就业信息和机会。此外，政府还要优化营商环境，鼓励大学生自主创业，为他们提供创业资金、税收优惠等支持政策。 总之，解决大学生就业难问题需要高校、政府和社会共同努力。只有让大学生充分发挥自己的价值，为国家和社会作出贡献，我们的国家才能真正实现可持续发展。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-064",
+      "title": "doit-cw-doc-064",
+      "text": "亲爱的， 情人节快乐！愿我们的爱情如同这份礼物一般珍贵，伴随我们走过每一个甜蜜时光。愿我们彼此相守，共度风雨，一起笑看花开花落。愿你我携手共进，白头偕老，永远幸福！ 永远爱你的， [你的名字]",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-065",
+      "title": "doit-cw-doc-065",
+      "text": "大家好，我叫小明，今年24岁，是一个充满活力和热情的年轻人。我非常热爱音乐和舞蹈，喜欢在空闲时间唱歌跳舞，感受艺术带给我的快乐。 从小，我就对音乐充满了热爱。小时候经常跟着家里的录音机唱歌，那时候还没有手机和电脑，我都会把歌词记在本子上，一遍又一遍地练习。上了大学后，我加入了学校的合唱团，和团队一起为演出排练，参加各种比赛。每次登台演出，我都会全身心投入，用歌声传递给观众我的情感，也让自己的生活更加丰富多彩。 舞蹈方面，我从小就喜欢模仿电视上的歌手跳舞，自己琢磨一些舞蹈动作。高中时，我加入了学校的舞蹈社团，认真学习各种舞蹈技巧。虽然我的舞蹈基础不是很扎实，但我却充满了激情，愿意付出更多的时间和精力去学习和进步。现在我会跳一些街舞、现代舞等，也喜欢在KTV唱歌的时候加入一些简单的舞蹈动作，让整个氛围更加热闹。 唱歌跳舞不仅让我学到了很多技巧，还让我结识了许多志同道合的朋友。我们会一起去KTV欢唱，或者在公园、广场一起跳舞。这些经历让我感受到了青春的快乐，也让我更加珍惜这段时光。 未来，我希望能够继续坚持我的爱好，不断提高自己的唱歌和跳舞水平。虽然我知道自己不会成为专业的歌手或舞者，但我相信，只要热爱，就一定能在这条路上走得更远。希望大家能支持我，也欢迎对唱歌跳舞感兴趣的朋友一起交流学习。谢谢大家！",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-066",
+      "title": "doit-cw-doc-066",
+      "text": "李昕嫣的方向感优势 在我们生活和工作中，每个人都有自己擅长的方面和特长，而李昕嫣的一大特点就是方向感好。这使得她在劳动工作中，尤其是涉及到地图或劳动区域的问题时，能够为大家带来很多帮助。 在我们这个团队里，李昕嫣就是我们的领航员。每当我们去一个陌生的地方或者需要在广阔的区域内完成任务时，大家都会把目光投向她，寻求她的意见和建议。有了李昕嫣在，我们总能够迅速确定目标区域，有效地规划行动路线，从而提高工作效率。 李昕嫣的这种能力，在我们的日常工作中表现得尤为突出。在进行野外考察、环境治理等工作时，她总是能够迅速地找到合适的位置，指导我们安排人员和设备。在一次植树活动中，李昕嫣带领着我们在短短的时间内就找到了合适的植树地点，并合理地分配了工作任务。在她的带领下，我们的团队最终提前完成了植树任务，受到了领导的表扬。 除了工作中的表现，李昕嫣的方向感在生活中也为我们带来了诸多便利。每当我们外出旅行、聚餐或者参加其他活动时，李昕嫣总是能够帮助我们规划最佳的出行路线，避免了很多不必要的麻烦。有时候，我们在拥挤的市区里迷失了方向，但只要有李昕嫣在，我们总能够迅速找到回家的路。 有了李昕嫣的方向感优势，我们的团队在面对涉及地图和劳动区域的问题时总能够游刃有余。她的这一特点不仅提高了我们的工作效率，也为我们的生活带来了很多便利。在未来的工作和生活中，我们相信李昕嫣会继续凭借着这一优势，帮助我们一起攻克更多的难关，创造更多的佳绩。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-067",
+      "title": "doit-cw-doc-067",
+      "text": "在我们忙碌的现代生活中，家务劳动似乎成了一件必不可少的琐事。作为子女，我们有责任和义务去分担家长们的负担，去为家里付出我们的一份力量。当我们参与到这样的家务劳动中，我们会发现其实它并不是我们想象中那么枯燥乏味，而是一种特殊的陪伴，一种感激和回馈。 每当我看到家长们忙碌于家务的身影时，我会感到一种责任感的驱使。我知道，他们一直在为我们这个家默默付出，为我们营造一个舒适、温馨的生活环境。于是，我主动去承担一部分家务，帮助他们分担一些压力。在这个过程中，我逐渐明白了家务劳动的意义所在：它不仅仅是一种体力劳动，更是一种精神层面的沟通。 在参与家务的过程中，我学会了关心、尊重和感激。我开始关心家里的每一个细节，尊重家长们的辛勤付出，感激他们为我们所做的一切。在这个过程中，我们也成为了彼此生活中不可或缺的一部分。我会和家长们一起商量如何进行家务，这样既能减轻他们的负担，又能让他们感受到我们的关心。 在参与家务的过程中，我也体会到了成长。家务劳动是一种锻炼，它不仅锻炼了我们的体力，还锻炼了我们的意志力和毅力。通过不断地参与家务，我们学会了如何规划自己的时间，如何合理安排自己的生活。这种成长不仅仅体现在家务劳动本身，更体现在我们为人处事的方式上。 总的来说，帮助家长做家务的感受是多方面的。它不仅仅是一种责任，更是一种陪伴、一种关爱、一种成长。当我们为家里付出我们的一份力量时，我们会发现原来家务劳动并不是我们想象中的那么枯燥乏味，而是一种对家人的关爱和回馈。因此，让我们一起为家长分担家务，让家庭生活更加美好。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-068",
+      "title": "doit-cw-doc-068",
+      "text": "在公司领导的亲切关怀和大力支持下，以强化内部管理铸造精品站为重点，以降本减费为中心，确保加油站安全生产无隐患为目的，二年来在我们全体员工的积极努力和紧密配合下，加油站在站容站貌，规范服务，以及员工素质都有了较大的改善，综合水平得到了全面提升。销量也大幅度提升，我现将一年的工作汇报如下。 一、经营情况 今年公司严把数质量关，给我站经营提供了良好的保*，同时凭着*石油质优量足的品牌形象，并在站领导细致的管理上，xx加油站打动来来往往的每一位顾客，并能及时处理顾客提出的力所能及的问题，从而形成了紧密融洽的客户关系，如[加油为什么不能打手机\"，[为什么200升油箱能加240升油\"等问题能为顾客科学的解答。赢得了八方顾客的信赖和赞扬。截止11月底共完成了成品油18000吨，完成年计划的。目前，我们正向前着更高的目标冲刺。 二、安全管理 1、站长在保*安全生产的平时，对我们进行安全教育，强化我们的安全责任感，要求我们在做每一件事情前，先做到风险识别，要求我们做好本职工作，把安全工作做的更主动更积极，发现隐患及时整改，避免事故的发生，要在员工的脑海中牢固树立[安全第一\"的思想，坚决落实加油站的各项安全制度，时刻将安全知识教育穿贯到日常的工作中，在日常的工作中落实安全责任制，设施设备每天检查，人人做到[以防为主、防消结合\"，每天安全员在交班时要讲是否有安全隐患，哪些方面还存在不安全的因素等。 2、加强了加油站的预案演练，在演练中熟练自己的职责与分工，加强了同事之间的团结和配合。 三、服务方面 1、从现场服务水平来看，我们加油的服务水平在不断提升，现场服务能三人以上，做到车到人到，服务以[微笑服务\"、[三声服务\"为主导，以[加油十三步\"和[收银六步曲\"为标准，在服务中与每一位司机拉近距离，让一路劳累的他们稍感一丝温暖，使他们在我们站加满油，也许在这不经意间多了一位回头客。我们要牢记[顾客就是上帝\"是亲人、是朋友的理念，在服务中做实事感到顾客。俗话说[有耕耘才会有收获\"，为顾客提供帮助、顾客必然给你回报。企业发展不是一个人的事，只要我们齐心协力把公司的各项经营管理方针认真落实到位，我们的企业才能像种子一样在阳光下发芽，茁壮成长，为实现[国内一流\"的企业，我们为此目标努力，加油奋斗",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-069",
+      "title": "doit-cw-doc-069",
+      "text": "在一个阳光明媚的日子，我开车来到公园附近的一个湖泊，准备享受一下钓鱼的乐趣。 来到湖边，我找了一个空旷的地方，支好钓竿，准备开始钓鱼。我把鱼饵挂在鱼钩上，轻轻地把鱼线放入水中，等待着鱼儿上钩。刚开始的时候，并没有鱼儿上钩，但我并没有气馁，钓鱼需要的就是耐心。不一会儿，我的鱼竿突然晃动了一下，我赶紧拉起鱼竿，发现一条小鱼被我钓了上来。虽然不大，但是对于我这个初学者来说，已经很开心了。 慢慢地，我开始掌握了一些钓鱼的技巧，陆陆续续又钓起了几条鱼。钓鱼让我感受到了耐心与心静的感觉。 在回家的路上，我想着今天钓鱼的点点滴滴，不禁露出了满意的笑容。尽管今天钓的鱼不多，但收获的却不仅仅是鱼，还有与大自然相处的美好时光和人生的感悟。 钓鱼的乐趣不仅仅是起杆的那一刻，还有对自然与生活的感悟。在今后的日子里，我会继续享受这份宁静与美好。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-070",
+      "title": "doit-cw-doc-070",
+      "text": "人工智能绘画是一种通过计算机程序和算法创作艺术作品的技术。它结合了计算机科学、数学和设计原理，利用大量的数据和图像，通过机器学习和深度学习技术，自动生成具有独特风格和表现力的绘画作品。人工智能绘画不仅可以模仿人类艺术家的创作风格，还可以根据自身学习到的知识和经验，创作出前所未有的新颖画作。从抽象画到具象画，从风景画到肖像画，人工智能的创作领域日益拓展，为艺术领域注入了无限的可能性。同时，这种技术还能激发人们对艺术创作的想象力和创造力，让艺术的世界更加多元化和智能化。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-071",
+      "title": "doit-cw-doc-071",
+      "text": "用户打造生态平台：构建全新的价值共享体系 随着移动互联网的快速发展，用户打造生态平台成为众多企业和品牌发展的新方向。用户打造生态平台是一种以用户为中心，构建共享价值体系的新模式。企业通过搭建用户打造生态平台，实现与用户的共创、共享、共赢，最终实现可持续发展。 一、用户打造生态平台的核心价值 1. 用户参与价值创造 在传统的市场环境下，企业主导价值创造，而用户是被动接受者。在用户打造生态平台中，用户的参与成为价值创造的重要驱动力。用户不再是被动的消费者，而是参与者、合作者、共享者。企业通过搭建用户生态平台，让用户参与到产品研发、营销策划、服务优化等各个环节中，共同创造价值。 2. 平台共享资源 用户打造生态平台意味着企业需要把自身的资源与用户共享。这种共享不仅仅是物质资源，还包括技术资源、知识资源、数据资源等。企业将自身的核心资源与用户共享，同时借助平台吸引外部资源，实现资源的优化配置，创造更多的价值。 3. 社群互动 用户打造生态平台强调社群的建设和互动。企业通过搭建社群平台，让用户可以自由交流、分享、协作，形成有凝聚力的社群。在社群中，用户可以相互学习、共享资源、合作创新，激发出更多的创意和价值。同时，企业也可以借助社群了解用户需求，优化产品和服务。 二、用户打造生态平台的实践策略 1. 用户需求挖掘 企业在搭建用户打造生态平台之前，首先要深入了解用户需求。可以通过市场调研、用户访谈、数据分析等方式，深入挖掘用户的需求和痛点，为平台建设提供方向。 2. 平台搭建 根据用户需求，企业可以选择合适的技术手段和渠道，搭建用户生态平台。平台需要具备用户参与、资源共享、社群互动等功能，实现用户与企业、用户与用户之间的多方互动。 3. 创新产品和服务 企业要充分利用用户打造生态平台，与用户共同创新产品和服务。可以借助平台的用户反馈、数据分析等功能，持续优化产品和服务，提高用户满意度。 4. 激励机制设计 为了让用户积极参与到生态平台中，企业需要设计有效的激励机制。激励手段可以包括积分奖励、优惠券、折扣等，旨在让用户感受到参与生态平台的价值。 5. 营销推广 企业要通过多种渠道和手段，宣传用户打造生态平台的理念和价值。可以通过网络营销、线下活动、合作伙伴等途径，吸引更多用户加入生态平台，共享价值。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-072",
+      "title": "doit-cw-doc-072",
+      "text": "Ending for a speech on donating to education: In conclusion, I want to thank everyone for your generosity and compassion towards this cause. Your contributions will make a significant impact in the lives of those who may not have the opportunity to pursue their dreams without your help. Education is a fundamental right that should be accessible to all, regardless of their background or circumstances. By donating to education, we are not only investing in the future of individuals but also in the betterment of our society as a whole. Let us continue to support and uplift those in need, and inspire others to do the same. Together, we can make a difference and pave the way for a brighter future. Thank you again for your support.",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-073",
+      "title": "doit-cw-doc-073",
+      "text": "一、引言 1. 泰戈尔作为印度著名诗人和哲学家，其文学作品深受世界各地人民喜爱 2. 泰戈尔文学作品中涉及了各种主题，如爱情、人生、哲理等，而面包与苦难是其中的一个重要主题 二、泰戈尔文学作品中的面包与苦难 1. 面包在泰戈尔作品中的象征意义 a. 面包代表了生活的基本需求，是人类生存的基石 b. 面包也是人类生活中最普遍的物质，具有普遍性和共性 2. 苦难在泰戈尔作品中的表现 a. 泰戈尔通过诗歌、散文、小说等不同形式表现苦难 b. 苦难主题与泰戈尔的生活经历、时代背景和哲学思想紧密相连 3. 面包与苦难在泰戈尔作品中的结合 a. 面包与苦难共同构成了泰戈尔作品中的人生百态，表现出人生的丰富多彩 b. 面包与苦难的关系体现了泰戈尔对于生活的理解和探索 三、泰戈尔作品中面包与苦难的具体表现 1. 《飞鸟集》中的面包与苦难 a. 诗歌中的面包象征着渴望和希望 b. 诗歌中的苦难表现为人生的挫折、失落和无奈 2. 《吉檀迦利》中的面包与苦难 a. 小说中的面包象征着家庭和亲情的重要性 b. 小说中的苦难表现为家庭矛盾、社会压迫和命运的无常 3. 《食指祈祷》中的面包与苦难 a. 散文中的面包象征着对美好生活的追求 b. 散文中的苦难表现为内心的挣扎和精神的迷茫 四、泰戈尔面包与苦难主题的意义 1. 面包与苦难的关系反映了泰戈尔对人生的思考和洞察 2. 面包与苦难的主题鼓励人们面对苦难，积极向上，追求美好生活 3. 面包与苦难的主题对于现代社会依然具有启示和借鉴意义 五、结论 1. 泰戈尔文学作品中的面包与苦难是其作品的一个重要主题 2. 通过分析泰戈尔作品中的面包与苦难，我们可以更好地理解泰戈尔的人生观和价值观 3. 面包与苦难的主题对于现代人仍具有一定的启示意义，值得我们深入研究和反思",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-074",
+      "title": "doit-cw-doc-074",
+      "text": "宿迁外婆楼餐饮企业员工激励问题研究 随着社会的发展和经济的繁荣，人们对生活品质的要求越来越高，餐饮业作为民生的重要支柱，一直在不断发展壮大。作为一家地方特色餐饮企业，宿迁外婆楼在市场竞争中脱颖而出，依靠其特色美食和优质服务赢得了广泛的客户认可。然而，在员工激励方面，外婆楼还存在一些问题。本文将对宿迁外婆楼餐饮企业员工激励问题进行研究，并提出相应的改进措施。 一、问题分析 1.薪酬待遇偏低，缺乏竞争力 在餐饮业，员工的工作强度较大，且工作时间较长，如果薪酬待遇无法满足员工的期望，就会导致员工流失。在宿迁外婆楼，薪酬水平相对于其他同行业竞争对手较低，导致部分优秀员工离职，选择更高薪酬的企业。 2.职业发展空间有限 员工在企业工作，除了关心薪酬待遇，还会关注自己的职业发展空间。目前，宿迁外婆楼在人才选拔和晋升方面，存在一定的不透明度和随意性，导致员工对自己的职业发展前景感到迷茫和不安。 3.激励措施单一，缺乏针对性 在激励员工方面，宿迁外婆楼目前主要采取物质奖励和年终奖金等方式。然而，不同员工对激励的需求和期望是多样的，企业应当针对不同员工的特点和需求，制定更为灵活和多样的激励措施。 二、改进措施 1.提高薪酬待遇，提升企业竞争力 宿迁外婆楼应当调整薪酬体系，将员工的基本工资、岗位津贴、绩效奖金等有机结合起来，形成具有竞争力的薪酬待遇，吸引和留住优秀员工。 2.完善职业发展通道，搭建员工成长平台 企业应当明确员工的职业发展路径，设立更多的晋升岗位，加强内部培训和人才选拔，使员工看到自己在企业的发展空间，增强对企业的认同感和归属感。 3.丰富激励措施，增强员工激励效果 除了物质奖励外，宿迁外婆楼还可以通过举办员工活动、提供培训机会、完善福利待遇等方式，激发员工的积极性和创造力。同时，企业还应当关注员工的心理需求，建立有效的沟通机制，了解员工的需求和期望，为其提",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-075",
+      "title": "doit-cw-doc-075",
+      "text": "市政中心安全巡查简报 一、巡查背景 为确保市政中心各项工作的正常进行，确保广大人民群众的生命安全和财产安全，提高市政中心安全防范和应急处置能力，我市决定对市政中心进行安全巡查。 二、巡查时间 2022年6月1日至2022年6月30日 三、巡查范围 本次巡查主要涉及市政中心办公楼、会议室、市民服务大厅、消防通道、消防设施、电梯设备、地下车库等重点区域。 四、巡查重点 1.消防安全：检查消防通道是否畅通，消防设施是否完好，火灾隐患是否及时整改。 2.电梯安全：检查电梯设备是否正常运行，维保记录是否完整，故障应急处理措施是否到位。 3.治安防范：检查门禁系统是否有效运行，监控设备是否正常工作，人员进出是否有序。 4.安全隐患排查：对市政中心办公楼、会议室、市民服务大厅等区域进行全面安全隐患排查，确保无安全死角。 五、巡查结果 经过一个月的巡查，市政中心整体安全状况良好。共发现消防安全隐患5处，其中已整改4处，1处正在整改中；电梯安全隐患2处，已全部整改；治安防范问题3处，已全部整改；其他安全隐患10处，已整改9处，1处正在整改中。 六、下一步工作 1.加强市政中心安全巡查的常态化，确保市政中心安全工作持续推进。 2.对于已发现的安全隐患，要求相关部门严格按照整改要求进行整改，并定期汇报整改进度。 3.建立健全安全隐患排查、整改、督查、考核的工作机制，严格安全生产责任制，切实提高市政中心安全防范水平。 4.加强市政中心安全管理队伍的建设，提高安全管理人员的业务水平和应急处置能力。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-076",
+      "title": "doit-cw-doc-076",
+      "text": "云闪付APP，让支付变得更轻松、更便捷！ 轻松开通，极速体验 无需复杂操作，只需下载云闪付APP，轻松绑定银行卡，即可开启便捷支付之旅！ 安全可靠，一扫即付 云闪付APP采用银行级安全加密技术，保障您的资金安全，扫一扫即可完成支付，告别繁琐手续！ 全面覆盖，畅享优惠 超市、餐饮、交通、公共服务等多种场景，云闪付APP都能满足您的支付需求，各种优惠活动不定期推出，让您省钱更省心！ 一键互联，轻松管理 多家银行卡轻松管理，轻松切换支付账户，实时查看消费记录，随时掌握资金动向！ 赶快下载云闪付APP，让生活变得更轻松、更便捷！",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-077",
+      "title": "doit-cw-doc-077",
+      "text": "从企业品牌意识到媒体策略：网络营销的关键要素 在当今时代，互联网的普及使得网络营销成为企业发展的重要战略。然而，在网络营销的过程中，企业需要关注很多方面的因素。本文将从品牌意识和媒体策略两个方面，探讨网络营销中的关键要素。 首先，品牌意识是企业网络营销的基石。品牌不仅仅是一个标志，更是企业文化、价值观和形象的体现。企业需要建立自己独特的品牌形象，以区别于竞争对手。品牌意识的培养不仅需要企业有一定的创新能力，同时也需要对消费者需求有深入的了解。只有当企业品牌能够精准地对接消费者需求时，市场才会给予支持，进而实现品牌的价值。 其次，媒体策略在网络营销中占有重要地位。独特的媒体资源对于网络营销来说，相对比产品更重要。企业在选择信息输出途径时，需要根据自身情况制定合适的媒体策略。目前，很多企业对于媒体策略的理解存在误区，认为自媒体是低成本媒体，越全越好。实际上，这种贪多心理会导致推广部门效率低下，同时容易引发媒体之间的矛盾。 因此，企业在制定网络营销策略时，应该注重以下几点： 1. 强化品牌意识。企业要在市场中脱颖而出，就必须具备强烈的品牌意识。要不断优化产品和服务，提高品牌价值，使消费者能够产生认同感。 2. 精准对接消费者。企业在制定品牌策略时，要深入了解消费者的需求，确保品牌能够精准地满足消费者的期望。 3. 制定合适的媒体策略。企业要根据自身情况选择合适的信息输出途径，避免贪多嚼不烂的情况发生。同时，要注重媒体间的协调，确保信息传播的顺畅。 总之，网络营销并非一蹴而就的事情，企业需要在品牌意识和媒体策略上下功夫，才能在激烈的市场竞争中取得优势。在这个过程中，企业要善于总结经验，不断调整策略，使网络营销更加精准、高效地实现企业目标。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-078",
+      "title": "doit-cw-doc-078",
+      "text": "1976年，唐山大地震来势汹汹，如同猛兽撕裂大地，破坏之力堪比雷霆万钧。这场规模空前的天灾，震撼了世界，让人不禁痛心疾首。 那一夜，月色阴沉，仿佛寓示着即将来临的浩劫。突然间，地动山摇，天崩地裂，整个唐山城变成了一个炼狱般的地狱。房屋摇摇欲坠，像是巓峰崩塌的惊涛骇浪，接踵而至的尖叫声如同阵阵惊雷划破天际，让人心悸不已。 大地在裂缝中翻滚，犹如激怒的神兽在吞噬一切。街道瞬间被撕裂，仿佛长龙之尾扫过大地，留下的是满目疮痍，哀鸿遍野。砖石瓦片飞溅而起，伴随着无数生命的消逝，哀嚎一片。一座座楼房被击得粉碎，犹如被无情的巨人一拳击倒，地上只剩下惨烈的断壁残垣。 生死之间，万籁俱寂。只见天空乌云翻滚，仿佛天神泪流满面，为这惊心动魄的场景而感慨万千。不少人在此生死攸关之际，紧紧拥抱着亲人，尽管生死未卜，但亲情的力量始终是那样的无敌。 就在最悲伤的时刻，天边破晓，阳光如洒金般洒向大地。就在这最黑暗的时刻，人们发出了一声声呐喊，一次次站起，决心以顽强的毅力，重建家园。那一刻，唐山市民顶天立地，勇敢地面对灾难，宛如重生的凤凰，涅槃重生，展翅飞翔。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-079",
+      "title": "doit-cw-doc-079",
+      "text": "下联：开拓未来新之天地。 这句下联表达了要继承前人的智慧，不断探索未知领域，创造出新的天地。我们应该站在前人的肩膀上，勇敢地走向未知的领域，迎接挑战和机遇。只有不断开拓和创新，才能够实现个人和社会的进步和发展。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-080",
+      "title": "doit-cw-doc-080",
+      "text": "2020华南国际口腔展将于2020年9月16日至19日在广州中国进出口商品交易会展馆C区举办，届时将展出各类口腔产品和服务，包括口腔设备、医疗材料、护理产品、修复材料、口腔实验室设备等，同时还将举办200多个专业研讨会，为口腔医疗行业提供前沿实用的继续教育及培训课程。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-081",
+      "title": "doit-cw-doc-081",
+      "text": "Title: 大疆无人机：让摄影不再有界限 在如今这个科技高速发展的时代，人们对于摄影的需求已经逐渐从单纯的拍照，迈向了寻求更高品质、更极致的视觉体验。那么，在这个过程中，有没有一个更具创新性、更具颠覆性的摄影产品能为摄影师们带来前所未有的拍摄体验呢？答案是：大疆无人机。 大疆创新科技有限公司，简称大疆，是一家全球领先的无人机及航拍系统制造商，自2006年成立以来，凭借其卓越的研发能力和创新精神，已经成为全球民用无人机市场的绝对领导者。大疆无人机带来的全新拍摄体验，让摄影的界限得到了前所未有的拓展，从此摄影不再有界限。 首先，大疆无人机具备超高性能的拍摄设备。不论是航拍摄影还是普通摄影，画质的好坏对于摄影师来说至关重要。大疆无人机搭载的高性能相机具备卓越的画质表现，让每一帧画面都清晰逼真。此外，大疆无人机还具备强大的稳定性，可以在飞行过程中保持稳定的画面拍摄，让摄影师在拍摄时更加得心应手。 其次，大疆无人机突破了地面摄影的限制，拓展了拍摄视角。传统的摄影方式受到地面的限制，很多美丽的画面因为角度的问题而无法完美呈现。而大疆无人机的出现，让摄影师能够在空中自由拍摄，从不同的角度捕捉美景，使得摄影作品更加丰富多彩。 再者，大疆无人机的便携性让摄影变得更加轻松。摄影师在户外拍摄时，往往需要携带沉重的摄影器材，而大疆无人机轻巧的体积和简便的操控方式让摄影变得更加轻松。大疆无人机可快速展开和收纳，方便摄影师随时随地进行拍摄，让摄影过程更加愉悦。 最后，大疆无人机还具备智能拍摄功能，可以让摄影师更加专注于创作。大疆无人机搭载的智能飞行系统可以根据摄影师的需求自主完成拍摄任务，摄影师只需要简单设置即可让无人机自动完成拍摄，让摄影师更加专注于画面的构思和创意。 总之，大疆无人机以其高性能的拍摄设备、拓展的拍摄视角、便携的设计以及智能的拍摄功能，让摄影师们的拍摄体验得到了极大的提升。大疆无人机，让摄影不再有界限，成为摄影师们创作无限美景的最佳拍档",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-082",
+      "title": "doit-cw-doc-082",
+      "text": "标题：《那些年，我们一起追的女孩》 角色： 1. 小美（女主） 2. 小华（男主） 3. 小丽（小美的闺蜜） 4. 小明（小华的好友） 地点：校园 剧本： 场景一：教室 （小美独自一人坐在教室窗前的位置，看着窗外发呆。小华走进教室，看见小美。） 小华（心里想）：唉，小美这么漂亮，不知道她会不会喜欢我？ （小华走到小美身边，拿出一本书） 小华：小美，这本书我刚刚看完，觉得特别好看，你看看吧。 小美（微笑）：谢谢你，小华，我一直想看这本书呢。 场景二：操场 （小华在操场上打篮球，小美和小丽一起看。） 小丽：小美，你说小华打得好不好？ 小美（害羞）：还可以吧，挺帅的。 小丽：我觉得他对你有意思呢。 小美：你别胡说八道了。 场景三：食堂 （小华、小明、小美、小丽一起吃饭） 小明：我听说今晚有个篮球赛，你们去看吗？ 小丽：当然去啦，小美你呢？ 小美：我也想去。 小华（心跳加速）：那我们晚上一起去吧。 小美：好啊。 场景四：篮球赛现场 （小华在场上表现出色，比赛结束后走到小美身边） 小华（紧张）：小美，你觉得我刚刚打得怎么样？ 小美（微笑）：打得很好，你很棒。 小华（鼓起勇气）：小美，其实我一直喜欢你，你愿意做我的女朋友吗？ 小美（害羞）：好啊，我也喜欢你。 （小华和小美手牵手，一起离开现场。） 结局：从此，小华和小美成为了校园里令人羡慕的一对，他们的感情越来越好，最终走到了婚姻的殿堂。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-083",
+      "title": "doit-cw-doc-083",
+      "text": "亲爱的，今天是情人节，我想用这首钢琴曲表达我的心意。每一个琴键都是我心中深深的爱意，每一个音符都是我对你的思念。我想对你说，我爱你，从第一次见到你的那一刻开始，我的心就被你牢牢地抓住了。你的美丽、善良、聪明和温柔让我心醉神迷。我想和你一起走过每一个日日夜夜，和你分享生命中的每一个瞬间。我的心属于你，我的爱永远不变。愿这首钢琴曲能够传达我的心声，愿我们的爱情永远长久。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-084",
+      "title": "doit-cw-doc-084",
+      "text": "长孙晟，北周末年洛阳人，他读书不多，但智谋过人，武艺高强，尤其是箭法很准，年轻的伙伴们和他一起赛马打猎，无人能比得上他。长孙晟十八岁那年，当了一名司卫上士（禁卫东宫的武官）。由于职位很低，没人赏识他的才能。有一次，隋国公杨坚见到他，只交谈了片刻，就对人说：“长孙晟武艺超群，又多奇谋，以后的名将，除了他还有谁呢？” 当时，北方游牧民族突厥的首领摄图和北周通使结好。为了炫耀各自的实力，双方在交往的时候，都专门选择勇武有力的人充当使者。摄图为人非常傲慢，北周使者到了他那里，几乎没人被他放在眼里的。有一年，长孙晟奉命随同正使宇文神庆出使突厥。摄图一见到长孙晟，就对他产生好感，请宇文神庆同意把长孙晟留下来。以后摄图每次出猎，总要把长孙晟带在身边。过了整整一年，还不让长孙晟回到北周去。一天，摄图正在帐前散步，忽然看见空中有两只大雕来回盘旋飞翔，互相争夺着一块肉，他马上兴致勃勃地叫人拿来两支箭递给长孙晟说：“请你把这两只大雕射下来。”长孙晟接过箭后，翻身上马，直奔而去。只见他渐渐驰近大雕，举起弓，搭上箭，双手随着大雕的身影转了一圈，就猛地一箭射去。由于他力量过人，那支箭竟对着两只大雕的胸脯直穿而过，两只大雕顿时双双落下。 摄图的弟弟处罗侯，同摄图矛盾很深，他想借助长孙晟的力量来反对摄图，因此暗中派人和长孙晟结交。长孙晟就利用这个机会，经常和他一起出去打猎，仔细地观察突厥境内的山川地势，了解各部的兵力强弱。 公元581年，杨坚夺取北周政权，建立了隋朝，史称隋文帝。摄图得到消息就联合阿波、突利等可汗出兵进攻隋朝，想要为北周复仇。这时长孙晟早已回到隋朝，深得隋文帝的信用。他深知突厥各可汗之间争权夺利、互相猜忌的内幕，就上书给隋文帝，请他用计离间突厥，孤立摄图。文帝采纳了他的建议。摄图果然同其他可汗互相攻击，很快就退兵了。 公元600年，突厥的达头可汗调集大军准备与隋朝为敌。长孙晟奉命随晋王杨广出兵征讨，在大斤山附近与突厥遭遇。达头不战而逃，突厥将士被俘被杀两千多人。战斗结束后，杨广为长孙晟设宴庆功。有一个突厥归附的官员在席上对杨广说：“突厥境内，听到长孙将军的威名都十分害怕啊！说他的弓声像霹箸，坐骑像闪电。”杨广高兴地笑道：“将军的威名远播域外，真是了不起啊！” [5]",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-085",
+      "title": "doit-cw-doc-085",
+      "text": "题目：汲取浙江青年创新力量，勇担未来使命 近年来，浙江省在创新驱动和人才强省等方面做出了巨大努力，高质量发展水平不断提升。在这个过程中，浙江青年在各行各业、不同领域中开拓创新，展现出强大的创新力量。他们的成功给我们带来了很多启示。 首先，刻苦训练是成功的基础。徐枫灿是我国陆军首位初放单飞的女飞行员，她在空军航空大学进行了艰苦的训练，并最终满分通过考核。这告诉我们，只有通过不断地努力和刻苦训练，才能够实现自己的梦想。无论是在学习、工作还是创业过程中，都需要有耐心和毅力，持之以恒地追求自己的目标。 其次，勇于尝试和创新是成功的关键。杨杰从一名普通的学徒工成长为“浙江工匠”，这离不开他勇于尝试和创新的精神。在工作中，他不断地学习新知识，掌握新技能，并将其应用于实践中。这表明，只有勇于尝试和创新，才能不断地提高自己的能力和水平，为自己的事业打下坚实的基础。 最后，团队协作和合作创新是成功的保证。之江实验室智能超算研究中心团队，35岁以下成员占比近九成，勇闯国内智能超算领域“无人区”，斩获超算应用领域的国际最高奖项——戈登贝尔奖。这说明，在团队中，每个人都可以发挥自己的特长和优势，共同完成任务。通过团队协作和合作创新，不仅可以实现个人的价值，也可以为团队和组织创造更大的价值。 总之，汲取浙江青年创新力量，勇担未来使命。无论是在学习、工作还是创业中，我们都需要保持刻苦努力、勇于尝试和创新的精神，同时注重团队协作和合作创新。只有这样，我们才能够在未来的道路上走得更远，取得更大的成就。 我们的生活需要创新，我们的社会需要创新，我们的国家和民族需要创新。没有创新就没有丰富多彩的物质世界。我们要在创新中求生存，求发展。正如那位学者出的一道题会得出不同的有理有据的答案那样，其实答案本是三富多彩的，若是只能得出一种答案，那么我们就要从主方面看看我们是不是思想僵化，是不是被局限在框框里了。因此，创新应破除旧观念，老框框，只有这样，我们才能迈出前进道路上坚实的步伐，走向新世纪。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-086",
+      "title": "doit-cw-doc-086",
+      "text": "电影《假装情侣》解说文案： 陈文（黄渤饰）是一位普通的保险公司员工，为人朴实勤奋却没有什么女人缘。在一次给客户送文件时，偶然在广场上碰到了一位脏兮兮的神经病女孩。怜悯之心大发的陈文，决定把女孩送到神经病医院救治，在车上饱受折磨的陈文，却得知这位叫做沈露（江一燕饰）的女孩只是假装神经病。而卸下装扮的沈露，更是十分漂亮。陈文将沈露送到精神病医院，自己却阴差阳错的被误当做神经病。倒霉的陈文因未能送达邮件，而被老板痛骂，却也因此与沈露相识。 沈露约陈文见面，告诉陈文想跟他玩一场“假装情侣”的游戏——只要恋爱中最美好的部分，本来就没什么女人缘的陈文觉得这个游戏非常刺激，并且也想把漂亮的沈露当成自己人生中唯一的艳遇。于是，两个人开始了假装疯狂的恋爱。本来以为爱情来了，陈文却一次又一次的遭受沈露的折磨。可为人淳朴的陈文在几次接触之后竟然发现自己还是爱上了沈露。就在陈文以为自己坠入爱河之际，沈露却又忽然义正言辞的向陈文保证“我永远不会爱上你”并神秘失踪。陈文为寻真爱千方百计的寻找沈露。他在人工湖里找到沈露抛掉的袋子，想到她可能在哪个与前男友有最后的回忆的地方。陈文在雪山顶上找到了沈露，沈露被他感动并决定和他在一起。哪料此时沈露正在发高烧，情急之下陈文一人冒险下山寻找医生。之后陈文在下山的路上，被暴风雪袭击。最后，两人幸福地在一起。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-087",
+      "title": "doit-cw-doc-087",
+      "text": "矛盾纠纷一站式化解平台实体化建设探讨 随着社会的不断发展，人际关系变得越来越复杂，矛盾纠纷也随之增多。为了更好地化解社会矛盾，提高纠纷解决效率，打造和谐社会，矛盾纠纷一站式化解平台应运而生。本文旨在探讨矛盾纠纷一站式化解平台实体化建设的必要性、可行性及其具体实施方案。 一、矛盾纠纷一站式化解平台实体化建设的必要性 1. 社会矛盾多样化。在现代社会，矛盾纠纷呈现出多样化的特点，涉及方方面面，如家庭纠纷、邻里纠纷、消费纠纷等。这就需要一个全面、系统的矛盾纠纷化解平台，提供专业、及时、便捷的服务。 2. 纠纷解决渠道不畅。当前，纠纷解决主要依赖于法院诉讼，但诉讼成本高、周期长、效率低，容易引发更多矛盾。因此，矛盾纠纷一站式化解平台实体化建设势在必行，有助于拓宽纠纷解决渠道，减轻法院压力。 3. 强化社会治理。矛盾纠纷一站式化解平台实体化建设，有助于强化社会治理，构建和谐稳定的社会秩序。通过平台，政府、社会组织、专业人士等多方共同参与纠纷化解，提升社会治理水平。 二、矛盾纠纷一站式化解平台实体化建设的可行性 1. 技术支持。互联网技术的发展，使得矛盾纠纷一站式化解平台实体化建设成为可能。通过线上线下相结合的方式，实现信息共享、资源整合，提高纠纷化解效率。 2. 政策支持。国家对社会治理、纠纷化解工作给予高度重视，出台了一系列政策措施。如《关于加强和改进矛盾纠纷排查化解工作的指导意见》等，为矛盾纠纷一站式化解平台实体化建设提供了政策保障。 3. 社会需求。社会对矛盾纠纷化解的需求日益迫切，各方面都呼唤一个高效、公正、透明的矛盾纠纷化解平台。因此，矛盾纠纷一站式化解平台实体化建设具有很高的市场需求。 三、矛盾纠纷一站式化解平台实体化建设的具体实施方案 1. 组建专业团队。成立矛盾纠纷化解专业团队，包括律师、心理咨询师、社会工作者等，提供专业化的纠纷化解服务。 2. 建立线上线下相结合的服务模式。通过线上平台，实现矛盾纠纷的信息登记、受理、调解；线下设立实体服务窗口，提供面对面解决问题的方式。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-088",
+      "title": "doit-cw-doc-088",
+      "text": "尊敬的领导： 时光飞逝，一转眼已经过去了半年。在这半年里，我深刻地认识到了自己的不足之处，也努力地去改正自己的缺点，不断提高自己的工作能力和综合素质。下面是我的年中自我评价： 首先，我认为自己的工作态度比较积极主动，能够认真对待每一项工作，尽心尽力完成每一个任务。在工作中，我注重细节，遵守规章制度，严格要求自己，尽可能减少错误和失误的发生。同时，我也能够灵活应变，适应各种工作环境和工作要求，不断学习和提高自己的工作技能和知识水平。 其次，我认为自己的沟通能力还需要进一步提高。在与同事和客户的交流中，我有时会出现表达不清楚或者不够到位的情况，导致产生了一些误解和不必要的麻烦。因此，我需要加强自己的语言表达能力和沟通技巧，学会更好地与他人进行有效的交流和合作。 最后，我认为自己的团队合作能力还需要加强。在工作中，团队协作是非常重要的，而我有时候还没有完全融入团队，没有充分发挥自己的能力，也没有充分利用团队资源，导致一些工作进展缓慢或者不够顺利。因此，我需要更加注重团队合作，加强与同事的协作，共同完成好每一个任务。 总之，这半年来，我在工作中有所成绩，但也存在一些问题和不足之处。我会在以后的工作中，更加努力地改进自己的不足，提高自己的工作能力和综合素质，为公司的发展和自身的成长做出更大的贡献。感谢领导的关注和支持！",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-089",
+      "title": "doit-cw-doc-089",
+      "text": "随着数字化的发展，用户旅程已成为企业在客户体验中至关重要的一环。用户旅程包括客户从最初接触品牌到购买、使用、售后服务以及客户关系维护的全过程。为了提供更好的客户体验，企业需要了解客户的行为和需求，因此需要使用CDP为客户定制精细化、高质量的用户旅程。 CDP是“客户数据平台”的缩写，是一种可以整合企业内外各种数据来源、管理和分析客户数据的技术平台。用户旅程CDP是CDP的一种特殊应用，专门用于管理和优化客户旅程。它可以跟踪和分析客户在整个购买过程中的行为，包括网站访问、搜索、购物车添加、购买、退款等等，帮助企业更好地了解客户需求，提供更好的服务。 CDP可以从多个渠道收集客户数据，如电子邮件、社交媒体、网站、应用程序等等，这些数据可以是客户的个人信息、行为数据、历史交易记录等等。这些数据可以被整合和分析，帮助企业了解客户的兴趣、偏好和行为模式，从而优化用户体验，提高客户忠诚度和购买力。 CDP还可以帮助企业更好地进行客户细分和定位。通过分析客户的行为和偏好，企业可以将客户分为不同的群体，并针对不同的群体制定个性化的营销策略。这些策略可以帮助企业更好地满足客户需求，提高客户忠诚度和购买力。 总之，CDP是企业提供更好客户体验的关键技术之一。它可以帮助企业了解客户需求、优化用户体验、提高客户忠诚度和购买力，从而增强企业竞争力。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-090",
+      "title": "doit-cw-doc-090",
+      "text": "一、项目背景 随着人们生活水平的提高，越来越多的人开始注重身体健康和休闲娱乐，运动已经成为很多人生活中不可或缺的一部分。作为一项高雅的运动，网球在国内的发展也越来越受到关注。因此，建立一座网球馆作为提供给市民健身休闲的场所，具有很大的市场需求和发展前景。 二、网球馆概述 1. 场地规划：网球馆占地面积约5000平方米，共设有6个室外网球场地和2个室内网球场地，以及休息区、更衣室、洗手间等配套设施。 2. 设施配置：网球场地采用国际标准尺寸和专业材料，配置高品质网球网、灯光、音响等设施，为用户提供优质的运动体验。 3. 服务内容：提供网球场地租赁、教练培训、赛事组织、会员服务等多种业务。 三、运营策略 1. 市场定位：通过分析本地市场和竞争对手情况，明确网球馆的市场定位，针对不同客户群体制定相应的服务和价格策略。 2. 价格策略：根据市场调查和成本分析，制定合理的场地租赁价格、教练培训费用、会员卡价格等，以提高网球馆的竞争力和盈利能力。 3. 营销策略：通过线上线下多种渠道进行宣传推广，吸引潜在客户。如合作与当地企事业单位举办网球比赛、网球培训班等活动，提高网球馆的知名度。 4. 会员制度：设立会员制度，吸引并留住高价值客户。会员可享受场地租赁折扣、教练培训优惠、赛事报名优先等权益。 5. 教练团队：聘请专业、经验丰富的教练，提供初级、中级、高级网球培训课程，满足不同水平客户的需求。 四、管理模式 1. 人员组织：设立总经理、市场部、教练部、客服部等职能部门，明确各部门的职责和工作流程，实现高效管理。 2. 财务管理：建立健全财务管理制度，确保网球馆运营资金的合理使用和盈利状况的监控。 3. 客户服务：加强对客户服务人员的培训和管理，提高客户满意度。 五、盈利预测 根据市场调查和成本分析，预计网球馆每年的收入可达到XXXX元，净利润为XXXX元。通过不断优化运营策略和管理模式，有望实现盈利逐年增长。 六、总结 将以上策略落实到日常管理中，争取打造出一个受大众喜爱的网球馆！",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-091",
+      "title": "doit-cw-doc-091",
+      "text": "英国航母在南海“逼退中国潜艇”？真相是…… 近日，有关英国航母在南海“逼退中国潜艇”的报道引起了广泛关注。然而，经过调查核实，该报道并不属实，事实情况并非如此。 据悉，英国皇家海军的“伊丽莎白女王”航空母舰编队近期在南海地区进行例行巡航。报道中提及的“逼退中国潜艇”的情况，并非真实情况，而是媒体对相关信息的误读。 有关专家指出，英国航母编队在南海进行例行巡航，并未与中国潜艇发生任何对抗性事件。此次英国航母编队南海巡航，主要是为了展示国际合作和捍卫国际法规，确保南海地区的和平与稳定。英国与中国一直保持着友好合作关系，不会轻易发生冲突。 同时，英国皇家海军在接受采访时表示，航母编队在南海地区的行动完全遵循国际法规，保持与当地海军良好沟通。在此次巡航过程中，英国海军与中国海军进行了一定程度的交流，以避免可能出现的误解和误判。 对于此次有关“逼退中国潜艇”的报道，英国海军已进行澄清，并呼吁媒体不要过度解读相关信息，以免引发不必要的紧张局势。 总之，英国航母在南海并未“逼退中国潜艇”，事实上，英国和中国之间的友好合作关系一直在稳步发展。媒体在报道此类事件时，务必慎重，避免传播不实信息。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-092",
+      "title": "doit-cw-doc-092",
+      "text": "亲爱的老公： 你好，我想借这封信的机会，向你表达我对你为家庭付出的感激之情。 首先，我想说你是一个很负责任的丈夫和父亲。自从我们结婚以来，你一直努力工作，以确保我们家庭的经济稳定。你从不抱怨工作的辛苦，即使有时候你会很疲惫，你仍然会带着笑容回到家中。你总是设法让我们的生活变得更好，你的付出让我感受到了家庭的温暖。 其次，我想感谢你对孩子的关爱。你总是尽力参与孩子的成长，教育他们如何成为一个有品质、有责任心的人。当孩子遇到困难时，你会耐心地陪伴他们，给予鼓励和支持。作为孩子的母亲，我真的为有你这样的父亲感到骄傲和庆幸。 此外，我也感谢你对我的关心和支持。在我的困难时期，你总是站在我身边，给我鼓励和安慰。当我需要倾诉时，你会耐心地聆听，给我建议。这些年来，我们一起经历了许多风风雨雨，是你的陪伴让我感受到了生活的美好。 最后，我想说，你的付出并没有被忽视。我看到了你的努力，感受到了你的爱。作为你的妻子，我会尽我所能，与你一起分担家庭的责任，让我们的家庭更加幸福和美满。 请珍惜彼此，珍惜我们共同拥有的美好时光。愿我们的生活更加幸福，愿我们的家庭永远和谐。 再次感谢你为我们家庭所付出的一切。 深深地爱你， 你的妻子",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-093",
+      "title": "doit-cw-doc-093",
+      "text": "智能煲汤锅方案 一、项目背景 随着科技的进步和人们生活节奏的加快，智能家居已经逐渐成为现代家庭的主流选择。而在饮食方面，智能厨房电器的出现为人们提供了更加便捷、快速的烹饪方式。作为中华美食的代表之一，煲汤是家庭日常饮食中不可或缺的一环。因此，开发一款既能满足人们口味需求，又能实现智能化烹饪的煲汤锅具有重要的市场价值和发展前景。 二、产品功能 1. 自动烹饪：用户可根据自己的需求，通过手机APP或煲汤锅面板选择相应的汤品，煲汤锅将自动调节烹饪温度和时间，无需人工干预，方便快捷。 2. 菜谱推荐：煲汤锅内置丰富的汤品菜谱，用户可根据自己的口味选择喜欢的汤品。APP还可根据用户的饮食习惯和喜好推荐适合的汤品，满足个性化需求。 3. 语音控制：煲汤锅支持与主流智能语音助手连接，用户可通过语音指令控制煲汤锅的开关、调节烹饪模式等操作，实现真正的智能化操控。 4. 食材识别：煲汤锅配备智能摄像头，可自动识别加入的食材，并根据食材的种类、新鲜度等信息调整烹饪参数，保证汤品的口感和营养成分。 5. 远程操控：用户可通过手机APP远程查看煲汤锅的烹饪状态、剩余时间等信息，并可随时调整煲汤锅的设置，实现远程操控。 6. 保温功能：煲汤锅在烹饪完成后可自动保温，确保汤品在保持美味的同时，保持适宜的温度。 7. 定时预约：用户可根据自己的需求提前设置煲汤时间，煲汤锅将按照预约时间自动开始烹饪，让用户在回家后即可品尝到美味的汤品。 三、技术方案 1. 微电脑控制系统：煲汤锅采用微电脑控制系统，可实现精确的温度和时间控制，保证汤品烹饪过程的稳定性和口感。 2. 智能传感器：煲汤锅内置多种传感器，如温度传感器、压力传感器等，可实时监测煲汤过程中的各种参数，为自动调节烹饪参数提供数据支持。 3. 物联网技术：煲汤锅支持Wi-Fi无线连接，可与手机APP实现数据交互，实现远程操控和信息推送功能。 4. 语音识别技术：煲汤锅支持语音识别功能，可识别用户的语音指令，并实现相应的操作。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-094",
+      "title": "doit-cw-doc-094",
+      "text": "从前，有一个小男孩叫小明，他非常喜欢天文学。每当夜晚来临，他都会拿着望远镜仰望星空，观察那闪烁的星星和皎洁的月亮。有一天晚上，小明做了一个梦，梦见自己乘坐宇宙飞船去月球旅行。 梦中，小明穿上了宇航员的特制服装，戴上头盔，踏上了火箭。随着火箭的轰鸣声，他感受到了强烈的推力，好像一瞬间就要冲出地球。在宇航员的指导下，小明成功驾驶着火箭飞向了月球。 穿越了浩瀚的宇宙，火箭终于到达了月球。小明小心翼翼地走下火箭，踩在月球表面的感觉十分奇妙。由于月球的地心引力只有地球的六分之一，所以他的每一次跳跃都能离开地面好远好远。 小明沿着月球表面行走，看到了许多月球的奇观。有巨大的陨石坑，也有绵延起伏的山脉。他还发现了月球上的月球车，于是骑上月球车在月球表面四处探险。在月球上，小明发现了一个巨大的月球基地，里面住着许多其他来自地球的宇航员。他们正在进行各种科学实验，研究月球的土壤、矿物和微生物。小明非常好奇，也加入了他们的研究。 在月球基地，小明还结识了一个叫小刚的宇航员。小刚告诉他，在月球上有一个传说，说月球上住着一个神秘的月亮仙子。她每天都会守护着地球，让所有地球上的人过得平安幸福。 这时，远处传来一阵美妙的歌声。小明和小刚忍不住跟着声音走去，发现了一个美丽的月亮仙子。她身着一袭银色的长裙，头戴一顶闪亮的头冠。月亮仙子看到小明和小刚后，微笑着告诉他们：“你们是地球上勇敢的宇航员，来到月球探险，非常了不起。我要送你们一个礼物，希望你们带回地球，告诉地球上的人们要爱护自然，保护地球。”说完，月亮仙子从头冠上取下一颗闪闪发光的宝石，交给了小明和小刚。 梦醒后，小明发现自己还躺在床上，抱着望远镜。虽然知道刚才只是一场梦，但小明仍然觉得仿佛发生在现实一般。他决定将这个美好的梦境与朋友们分享，并告诉他们要爱护地球，让人类和自然和谐共生。 从此，小明更加热爱天文学，立志长大后成为一名宇航员，亲自去探索那神秘而美",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-095",
+      "title": "doit-cw-doc-095",
+      "text": "欢迎来到我们的抖音频道！今天，我们带大家一起探访摩比斯美国技术中心，这里汇聚了众多顶尖科技和创新成果。在这个视频中，您将看到中心的各个部门，以及我们所研发的一系列前沿技术。让我们跟随镜头，一起感受摩比斯美国技术中心的魅力吧！记得点赞关注哦！",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-096",
+      "title": "doit-cw-doc-096",
+      "text": "高质量的信息：满足用户需求与符合客观实际的重要性 在这个信息爆炸的时代，人们被各种各样的信息包围着。高质量的信息对于用户来说具有极大的价值，既要满足用户的需求，又要符合客观实际。本文将探讨高质量信息的重要性以及如何确保信息的质量。 一、满足用户需求 1. 个性化推荐 为了满足用户的需求，高质量的信息应当具有个性化推荐的特点。这就需要我们在传播信息时，充分了解用户的兴趣爱好、年龄层次、职业背景等，从而为他们提供更贴心、更有针对性的信息服务。 2. 实时更新 满足用户需求的高质量信息还应具有实时更新的特点。信息的传播速度日益加快，人们对于新鲜事物的需求也愈发旺盛。因此，提供实时更新的信息，有助于满足用户的需求。 3. 易于理解 信息要满足用户的需求，还应具有易于理解的特点。信息应该用通俗易懂的语言表达，让用户能够轻松地理解和接受，避免使用过于复杂、晦涩的词汇。 二、符合客观实际 1. 真实可靠 高质量的信息应当符合客观实际，即保证信息的真实可靠。在传播信息时，我们应该对信息来源进行核实，确保信息内容真实无误。同时，要避免传播虚假、误导性的信息，以免给用户带来困扰和损失。 2. 客观公正 符合客观实际的高质量信息还应具有客观公正的特点。在传播信息时，我们应该保持中立立场，避免夸大事实、片面报道，以免误导用户。 3. 有深度 除了真实可靠、客观公正之外，高质量的信息还应具有一定的深度。这意味着我们在传播信息时，不仅要关注表面现象，还要深入挖掘背后的原因、影响等，为用户提供更具价值的信息。 三、如何确保信息质量 1. 强化信息审核 要确保高质量的信息，首先要强化信息审核。信息发布者应当对信息来源、内容进行严格把关，确保所发布的信息真实可靠。 2. 增强信息传播者的素质 信息传播者是信息质量的重要保障。因此，提高信息传播者的素质，是确保高质量信息的关键。信息传播者应具备较强的判断力、分辨力和责任感，对待每一条信息都要严谨认真。 3. 制定相关法规和标准 国家和行业应当制定相关的法规和标准，对信息传播行为进行规范。这既有利于维护网络空间的秩序，也有助于确保信息的质量。 总之，高质量的信息是满足用户需求与符合客观实际的。我们要从多方面入手，确保信息的质量，让用户享受到更优质的信息服务。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-097",
+      "title": "doit-cw-doc-097",
+      "text": "办公室主任工作责任书 一、岗位名称：办公室主任 二、岗位职责： 1. 负责办公室的日常管理工作，制定并执行办公室工作制度，确保办公室各项工作正常开展； 2. 负责安排、协调、监督、检查办公室全体人员的工作，发挥团队协作精神，提高工作效率； 3. 负责办公室的行政事务管理，包括文件收发、资料管理、会议记录等，保证办公室文秘工作的顺利进行； 4. 负责办公室财务、物资、设备的管理，合理分配和使用办公资源，确保公司资产安全； 5. 负责组织和参与公司内部各类会议、活动的筹备和实施工作，确保会议、活动顺利进行； 6. 负责办公室人员的培训与发展，关注员工的成长与发展，提高员工的工作技能和综合素质； 7. 负责与其他部门的沟通协作，协助公司领导完成各项工作任务，推进公司发展； 8. 负责办公室内外部环境的维护，保持办公环境整洁、安全、有序； 9. 负责办公室的信息安全工作，确保公司内部信息的保密性、完整性和可用性； 10. 完成领导交办的其他工作任务。 三、岗位要求： 1. 具有较高的组织协调能力和人际沟通能力； 2. 具有较强的责任心和执行力，能承担较大的工作压力； 3. 熟悉办公室管理知识，具备一定的法律法规意识； 4. 具备较强的文字处理能力和计算机应用能力； 5. 具有良好的职业道德和职业操守。 四、工作目标： 1. 确保办公室日常管理工作顺利进行，不影响其他部门正常运转； 2. 努力提高办公室全体人员的工作效率和工作质量； 3. 保证办公室财务、物资、设备的安全与合理使用； 4. 通过与其他部门的沟通协作，为公司发展提供有力支持； 5. 力争在培训与发展方面取得显著成果，提升员工素质。 特此承诺！ 办公室主任签字： 日期：",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-098",
+      "title": "doit-cw-doc-098",
+      "text": "疯狂星期四来袭，肯德基给您带来美味的震撼！ 今天就快来肯德基，尽情享受疯狂星期四的超值优惠！您的口味，我们来满足！独家套餐，只为让您心动不已！ 活动时间：每周四 活动内容： 1. 超值家庭套餐：含6块炸鸡、2个汉堡、2个薯条、2杯可乐，只需99元！原价130元，优惠立省31元！ 2. 双人分享套餐：含4块炸鸡、2个汉堡、1个薯条、1杯可乐，只需69元！原价90元，优惠立省21元！ 3. 单人畅享套餐：含2块炸鸡、1个汉堡、1个薯条、1杯可乐，只需39元！原价55元，优惠立省16元！ 这个星期四，不要错过这个美味的约会，赶快来肯德基与家人、朋友、爱人共享这份美食盛宴吧！不容错过，疯狂等你来！ 提醒：本活动仅限堂食和外卖，不支持外送服务。活动有效期每周四，具体时间以门店营业时间为准。最终解释权归肯德基所有。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-099",
+      "title": "doit-cw-doc-099",
+      "text": "第1天： 1. 抵达马累（马尔代夫首都）； 2. 乘坐水上飞机或快艇前往预订的度假酒店； 3. 入住酒店，休整； 4. 在酒店附近的沙滩上散步、晒太阳； 5. 品尝当地的海鲜美食。 第2天： 1. 参加潜水课程，了解潜水基础知识和技巧； 2. 在潜水教练的带领下进行初次潜水体验，观赏五彩斑斓的珊瑚礁和热带鱼类； 3. 下午可选择参加海钓活动或在沙滩上休闲放松； 4. 晚上可观赏美丽的日落，度过浪漫的海边夜晚。 第3天： 1. 参加浮潜活动，观赏更多的珊瑚礁和海洋生物； 2. 下午在度假村的SPA中心享受一次马尔代夫特色的水疗护理； 3. 晚上参加度假村举办的马尔代夫传统文化表演。 第4天： 1. 乘坐快艇前往马累市区参观； 2. 参观马尔代夫国家博物馆，了解当地的历史文化； 3. 参观伊斯兰教堂，感受马尔代夫的宗教氛围； 4. 在当地市场购买纪念品； 5. 下午返回度假村，休息。 第5天： 1. 在海边享受阳光沙滩，可选择玩皮划艇、冲浪等水上运动； 2. 下午参加烹饪课程，学习制作马尔代夫特色美食； 3. 晚上可在酒店餐厅享用一顿浪漫的海滩烛光晚餐。 第6天： 1. 参加度假村组织的海岛跳跃之旅，探访周围美丽的小岛； 2. 在不同的岛屿上游览，欣赏不同风光； 3. 在海边举行烧烤晚会，与其他游客互动交流。 第7天： 1. 在酒店泳池或沙滩上度过一个悠闲的上午； 2. 办理退房手续； 3. 乘坐水上飞机或快艇返回马累； 4. 从马累搭乘国际航班，结束美好的马尔代夫之旅。",
+      "format": "txt",
+      "status": "有效"
+    },
+    {
+      "id": "doit-cw-corpus-100",
+      "title": "doit-cw-doc-100",
+      "text": "当地时间2022年9月8日，英国女王伊丽莎白二世在苏格兰巴尔莫勒尔城堡去世，享年96岁。按照英国王室的继承顺位，73岁的王储查尔斯继位，成为英国国王。 据美国有线电视新闻网（CNN）最新消息，在英国女王伊丽莎白二世去世后，查尔斯继位成为英国国王。 当天下午6时30分，英国白金汉宫上方的英国国旗降半旗致哀。英国天空新闻网报道称，英国温莎城堡也降半旗致哀，门外的人群中有人开始哭泣并拍照。 英国女王伊丽莎白二世去世后，英国新任首相特拉斯在首相府发表讲话，表示“女王去世让英国和世界都陷入巨大震惊”。同时，联合国秘书长古特雷斯通过发言人发表声明，对英国女王伊丽莎白二世逝世致哀。声明称，古特雷斯对英国女王伊丽莎白二世的逝世深感悲痛。他向她的遗属、英国政府和人民以及英联邦国家表示诚挚的悼念。当地时间9月8日下午，联合国安理会在召开会议前，全体起立，向英国女王伊丽莎白二世逝世默哀。",
+      "format": "txt",
+      "status": "有效"
+    }
+  ],
+  "contains_assistant_answers_in_cases": false,
+  "roadmap_parent_items_checked": false
+}

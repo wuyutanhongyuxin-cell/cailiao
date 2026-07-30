@@ -16,6 +16,8 @@ ROOT = Path(__file__).resolve().parents[1]
 TOOL = ROOT / "tools" / "build_stage2b_doit_bm25_dataset.py"
 SERVER = ROOT / "backend" / "server.py"
 FIXTURE = ROOT / "tests" / "data" / "doit_bm25_fixture.sample.jsonl"
+REAL_ARTIFACT = ROOT / "docs" / "evidence" / "stage2b" / "doit_creative_writing_bm25_ready_real_100.json"
+SWEEP_REPORT = ROOT / "docs" / "evidence" / "stage2b" / "doit_creative_writing_bm25_sweep_report.json"
 
 spec = importlib.util.spec_from_file_location("build_stage2b_doit_bm25_dataset", TOOL)
 bld = importlib.util.module_from_spec(spec)
@@ -156,6 +158,30 @@ class InsufficientTest(unittest.TestCase):
 class FixtureMarkerTest(unittest.TestCase):
     def test_fixture_marked_not_real_evidence(self):
         self.assertIn("FIXTURE ONLY", FIXTURE.read_text(encoding="utf-8"))
+
+
+class RealPublicEvidenceTest(unittest.TestCase):
+    def test_tracked_real_public_artifact_validates(self):
+        with REAL_ARTIFACT.open("r", encoding="utf-8") as f:
+            ds = json.load(f)
+        rep = bld.validate_dataset(ds, server=server)
+        self.assertTrue(rep["passed"], rep["errors"])
+        self.assertEqual(rep["status"], "ready_real")
+        self.assertEqual(ds["record_count"], 100)
+        self.assertEqual(ds["set_hash"], "sha256:fca0300eea0480089a2f44f47d60b9a4cb7cbbc5aa6193f13427fa43e4be464b")
+        self.assertFalse(ds["roadmap_parent_items_checked"])
+
+    def test_tracked_sweep_report_is_real_run(self):
+        with SWEEP_REPORT.open("r", encoding="utf-8") as f:
+            report = json.load(f)
+        self.assertTrue(report["ran"])
+        self.assertFalse(report["refused"])
+        self.assertEqual(report["candidate_count"], 36)
+        self.assertEqual(report["best"]["k1"], 0.9)
+        self.assertEqual(report["best"]["b"], 1.0)
+        self.assertEqual(report["best"]["threshold"], 0.0)
+        self.assertEqual(report["best"]["title_recall_at_k"], 0.95)
+        self.assertEqual(report["best"]["miss_count"], 5)
 
 
 if __name__ == "__main__":
