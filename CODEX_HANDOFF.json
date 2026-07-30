@@ -1,68 +1,68 @@
 {
   "status": "implemented_by_claude",
-  "task_id": "cailiao-stage2b-artifact-contracts-v1",
-  "phase": "Stage 2B hardening: machine-readable artifact contracts + placeholder template for the real-world inputs under config.artifacts, so future human/provider work can be supplied in a standards-aligned, auditable way. All Stage 2B real parent items REMAIN UNCHECKED; only the contracts/template scaffold is a checked sub-note.",
-  "baseline": "62a6bf7e448e1417c52ad0344781a67d334da055 (Stage 2B production playbook head)",
-  "summary": "Added docs/STAGE2B_ARTIFACT_CONTRACTS.md (per-artifact required/forbidden fields, validator, proves / does_not_prove, a compact JSON example, and an explicit shape-only boundary), a placeholder-safe examples/stage2b_artifacts.example.json (no real data, no secret values, credential_source names env vars only, template-marked so it never satisfies real readiness by default), and build_stage2b_artifact_contracts(config=None) returning the five contracts keyed to the external-dependency blockers with contract_count=5, example_file, example_is_placeholder_only=true, ready_artifact_count (from the existing audit's satisfied_ids), and roadmap_parent_items_checked=false. A CLI tools/check_stage2b_artifact_contracts.py exits 0 by default (contracts/templates valid as docs; states no real artifacts supplied and parents unchecked) and exits 1 under --require-ready-artifacts unless all five blockers are satisfied by config metadata. No network, no provider call, no credential/.env read; no real ROADMAP parent item is marked complete.",
+  "task_id": "cailiao-stage2b-eval-run-contract-v1",
+  "phase": "Stage 2B hardening: deterministic evaluation-run contract/manifest layer so future real Stage 2B evaluations are auditable and reproducible (TREC qrels/runfile/result + ir-measures/BEIR metrics). No real eval run exists; all Stage 2B real parent items REMAIN UNCHECKED; only the eval-run contract scaffold is a checked sub-note.",
+  "baseline": "9800976ef0a607a4c52ba059009b5fe4e71f2c9d (Stage 2B artifact contracts head)",
+  "summary": "Added docs/STAGE2B_EVAL_RUN_CONTRACT.md (eval-run package fields, required metrics, artifact pointers/hashes, acceptance verdict + rollback, proves/does_not_prove, and an explicit shape-only boundary), a placeholder examples/stage2b_eval_run.example.json (template-marked so it never validates as a real run), and two helpers: validate_stage2b_eval_run_manifest(manifest) (requires object shape, no template marker, dataset_readiness_status==ready_real, query_count in [50,100], all required metrics as numbers, latency_p95>=latency_p50, qrels/runfile/result_snapshot pointers with path|uri+sha256 and non-placeholder hashes, explicit acceptance verdict) and build_stage2b_eval_run_contract(config=None) (contract metadata + required fields/metrics/artifacts + validation summary; defaults not-ready). The validator never reads pointed-to files, never verifies a hash against contents, and never calls a provider. A CLI tools/check_stage2b_eval_run_contract.py exits 1 by default and 0 only when a manifest validates. No real eval run is fabricated; no ROADMAP parent item is marked complete.",
   "changed_files": [
-    "docs/STAGE2B_ARTIFACT_CONTRACTS.md",
-    "examples/stage2b_artifacts.example.json",
+    "docs/STAGE2B_EVAL_RUN_CONTRACT.md",
+    "examples/stage2b_eval_run.example.json",
     "backend/server.py",
-    "tools/check_stage2b_artifact_contracts.py",
-    "tests/test_stage2b_artifact_contracts.py",
+    "tools/check_stage2b_eval_run_contract.py",
+    "tests/test_stage2b_eval_run_contract.py",
     "tools/run_quality_gates.py",
     "README.md",
     "docs/ROADMAP.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "docs/STAGE2B_ARTIFACT_CONTRACTS.md: contracts for the 5 config.artifacts keys (required fields, forbidden secret-value fields, validator helper, proves / does_not_prove), a compact JSON example, and an explicit metadata/shape-only boundary.",
-    "examples/stage2b_artifacts.example.json: placeholder-only template; no real data, no secret values, credential_source uses env-var NAMES, query sets carry is_template so real readiness is never satisfied by default.",
-    "backend/server.py: added STAGE2B_ARTIFACT_CONTRACTS_DOC, STAGE2B_ARTIFACTS_EXAMPLE_FILE, _STAGE2B_ARTIFACT_CONTRACTS (5), and build_stage2b_artifact_contracts(config=None) (method=stage2b_artifact_contracts_v1) returning contract_count=5, contracts list, example_file, example_is_placeholder_only=true, ready_artifact_count from build_external_dependency_audit satisfied_ids, roadmap_parent_items_checked=false.",
-    "tools/check_stage2b_artifact_contracts.py: CLI (--config/--json, --require-ready-artifacts); default exit 0 with a note that no real artifacts are supplied and parents remain unchecked; --require-ready-artifacts exit 1 unless all 5 blockers satisfied; exit 2 on load error.",
-    "tests/test_stage2b_artifact_contracts.py: 13 tests (contract_count 5 + keys match blockers; contract doc fields; default placeholder-only + no parent check; JSON serializable; example exists/parses, no secret-shaped values, does not satisfy external audit by default, ready_artifact_count < 5; doc exists + documents all keys + shape-only boundary; CLI default exits 0, --require-ready-artifacts exits 1, and with the placeholder example still exits 1).",
-    "tools/run_quality_gates.py: py-compile gate now includes tests/test_stage2b_artifact_contracts.py and tools/check_stage2b_artifact_contracts.py.",
-    "README.md documents the contracts + template as a shape-only contract layer with its boundary; docs/ROADMAP.md keeps all real parent items UNCHECKED and adds a checked sub-note for the contracts only."
+    "docs/STAGE2B_EVAL_RUN_CONTRACT.md: eval-run package spec (identity/dataset, retrieval config version summaries, qrels/runfile/result pointers+hashes, required BEIR/ir-measures metrics + latency, acceptance verdict + rollback), proves/does_not_prove, explicit no-real-run-by-default note, references.",
+    "examples/stage2b_eval_run.example.json: placeholder-only, template-marked (dataset_readiness_status='template', empty metrics, placeholder hashes, env-var credential summaries); does not validate as a real run.",
+    "backend/server.py: added STAGE2B_EVAL_RUN_CONTRACT_DOC, STAGE2B_EVAL_RUN_EXAMPLE_FILE, STAGE2B_EVAL_RUN_REQUIRED_FIELDS, STAGE2B_EVAL_RUN_REQUIRED_METRICS (=STAGE2B_REQUIRED_METRICS), STAGE2B_EVAL_RUN_REQUIRED_ARTIFACTS, STAGE2B_EVAL_RUN_VERDICTS, _eval_run_is_template.",
+    "backend/server.py: validate_stage2b_eval_run_manifest(manifest) -> {passed, errors, warnings, ready} enforcing shape/template/readiness/query-count/metrics/latency-ordering/artifact-pointers/verdict; never reads files or calls providers.",
+    "backend/server.py: build_stage2b_eval_run_contract(config=None) -> method=stage2b_eval_run_contract_v1 with required_fields/metrics/artifacts, acceptance_verdicts, example_file, example_is_placeholder_only=true, has_real_eval_run (from validation of an optional config.eval_run manifest), validation summary, roadmap_parent_items_checked=false.",
+    "tools/check_stage2b_eval_run_contract.py: CLI (--config/--json); accepts a bare manifest or one under 'eval_run'; exit 0 only when a manifest validates, 1 otherwise (default), 2 on load error.",
+    "tests/test_stage2b_eval_run_contract.py: 19 tests (default not ready; required metrics/fields exposed; example parses and is not ready; complete manifest validates without reading files; template marker/non-ready_real/missing metric/non-numeric metric/bad latency ordering/query-count out of band/placeholder hash/missing verdict all fail; non-object safe; doc states shape-only; CLI default exits 1, example exits 1, complete temp manifest exits 0).",
+    "tools/run_quality_gates.py: py-compile gate now includes tests/test_stage2b_eval_run_contract.py and tools/check_stage2b_eval_run_contract.py.",
+    "README.md documents the eval-run contract with its boundary; docs/ROADMAP.md keeps all real parent items UNCHECKED and adds a checked sub-note for the eval-run contract only."
   ],
   "not_implemented": [
-    "No real Stage 2B capability is added: no real query set, no BM25 calibration run, no real embedding provider/persistent store/index, no real reranker/cross-encoder, no real NLI/LLM semantic conflict.",
+    "No real Stage 2B evaluation was run; no real metrics, qrels, runfile, or result snapshot are produced.",
     "All Stage 2B real parent items (ROADMAP lines 97/100/103/106/112) remain unchecked by design.",
-    "The example template is placeholder-only and intentionally does not satisfy the real query-set / BM25 contracts (is_template markers keep readiness below ready_real).",
-    "Contract satisfaction is DECLARED-METADATA-SHAPE only; it never means a provider/dataset was contacted, authenticated, built, or evaluated.",
+    "A validating manifest is DECLARED-SHAPE only; it never means the run executed, the artifact files exist or match their hashes, a provider was reached, or the metrics are real.",
+    "The validator never opens files at the pointers and never verifies a sha256 against file contents.",
     "No network, no provider call, no model download, no credential/.env read."
   ],
   "test_files": [
-    "tests/test_stage2b_artifact_contracts.py"
+    "tests/test_stage2b_eval_run_contract.py"
   ],
   "required_test_commands_for_codex": [
-    "python -m unittest tests.test_stage2b_artifact_contracts -v",
+    "python -m unittest tests.test_stage2b_eval_run_contract -v",
     "python -m unittest discover -s tests -v",
-    "python tools/check_stage2b_artifact_contracts.py --json",
-    "python tools/check_stage2b_artifact_contracts.py --require-ready-artifacts --json",
+    "python tools/check_stage2b_eval_run_contract.py --json",
     "python tools/run_quality_gates.py --json",
     "python -m json.tool CODEX_HANDOFF.json",
     "git diff --check"
   ],
   "test_status": [
-    "python -m unittest tests.test_stage2b_artifact_contracts -v: 13 tests OK.",
-    "python -m unittest discover -s tests -v: 546 tests OK.",
-    "python tools/check_stage2b_artifact_contracts.py --json: contract_count=5, ready_artifact_count=0, roadmap_parent_items_checked=false, exit 0.",
-    "python tools/check_stage2b_artifact_contracts.py --require-ready-artifacts --json: exit 1 (default repo state; no artifacts ready).",
-    "python tools/run_quality_gates.py --json (default 'python' on PATH): passed=true, all 5 gates passed (secret-scan clean over new files); unittest gate ran 546 tests OK.",
+    "python -m unittest tests.test_stage2b_eval_run_contract -v: 19 tests OK.",
+    "python -m unittest discover -s tests -v: 565 tests OK.",
+    "python tools/check_stage2b_eval_run_contract.py --json: has_real_eval_run=false (no manifest), roadmap_parent_items_checked=false, exit 1.",
+    "python tools/run_quality_gates.py --json (default 'python' on PATH): passed=true, all 5 gates passed (secret-scan clean over new files); unittest gate ran 565 tests OK.",
     "python -m json.tool CODEX_HANDOFF.json: valid JSON.",
     "git diff --check: no whitespace/conflict issues."
   ],
-  "roadmap_item_status": "ALL STAGE 2B REAL PARENT ITEMS UNCHECKED (lines 97/100/103/106/112). Only a checked sub-note for the artifact contracts + placeholder template was added.",
+  "roadmap_item_status": "ALL STAGE 2B REAL PARENT ITEMS UNCHECKED (lines 97/100/103/106/112). Only a checked sub-note for the eval-run contract/manifest was added.",
   "risks": [
-    "Contract satisfaction (and ready_artifact_count) is a declared-metadata-shape verdict reusing the external-dependency audit; a fully-declared but wrong config would count as ready. It informs a human decision and never auto-checks a ROADMAP parent.",
-    "The provider/vector/rerank/NLI contracts can be satisfied by a well-shaped config with env-var credential names even in the placeholder example (no real DATA is faked); the two DATA-bearing contracts (query set, BM25) stay unsatisfied because the template is is_template-marked. This is intended and tested.",
-    "The example file is documentation; a user copying it must replace placeholders with real anonymized data and real provider/env details before any contract reflects reality.",
-    "Contracts describe shape, not enforcement of a live pipeline; wiring real providers still requires the readiness helpers + real eval before flipping any parent item.",
+    "A validating manifest is a declared-shape verdict, not proof of execution: it never opens the qrels/runfile/result files, never checks a sha256 against contents, and never calls a provider. Trusting the numbers requires actually running the pipeline on a real ready_real dataset.",
+    "Placeholder-hash detection is a small denylist (PLACEHOLDER/TODO/TBD); an arbitrary fake-but-non-denylisted hash string would pass the shape check (it still cannot be verified against a file here).",
+    "Metric presence/type is enforced but value ranges (beyond latency ordering) are not; a manifest could declare implausible metric values and still pass shape validation.",
+    "The contract mirrors the playbook metric set; if that set changes, both should be updated together.",
     "Environment note: the local interpreter is python3 (no bare 'python' on PATH); the quality-gate runner honors PYTHON=python3, and a local 'python->python3' PATH shim lets its default-interpreter meta-test pass."
   ],
   "credentials": [
-    "No credentials or .env files were read, created, or modified; contracts forbid credential-value fields and the example names env vars only.",
-    "No external network calls, provider calls, or model downloads were used for implementation or local tests.",
+    "No credentials or .env files were read, created, or modified; config summaries name env vars only and the example carries no secret values.",
+    "No external network calls, provider calls, or model downloads were used for implementation or local tests; artifact pointer files are never opened.",
     "No push performed; commit/push left to the maintainer."
   ]
 }

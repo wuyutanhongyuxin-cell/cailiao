@@ -6664,6 +6664,149 @@ def build_stage2b_artifact_contracts(config: dict[str, Any] | None = None) -> di
     }
 
 
+# --- Stage 2B evaluation-run contract / manifest (declared-shape) v1 ----------
+
+STAGE2B_EVAL_RUN_CONTRACT_DOC = "docs/STAGE2B_EVAL_RUN_CONTRACT.md"
+STAGE2B_EVAL_RUN_EXAMPLE_FILE = "examples/stage2b_eval_run.example.json"
+
+# Required top-level fields for a real eval-run manifest.
+STAGE2B_EVAL_RUN_REQUIRED_FIELDS = (
+    "run_id", "created_at", "dataset_id", "dataset_readiness_status", "query_count",
+    "config", "artifacts", "metrics", "acceptance",
+)
+# Required metric keys (BEIR/ir-measures style + serving latency); reuse the playbook set.
+STAGE2B_EVAL_RUN_REQUIRED_METRICS = STAGE2B_REQUIRED_METRICS
+# Artifact pointers that must be present as {path|uri, sha256}.
+STAGE2B_EVAL_RUN_REQUIRED_ARTIFACTS = ("qrels", "runfile", "result_snapshot")
+# Explicit acceptance verdicts.
+STAGE2B_EVAL_RUN_VERDICTS = frozenset({"pass", "fail", "needs_review"})
+# Template-ish markers that disqualify a manifest from being a real run.
+_EVAL_RUN_TEMPLATE_TOKENS = ("template", "placeholder", "example", "sample", "占位", "示例", "模板")
+
+
+def _eval_run_is_template(manifest: dict[str, Any]) -> bool:
+    if manifest.get("is_template") is True:
+        return True
+    blob = " ".join(str(manifest.get(k, "")) for k in ("run_id", "dataset_id", "dataset_readiness_status")).lower()
+    return any(tok in blob for tok in _EVAL_RUN_TEMPLATE_TOKENS)
+
+
+def validate_stage2b_eval_run_manifest(manifest: Any) -> dict[str, Any]:
+    """Validate a Stage 2B eval-run manifest's SHAPE (never reads pointed-to files).
+
+    Requires: object shape; no template marker; dataset_readiness_status=='ready_real';
+    query_count in [50,100]; all required metrics present as numbers; latency_p95 >=
+    latency_p50; qrels/runfile/result_snapshot pointers each with path|uri + sha256;
+    and an explicit acceptance verdict. This validates declared metadata only — it
+    never opens an artifact file, never verifies a hash against contents, and never
+    calls a provider. Deterministic, stdlib only. Returns {passed, errors, warnings, ready}.
+    """
+    errors: list[str] = []
+    warnings: list[str] = []
+    if not isinstance(manifest, dict):
+        return {"passed": False, "errors": [f"manifest must be a JSON object, got {type(manifest).__name__}"],
+                "warnings": [], "ready": False}
+
+    for field in STAGE2B_EVAL_RUN_REQUIRED_FIELDS:
+        if field not in manifest:
+            errors.append(f"missing required field '{field}'")
+
+    if _eval_run_is_template(manifest):
+        errors.append("manifest is template/placeholder-marked; not a real eval run")
+
+    status = manifest.get("dataset_readiness_status")
+    if status != "ready_real":
+        errors.append(f"dataset_readiness_status must be 'ready_real' (got {status!r})")
+
+    qc = manifest.get("query_count")
+    if not (isinstance(qc, int) and not isinstance(qc, bool)):
+        errors.append("'query_count' must be an integer")
+    elif not (50 <= qc <= 100):
+        errors.append(f"'query_count' must be in [50, 100] (got {qc})")
+
+    metrics = manifest.get("metrics")
+    if not isinstance(metrics, dict):
+        errors.append("'metrics' must be an object")
+        metrics = {}
+    for m in STAGE2B_EVAL_RUN_REQUIRED_METRICS:
+        if m not in metrics:
+            errors.append(f"missing required metric '{m}'")
+        elif not isinstance(metrics[m], (int, float)) or isinstance(metrics[m], bool):
+            errors.append(f"metric '{m}' must be a number")
+    p50 = metrics.get("latency_p50")
+    p95 = metrics.get("latency_p95")
+    if isinstance(p50, (int, float)) and not isinstance(p50, bool) \
+            and isinstance(p95, (int, float)) and not isinstance(p95, bool):
+        if p95 < p50:
+            errors.append("latency_p95 must be >= latency_p50")
+
+    artifacts = manifest.get("artifacts")
+    if not isinstance(artifacts, dict):
+        errors.append("'artifacts' must be an object")
+        artifacts = {}
+    for key in STAGE2B_EVAL_RUN_REQUIRED_ARTIFACTS:
+        ptr = artifacts.get(key)
+        if not isinstance(ptr, dict):
+            errors.append(f"artifacts '{key}' must be an object with a pointer + sha256")
+            continue
+        if not (isinstance(ptr.get("path"), str) and ptr["path"].strip()) and \
+           not (isinstance(ptr.get("uri"), str) and ptr["uri"].strip()):
+            errors.append(f"artifacts '{key}' must declare a non-empty 'path' or 'uri'")
+        if not (isinstance(ptr.get("sha256"), str) and ptr["sha256"].strip()):
+            errors.append(f"artifacts '{key}' must declare a 'sha256'")
+        elif ptr["sha256"].strip().upper() in {"PLACEHOLDER", "TODO", "TBD"}:
+            errors.append(f"artifacts '{key}' sha256 is a placeholder")
+
+    acceptance = manifest.get("acceptance")
+    if not isinstance(acceptance, dict):
+        errors.append("'acceptance' must be an object")
+    else:
+        verdict = acceptance.get("verdict")
+        if verdict not in STAGE2B_EVAL_RUN_VERDICTS:
+            errors.append(f"acceptance 'verdict' must be one of {sorted(STAGE2B_EVAL_RUN_VERDICTS)}")
+        if not (isinstance(acceptance.get("rollback_notes"), str) and acceptance["rollback_notes"].strip()):
+            warnings.append("acceptance has no rollback_notes")
+
+    return {"passed": not errors, "errors": errors, "warnings": warnings, "ready": not errors}
+
+
+def build_stage2b_eval_run_contract(config: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Return the Stage 2B eval-run contract + a validation summary for a manifest.
+
+    Companion to docs/STAGE2B_EVAL_RUN_CONTRACT.md. When ``config`` carries an
+    ``eval_run`` manifest, it is validated by validate_stage2b_eval_run_manifest
+    (declared-shape only — no file read, no provider call). With no manifest the
+    summary is not-ready. ``roadmap_parent_items_checked`` is always false.
+    Deterministic, stdlib only; no network, no credential/.env read.
+    """
+    raw = config if isinstance(config, dict) else {}
+    manifest = raw.get("eval_run") if isinstance(raw.get("eval_run"), dict) else None
+    if manifest is None:
+        validation = {"passed": False, "errors": ["no eval_run manifest supplied"],
+                      "warnings": [], "ready": False}
+    else:
+        validation = validate_stage2b_eval_run_manifest(manifest)
+    return {
+        "method": "stage2b_eval_run_contract_v1",
+        "boundary": (
+            "eval-run manifest SHAPE contract only; a valid manifest proves the run is "
+            "declared completely and consistently, NOT that it executed, that artifact "
+            "files exist/match hashes, or that metrics are real; no file read, no provider "
+            "call, no credential/.env read"
+        ),
+        "contract_doc": STAGE2B_EVAL_RUN_CONTRACT_DOC,
+        "required_fields": list(STAGE2B_EVAL_RUN_REQUIRED_FIELDS),
+        "required_metrics": list(STAGE2B_EVAL_RUN_REQUIRED_METRICS),
+        "required_artifacts": list(STAGE2B_EVAL_RUN_REQUIRED_ARTIFACTS),
+        "acceptance_verdicts": sorted(STAGE2B_EVAL_RUN_VERDICTS),
+        "example_file": STAGE2B_EVAL_RUN_EXAMPLE_FILE,
+        "example_is_placeholder_only": True,
+        "has_real_eval_run": bool(validation["ready"]),
+        "validation": validation,
+        "roadmap_parent_items_checked": False,
+    }
+
+
 def add_evidence(item: dict[str, str]) -> dict[str, str]:
     item_id = str(uuid.uuid4())
     title = item.get("title", "").strip()

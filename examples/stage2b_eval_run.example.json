@@ -1,0 +1,23 @@
+{
+  "_note": "PLACEHOLDER-ONLY example eval-run manifest for docs/STAGE2B_EVAL_RUN_CONTRACT.md. Shows the manifest SHAPE only. It is deliberately template-marked and NOT a real eval run: dataset_readiness_status is 'template', metrics are absent, and pointers are placeholders. It must NOT validate as a real run by default. Credential summaries name environment variables, never secret values.",
+  "run_id": "TEMPLATE-run-0001",
+  "is_template": true,
+  "created_at": "2026-01-01T00:00:00",
+  "dataset_id": "TEMPLATE-dataset",
+  "dataset_readiness_status": "template",
+  "query_count": 1,
+  "config": {
+    "bm25": {"k1": 1.2, "b": 0.75},
+    "vector": {"provider": "example-embedding-provider", "model": "example-embedding-model", "dim": 1024, "store_backend": "qdrant", "credential_source": "EXAMPLE_EMBEDDING_API_KEY_ENV"},
+    "fusion": {"method": "rrf", "rank_constant": 60, "rank_window_size": 100, "channels": ["bm25", "vector"]},
+    "rerank": {"provider": "example-reranker-provider", "model": "example-cross-encoder", "eval_metrics": ["ndcg", "mrr"], "credential_source": "EXAMPLE_RERANK_API_KEY_ENV"},
+    "nli": {"provider": "example-nli-provider", "model": "example-nli-model", "credential_source": "EXAMPLE_NLI_API_KEY_ENV"}
+  },
+  "artifacts": {
+    "qrels": {"path": "PLACEHOLDER/qrels.txt", "sha256": "PLACEHOLDER"},
+    "runfile": {"path": "PLACEHOLDER/run.txt", "sha256": "PLACEHOLDER"},
+    "result_snapshot": {"path": "PLACEHOLDER/results.json", "sha256": "PLACEHOLDER"}
+  },
+  "metrics": {},
+  "acceptance": {"verdict": "needs_review", "rollback_notes": "placeholder: no rollback baseline before a real run"}
+}

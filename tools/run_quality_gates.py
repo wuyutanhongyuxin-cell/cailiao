@@ -200,6 +200,7 @@ def _gate_py_compile() -> tuple[str, str, int]:
                              "tests/test_external_dependency_audit.py",
                              "tests/test_stage2b_production_playbook.py",
                              "tests/test_stage2b_artifact_contracts.py",
+                             "tests/test_stage2b_eval_run_contract.py",
                              "tests/test_vector_pipeline.py",
                              "tests/test_reranker_pipeline.py",
                              "tools/evaluate_retrieval.py", "tools/run_quality_gates.py",
@@ -215,7 +216,8 @@ def _gate_py_compile() -> tuple[str, str, int]:
                              "tools/check_semantic_conflict_readiness.py",
                              "tools/check_external_dependency_audit.py",
                              "tools/check_stage2b_production_playbook.py",
-                             "tools/check_stage2b_artifact_contracts.py"],
+                             "tools/check_stage2b_artifact_contracts.py",
+                             "tools/check_stage2b_eval_run_contract.py"],
                             env={"PYTHONPYCACHEPREFIX": pycache})
     return ("passed" if rc == 0 else "failed",
             "byte-compiled backend/tests/tools" if rc == 0 else tail, rc)
