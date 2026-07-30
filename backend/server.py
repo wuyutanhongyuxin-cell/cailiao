@@ -6517,6 +6517,169 @@ def build_semantic_conflict_readiness(config: dict[str, Any] | None = None) -> d
     }
 
 
+# --- Stage 2B/3: NLI semantic rollout protocol v1 ----------------------------
+
+STAGE2B_NLI_ROLLOUT_EXAMPLE_FILE = "examples/stage2b_nli_semantic_rollout.example.json"
+NLI_ROLLOUT_MODES = frozenset({"shadow", "canary", "full"})
+NLI_REQUIRED_EVAL_METRICS = frozenset({
+    "precision_by_label", "recall_by_label", "f1_by_label", "confusion_matrix",
+    "calibration_notes", "abstention_rate", "refusal_rate",
+})
+NLI_REQUIRED_EVIDENCE_FIELDS = frozenset({"claim_text", "cited_chunk_ids", "context_window", "provenance"})
+
+
+def validate_stage2b_nli_semantic_rollout_packet(packet: Any) -> dict[str, Any]:
+    """Validate a metadata-only NLI/semantic conflict rollout packet."""
+    errors: list[str] = []
+    warnings: list[str] = []
+    if not isinstance(packet, dict):
+        return {"passed": False, "ready": False,
+                "errors": [f"packet must be a JSON object, got {type(packet).__name__}"],
+                "warnings": []}
+    if packet.get("is_template"):
+        errors.append("packet is marked is_template=true")
+
+    if not str(packet.get("rollout_id") or "").strip():
+        errors.append("rollout_id is required")
+    mode = str(packet.get("rollout_mode") or "").strip().lower()
+    if mode not in NLI_ROLLOUT_MODES:
+        errors.append(f"rollout_mode must be one of {sorted(NLI_ROLLOUT_MODES)}")
+
+    semantic_config = packet.get("semantic_config")
+    if not isinstance(semantic_config, dict):
+        errors.append("semantic_config must be a JSON object")
+        readiness = build_semantic_conflict_readiness()
+    else:
+        leaked = [f for f in VECTOR_FORBIDDEN_FIELDS if f in semantic_config]
+        if leaked:
+            errors.append(f"semantic_config must not carry credential/endpoint value field(s) {leaked}")
+        readiness = build_semantic_conflict_readiness(semantic_config)
+        if not readiness["production_ready"]:
+            errors.append("semantic_config does not pass build_semantic_conflict_readiness")
+
+    label_mapping = packet.get("label_mapping")
+    if not isinstance(label_mapping, dict):
+        errors.append("label_mapping must be a JSON object")
+    else:
+        mapped: set[str] = set()
+        for _, value in label_mapping.items():
+            verdict = str(value or "").strip().lower()
+            if verdict not in NLI_VERDICTS:
+                errors.append(f"label_mapping value {verdict!r} is not one of {list(NLI_VERDICTS)}")
+            else:
+                mapped.add(verdict)
+        missing_verdicts = sorted(set(NLI_VERDICTS) - mapped)
+        if missing_verdicts:
+            errors.append(f"label_mapping missing verdict coverage {missing_verdicts}")
+
+    policy = packet.get("policy")
+    policy_check = validate_semantic_conflict_policy(policy) if isinstance(policy, dict) else {
+        "passed": False, "errors": ["policy must be a JSON object"], "warnings": []}
+    if not policy_check["passed"]:
+        errors.extend(f"policy.{e}" for e in policy_check["errors"])
+
+    evidence = packet.get("evidence_requirements")
+    if not isinstance(evidence, dict):
+        errors.append("evidence_requirements must be a JSON object")
+    else:
+        fields = evidence.get("required_fields")
+        field_set = {str(f).strip() for f in fields} if isinstance(fields, list) else set()
+        missing_fields = sorted(NLI_REQUIRED_EVIDENCE_FIELDS - field_set)
+        if missing_fields:
+            errors.append(f"evidence_requirements.required_fields missing {missing_fields}")
+        try:
+            context_window = int(evidence.get("min_context_window_chars"))
+        except (TypeError, ValueError):
+            context_window = 0
+        if context_window < 100:
+            errors.append("evidence_requirements.min_context_window_chars must be >= 100")
+
+    eval_packet = packet.get("eval_packet")
+    if not isinstance(eval_packet, dict):
+        errors.append("eval_packet must be a JSON object")
+    else:
+        if str(eval_packet.get("dataset_readiness_status") or "").strip() != "ready_real":
+            errors.append("eval_packet.dataset_readiness_status must be ready_real")
+        metrics = eval_packet.get("required_metrics")
+        metric_set = {str(m).strip().lower() for m in metrics} if isinstance(metrics, list) else set()
+        missing_metrics = sorted(NLI_REQUIRED_EVAL_METRICS - metric_set)
+        if missing_metrics:
+            errors.append(f"eval_packet.required_metrics missing {missing_metrics}")
+        if not str(eval_packet.get("run_manifest_ref") or "").strip():
+            errors.append("eval_packet.run_manifest_ref is required")
+
+    human_review = packet.get("human_review")
+    if not isinstance(human_review, dict):
+        errors.append("human_review must be a JSON object")
+    else:
+        triggers = human_review.get("escalation_triggers")
+        if not isinstance(triggers, list) or not triggers:
+            errors.append("human_review.escalation_triggers must be a non-empty list")
+        if not str(human_review.get("review_queue") or "").strip():
+            errors.append("human_review.review_queue is required")
+
+    observability = packet.get("observability")
+    if not isinstance(observability, dict):
+        errors.append("observability must be a JSON object")
+    else:
+        metrics = observability.get("metrics")
+        metric_set = {str(m).strip().lower() for m in metrics} if isinstance(metrics, list) else set()
+        required_obs = {"provider_error_rate", "latency_p95", "verdict_distribution", "escalation_rate"}
+        missing_obs = sorted(required_obs - metric_set)
+        if missing_obs:
+            errors.append(f"observability.metrics missing {missing_obs}")
+
+    rollout = packet.get("rollout")
+    if not isinstance(rollout, dict):
+        errors.append("rollout must be a JSON object")
+    else:
+        for field in ("preflight_checklist", "canary_steps", "rollback_steps"):
+            value = rollout.get(field)
+            if not isinstance(value, list) or not value:
+                errors.append(f"rollout.{field} must be a non-empty list")
+        if not str(rollout.get("rollback_trigger") or "").strip():
+            errors.append("rollout.rollback_trigger is required")
+
+    return {
+        "passed": not errors,
+        "ready": not errors,
+        "errors": errors,
+        "warnings": warnings,
+        "semantic_readiness": readiness,
+        "roadmap_parent_items_checked": False,
+    }
+
+
+def build_stage2b_nli_semantic_rollout_protocol(config: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Build NLI/LLM semantic entailment rollout protocol status."""
+    raw = config if isinstance(config, dict) else {}
+    packet = raw.get("nli_semantic_rollout") if isinstance(raw.get("nli_semantic_rollout"), dict) else raw
+    validation = validate_stage2b_nli_semantic_rollout_packet(packet) if raw else validate_stage2b_nli_semantic_rollout_packet({})
+    return {
+        "method": "stage2b_nli_semantic_rollout_protocol_v1",
+        "boundary": (
+            "metadata-only rollout protocol for real NLI/LLM semantic entailment and conflict evidence; "
+            "no provider call, no model download, no eval run, no secret read"
+        ),
+        "example_file": STAGE2B_NLI_ROLLOUT_EXAMPLE_FILE,
+        "example_is_placeholder_only": True,
+        "required_sections": [
+            "semantic_config", "label_mapping", "policy", "evidence_requirements",
+            "eval_packet", "human_review", "observability", "rollout",
+        ],
+        "required_verdicts": list(NLI_VERDICTS),
+        "required_eval_metrics": sorted(NLI_REQUIRED_EVAL_METRICS),
+        "ready_for_semantic_rollout": bool(validation["ready"]),
+        "validation": validation,
+        "current_shipped_state": {
+            "detector": "deterministic_lexical",
+            "does_semantic_entailment": False,
+            "production_ready": False,
+        },
+        "roadmap_parent_items_checked": False,
+    }
+
+
 # --- Final: external-dependency audit / gate for real-world blockers v1 -------
 
 # The five ROADMAP parent items that cannot honestly be completed inside this repo

@@ -1,0 +1,109 @@
+{
+  "is_template": true,
+  "rollout_id": "NLI-SEMANTIC-ROLLOUT-TEMPLATE",
+  "rollout_mode": "shadow",
+  "semantic_config": {
+    "provider": {
+      "provider": "huggingface",
+      "model": "microsoft/deberta-base-mnli",
+      "credential_source": "HF_TOKEN"
+    },
+    "eval_labels": [
+      "entailment",
+      "contradiction",
+      "neutral"
+    ],
+    "policy": {
+      "verdict_labels": [
+        "supports",
+        "refutes",
+        "not_enough_info"
+      ],
+      "min_confidence": 0.7,
+      "block_on": [
+        "refutes"
+      ],
+      "warn_on": [
+        "not_enough_info"
+      ]
+    }
+  },
+  "label_mapping": {
+    "entailment": "supports",
+    "contradiction": "refutes",
+    "neutral": "not_enough_info",
+    "supports": "supports",
+    "refutes": "refutes",
+    "nei": "not_enough_info"
+  },
+  "policy": {
+    "verdict_labels": [
+      "supports",
+      "refutes",
+      "not_enough_info"
+    ],
+    "min_confidence": 0.7,
+    "block_on": [
+      "refutes"
+    ],
+    "warn_on": [
+      "not_enough_info"
+    ]
+  },
+  "evidence_requirements": {
+    "required_fields": [
+      "claim_text",
+      "cited_chunk_ids",
+      "context_window",
+      "provenance"
+    ],
+    "min_context_window_chars": 400
+  },
+  "eval_packet": {
+    "dataset_readiness_status": "ready_real",
+    "run_manifest_ref": "semantic-eval-run-placeholder",
+    "required_metrics": [
+      "precision_by_label",
+      "recall_by_label",
+      "f1_by_label",
+      "confusion_matrix",
+      "calibration_notes",
+      "abstention_rate",
+      "refusal_rate"
+    ]
+  },
+  "human_review": {
+    "review_queue": "semantic-conflict-review",
+    "escalation_triggers": [
+      "low confidence",
+      "label disagreement",
+      "refutes verdict on high impact claim"
+    ]
+  },
+  "observability": {
+    "metrics": [
+      "provider_error_rate",
+      "latency_p95",
+      "verdict_distribution",
+      "escalation_rate"
+    ]
+  },
+  "rollout": {
+    "preflight_checklist": [
+      "credential env var exists in runtime, value never committed",
+      "label mapping covers supports/refutes/not_enough_info",
+      "human review queue is staffed"
+    ],
+    "canary_steps": [
+      "shadow score cited claims",
+      "compare lexical and semantic verdicts",
+      "enable blocking only after human review"
+    ],
+    "rollback_steps": [
+      "disable semantic gate",
+      "restore lexical-only conflict detector",
+      "retain failed packet for audit"
+    ],
+    "rollback_trigger": "quality, calibration, latency, or escalation regression"
+  }
+}
