@@ -5777,6 +5777,179 @@ def run_bm25_sweep_on_real_query_set(dataset: Any, config: dict[str, Any] | None
     }
 
 
+# --- Stage 2: real embedding provider / vector store production-readiness v1 --
+
+# The one embedder mode actually implemented is the deterministic local test one;
+# it is explicitly NOT a production/real provider.
+VECTOR_LOCAL_TEST_MODES = frozenset({"deterministic_local_test", "deterministic_hash", "test"})
+
+# Vector-store backends considered persistent enough for production readiness.
+VECTOR_PERSISTENT_STORES = frozenset({
+    "postgres_pgvector", "sqlite_vss", "qdrant", "milvus", "weaviate", "pinecone", "faiss_on_disk",
+})
+# In-memory / process-local stores are NOT production-ready.
+VECTOR_INMEMORY_STORES = frozenset({"in_memory", "in_process", "inprocess", "none", ""})
+
+# Credential-shaped fields that must never be embedded in a config (use a *source*
+# reference like an env var NAME instead of the secret value).
+VECTOR_FORBIDDEN_FIELDS = ("api_key", "key", "secret", "password", "token", "authorization", "endpoint_url")
+
+
+def build_embedding_provider_readiness(config: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Assess whether an embedding-provider config describes a REAL production provider.
+
+    Distinguishes the existing deterministic local test embedder (never production)
+    from a declared real provider. A real provider must name a non-test provider,
+    a model, an integer dim, and a credential SOURCE (e.g. an env var name) — never
+    a credential value. This inspects declared metadata only; it makes no provider
+    call and reads no credentials. Stdlib only.
+    """
+    raw = config if isinstance(config, dict) else {}
+    provider = str(raw.get("provider") or "").strip()
+    mode = str(raw.get("mode") or "").strip()
+    model = str(raw.get("model") or "").strip()
+    credential_source = str(raw.get("credential_source") or "").strip()
+    try:
+        dim = int(raw.get("dim")) if raw.get("dim") is not None else None
+    except (TypeError, ValueError):
+        dim = None
+
+    is_local_test = (mode in VECTOR_LOCAL_TEST_MODES) or (provider in VECTOR_LOCAL_TEST_MODES) or not provider
+    missing: list[str] = []
+    if is_local_test:
+        missing.append("real provider (current config is the deterministic local test embedder)")
+    else:
+        if not model:
+            missing.append("model")
+        if not (isinstance(dim, int) and dim > 0):
+            missing.append("positive integer dim")
+        if not credential_source:
+            missing.append("credential_source (env var NAME, never a secret value)")
+
+    return {
+        "method": "embedding_provider_readiness_v1",
+        "boundary": (
+            "declared provider-readiness metadata only; distinguishes the deterministic "
+            "local test embedder from a real provider; no provider call, no credential read"
+        ),
+        "provider": provider or "(none)",
+        "is_local_test_embedder": is_local_test,
+        "is_real_provider_declared": (not is_local_test) and not missing,
+        "model": model,
+        "dim": dim,
+        "credential_source": credential_source,
+        "missing": missing,
+    }
+
+
+def validate_embedding_provider_config(config: Any) -> dict[str, Any]:
+    """Validate an embedding-provider config's shape and credential hygiene."""
+    errors: list[str] = []
+    warnings: list[str] = []
+    if not isinstance(config, dict):
+        return {"passed": False, "errors": [f"config must be a JSON object, got {type(config).__name__}"],
+                "warnings": [], "is_real_provider_declared": False}
+    leaked = [f for f in VECTOR_FORBIDDEN_FIELDS if f in config]
+    if leaked:
+        errors.append(f"provider config must not carry credential/endpoint value field(s) {leaked}; "
+                      "use 'credential_source' (an env var name) instead")
+    readiness = build_embedding_provider_readiness(config)
+    if readiness["is_local_test_embedder"]:
+        warnings.append("config resolves to the deterministic local test embedder (not a real provider)")
+    return {"passed": not errors, "errors": errors, "warnings": warnings,
+            "is_real_provider_declared": readiness["is_real_provider_declared"]}
+
+
+def build_vector_store_plan(config: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Describe a vector-store deployment plan and whether it is persistent.
+
+    ``backend`` is checked against a known persistent-store list; in-memory /
+    process-local stores are marked non-persistent (not production-ready). No
+    store is installed or contacted. Stdlib only.
+    """
+    raw = config if isinstance(config, dict) else {}
+    backend = str(raw.get("backend") or raw.get("store") or "in_memory").strip().lower()
+    is_persistent = backend in VECTOR_PERSISTENT_STORES
+    return {
+        "method": "vector_store_plan_v1",
+        "boundary": "vector-store deployment plan metadata only; no store is installed or contacted",
+        "backend": backend,
+        "is_persistent": is_persistent,
+        "backup_configured": bool(raw.get("backup_configured", False)),
+        "persistence_path_declared": bool(str(raw.get("persistence_path") or "").strip()),
+        "note": ("持久化向量库计划元数据；本仓库当前仅有进程内确定性骨架，不是生产级持久化存储。"),
+    }
+
+
+def validate_vector_store_plan(plan: Any) -> dict[str, Any]:
+    """Validate a vector-store plan: reject in-memory stores for production readiness."""
+    errors: list[str] = []
+    warnings: list[str] = []
+    if not isinstance(plan, dict):
+        return {"passed": False, "errors": [f"plan must be a JSON object, got {type(plan).__name__}"],
+                "warnings": [], "is_persistent": False}
+    leaked = [f for f in VECTOR_FORBIDDEN_FIELDS if f in plan]
+    if leaked:
+        errors.append(f"vector-store plan must not carry credential field(s) {leaked}")
+    backend = str(plan.get("backend") or "").strip().lower()
+    if not backend:
+        errors.append("'backend' must be a non-empty string")
+    elif backend in VECTOR_INMEMORY_STORES:
+        errors.append(f"backend '{backend}' is in-memory/process-local and is not production-ready")
+    elif backend not in VECTOR_PERSISTENT_STORES:
+        warnings.append(f"backend '{backend}' is not in the known persistent-store list {sorted(VECTOR_PERSISTENT_STORES)}")
+    if plan.get("is_persistent") and not plan.get("backup_configured"):
+        warnings.append("persistent store declared without backup_configured=true")
+    return {"passed": not errors, "errors": errors, "warnings": warnings,
+            "is_persistent": backend in VECTOR_PERSISTENT_STORES}
+
+
+def build_vector_index_readiness(config: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Aggregate provider + store + index readiness into one production verdict.
+
+    ``config`` may carry ``provider`` and ``store`` sub-configs plus an ``index``
+    descriptor (metric/build params). ``production_ready`` is true ONLY when a real
+    provider is declared, the store is persistent, and an index descriptor exists.
+    The current repo default (local test embedder + in-memory store) is NEVER
+    production-ready. Deterministic, stdlib only; no network, no credential read.
+    """
+    raw = config if isinstance(config, dict) else {}
+    provider = build_embedding_provider_readiness(raw.get("provider") if isinstance(raw.get("provider"), dict) else raw)
+    store = build_vector_store_plan(raw.get("store") if isinstance(raw.get("store"), dict) else raw)
+    index = raw.get("index") if isinstance(raw.get("index"), dict) else {}
+    index_declared = bool(index.get("metric") or index.get("type"))
+
+    missing: list[str] = []
+    if not provider["is_real_provider_declared"]:
+        missing.append("real embedding provider")
+        missing.extend(f"provider: {m}" for m in provider["missing"])
+    if not store["is_persistent"]:
+        missing.append("persistent vector store (in-memory is not production-ready)")
+    if not index_declared:
+        missing.append("index descriptor (metric/type)")
+
+    production_ready = not missing
+    return {
+        "method": "vector_index_readiness_v1",
+        "boundary": (
+            "production-readiness verdict over DECLARED config only; the shipped code "
+            "still uses the deterministic local skeleton — a ready verdict here means the "
+            "config is complete, not that a real provider/store was contacted or installed"
+        ),
+        "production_ready": production_ready,
+        "provider": provider,
+        "store": store,
+        "index_declared": index_declared,
+        "missing": missing,
+        "current_shipped_state": {
+            "embedder": "deterministic_local_test",
+            "store": "in_process",
+            "is_real_embedding_model": False,
+            "production_ready": False,
+        },
+    }
+
+
 def add_evidence(item: dict[str, str]) -> dict[str, str]:
     item_id = str(uuid.uuid4())
     title = item.get("title", "").strip()

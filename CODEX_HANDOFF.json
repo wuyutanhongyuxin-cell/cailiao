@@ -1,64 +1,64 @@
 {
   "status": "implemented_by_claude",
-  "task_id": "cailiao-stage5-real-query-bm25-sweep-v1",
-  "phase": "ROADMAP Stage 5 backfill: GATED BM25 sweep calibration SCAFFOLD v1. The original 'calibrate BM25 k1/b on the real query set via CLI' item remains UNCHECKED — no ready_real set exists and no real calibration was run; only the readiness-gated scaffold is delivered.",
-  "baseline": "8f1d31a211d3dd84d82438a07cd31273b62de871 (real query intake scaffold head)",
-  "summary": "Added a deterministic, stdlib-only BM25 sweep calibration scaffold that is HARD-GATED on summarize_real_query_readiness(dataset).status == 'ready_real'. build_bm25_sweep_grid/validate_bm25_sweep_config build and check a small (k1,b,threshold) grid. run_bm25_sweep_on_real_query_set refuses any template/incomplete/synthetic/invalid set, and also refuses a ready_real set that lacks a 'corpus'; only when both gates pass does it run a deterministic sweep (reusing the existing isolated-DB evaluate_retrieval harness), reporting per-combination title/chunk recall + MRR + miss and selecting the best by recall then fewest misses. A CLI tools/sweep_bm25_real_queries.py exits nonzero unless a real calibration actually ran. No real calibration result is fabricated; the original ROADMAP item stays unchecked with a checked sub-note for the scaffold.",
+  "task_id": "cailiao-stage2-vector-provider-index-gated-v1",
+  "phase": "ROADMAP Stage 2B backfill: real embedding-provider / persistent vector-store / production-index PRODUCTION-READINESS SCAFFOLD v1. The original 'real embedding provider + persistent vector store + production index' item remains UNCHECKED — none of those are implemented; only a readiness-gated config/validation layer is delivered.",
+  "baseline": "bede2e8fdab2b1c54557b17895c3351b90e09ecc (guarded BM25 sweep scaffold head)",
+  "summary": "Added a deterministic, stdlib-only production-readiness scaffold that distinguishes the existing deterministic local vector skeleton (is_real_embedding_model=false, in-process) from a real production setup. build_embedding_provider_readiness / validate_embedding_provider_config classify a provider config, requiring a real provider name + model + positive dim + credential_source (an env var NAME, never a secret value) and rejecting credential-shaped fields. build_vector_store_plan / validate_vector_store_plan mark in-memory/process-local stores as NOT production-ready and require a known persistent backend. build_vector_index_readiness aggregates provider+store+index into a production_ready verdict that is true only for a complete DECLARED config, and always reports current_shipped_state.production_ready=false. A CLI tools/check_vector_production_readiness.py exits nonzero on the repo default. No provider call, no store install, no network, no credential/.env read; the original ROADMAP item stays unchecked with a checked sub-note for the scaffold.",
   "changed_files": [
     "backend/server.py",
-    "tools/sweep_bm25_real_queries.py",
-    "tests/test_bm25_real_sweep.py",
+    "tools/check_vector_production_readiness.py",
+    "tests/test_vector_production_readiness.py",
     "tools/run_quality_gates.py",
     "README.md",
     "docs/ROADMAP.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "backend/server.py: added BM25_REAL_SWEEP_K1/B/THRESHOLDS defaults.",
-    "backend/server.py: build_bm25_sweep_grid(options=None) (cleans/dedups/sorts k1>=0, 0<=b<=1, threshold>=0; reports combination_count).",
-    "backend/server.py: validate_bm25_sweep_config(grid) (non-empty numeric in-range k1/b/thresholds).",
-    "backend/server.py: run_bm25_sweep_on_real_query_set(dataset, config=None) hard-gated on readiness=='ready_real' AND presence of a corpus; refuses otherwise without running; on pass, runs a deterministic (k1,b) sweep via run_retrieval_eval_suite, records threshold candidates, and selects best by (title_recall, chunk_recall, -miss, ...).",
-    "tools/sweep_bm25_real_queries.py: CLI (--set/--json); exit 0 only when a sweep actually ran, 1 when refused, 2 on load error; no network/model call.",
-    "tests/test_bm25_real_sweep.py: 12 tests (grid determinism/override-cleaning/invalid-grid; gate refuses template/incomplete/no-corpus/synthetic; ready_real+corpus runs 36-combo deterministic sweep with metric fields; decision determinism; JSON serializable; CLI refuses template nonzero and runs on an in-memory ready_real set).",
-    "tools/run_quality_gates.py: py-compile gate now includes tests/test_bm25_real_sweep.py and tools/sweep_bm25_real_queries.py.",
-    "README.md documents the gated scaffold and its honesty boundary; docs/ROADMAP.md keeps the original BM25-calibration item UNCHECKED and adds a checked sub-note for the guarded scaffold only."
+    "backend/server.py: added VECTOR_LOCAL_TEST_MODES, VECTOR_PERSISTENT_STORES, VECTOR_INMEMORY_STORES, VECTOR_FORBIDDEN_FIELDS.",
+    "backend/server.py: build_embedding_provider_readiness(config=None) distinguishing the local test embedder from a real provider (requires model+positive dim+credential_source), and validate_embedding_provider_config(config) rejecting api_key/token/endpoint_url... value fields.",
+    "backend/server.py: build_vector_store_plan(config=None) + validate_vector_store_plan(plan) marking in-memory/process-local stores non-production and requiring a known persistent backend (postgres_pgvector/qdrant/milvus/...).",
+    "backend/server.py: build_vector_index_readiness(config=None) aggregating provider+store+index into production_ready (true only for a complete declared config), always reporting current_shipped_state.production_ready=false and is_real_embedding_model=false.",
+    "tools/check_vector_production_readiness.py: CLI (--config/--json); exit 0 only when production_ready, 1 otherwise (repo default -> 1), 2 on load error; no network/provider call.",
+    "tests/test_vector_production_readiness.py: 18 tests (default/local-test not real; real provider needs model/dim/credential_source; credential value rejected but credential_source ok; in-memory store rejected, persistent passes; aggregate not-ready by default, ready only when fully declared, real-provider+in-memory still not ready, missing index not ready; CLI default nonzero, complete config zero).",
+    "tools/run_quality_gates.py: py-compile gate now includes tests/test_vector_production_readiness.py and tools/check_vector_production_readiness.py.",
+    "README.md documents the gated readiness scaffold and its honesty boundary; docs/ROADMAP.md keeps the original real-provider item UNCHECKED and adds a checked sub-note for the readiness scaffold only."
   ],
   "not_implemented": [
-    "NO real BM25 calibration was run; no ready_real 50-100 case set with a corpus exists in the repo.",
-    "The original ROADMAP item '在真实查询集上用 CLI 扫参校准 BM25 k1/b 与阈值' remains unchecked by design.",
-    "Threshold candidates are recorded but not yet applied as a live cut-off in production search (calibration output only).",
-    "No network, no model call, no credential/.env read."
+    "NO real embedding provider integration, NO persistent vector database, NO production vector index — none are implemented or contacted.",
+    "The original ROADMAP item '真实 embedding provider、持久化向量库与生产级向量索引' remains unchecked by design.",
+    "A production_ready=true verdict reflects a COMPLETE DECLARED CONFIG only; it does not mean any provider/store was reached, authenticated, or benchmarked.",
+    "No network, no model call, no credential/.env read, no dependency/DB install."
   ],
   "test_files": [
-    "tests/test_bm25_real_sweep.py"
+    "tests/test_vector_production_readiness.py"
   ],
   "required_test_commands_for_codex": [
-    "python -m unittest tests.test_bm25_real_sweep -v",
+    "python -m unittest tests.test_vector_production_readiness -v",
     "python -m unittest discover -s tests -v",
-    "python tools/sweep_bm25_real_queries.py --set tests/data/real_query_set_template.json --json",
+    "python tools/check_vector_production_readiness.py --json",
     "python tools/run_quality_gates.py --json",
     "python -m json.tool CODEX_HANDOFF.json",
     "git diff --check"
   ],
   "test_status": [
-    "python -m unittest tests.test_bm25_real_sweep -v: 12 tests OK (~35s; runs genuine 36-combo sweeps over a 50-doc in-memory corpus).",
-    "python -m unittest discover -s tests -v: 459 tests OK.",
-    "python tools/sweep_bm25_real_queries.py --set tests/data/real_query_set_template.json --json: REFUSED (status template, not ready_real), exit 1.",
-    "python tools/run_quality_gates.py --json (default 'python' on PATH): passed=true, all 5 gates passed; unittest gate ran 459 tests OK.",
+    "python -m unittest tests.test_vector_production_readiness -v: 18 tests OK.",
+    "python -m unittest discover -s tests -v: 477 tests OK.",
+    "python tools/check_vector_production_readiness.py --json: production_ready=false (repo default is the local skeleton), exit 1.",
+    "python tools/run_quality_gates.py --json (default 'python' on PATH): passed=true, all 5 gates passed; unittest gate ran 477 tests OK.",
     "python -m json.tool CODEX_HANDOFF.json: valid JSON.",
     "git diff --check: no whitespace/conflict issues."
   ],
-  "roadmap_item_status": "UNCHECKED — 'calibrate BM25 k1/b on the real query set via CLI' is NOT marked done; no ready_real set exists and no real calibration ran. A checked sub-note for the gated sweep scaffold was added.",
+  "roadmap_item_status": "UNCHECKED — 'real embedding provider + persistent vector store + production index' is NOT marked done; only the deterministic local skeleton exists. A checked sub-note for the gated readiness scaffold was added.",
   "risks": [
-    "The sweep result's title_mrr can jitter across runs on documents with tied retrieval scores (tie-break ordering in the retrieval layer across fresh temp DBs); the calibration DECISION fields (k1/b/threshold, recall, miss_count) are deterministic and MRR is excluded from best-selection, but MRR should not be treated as bit-stable.",
-    "The scaffold reuses run_retrieval_eval_suite which imports the corpus into a throwaway SQLite DB per (k1,b); a large real corpus will make the full grid slow (it is a calibration tool, not a hot path).",
-    "Threshold values are swept and reported but not yet wired as an enforced score cut-off in search; applying them is a deliberate later step.",
-    "Gate correctness depends on summarize_real_query_readiness; if that classifier is loosened, this gate loosens with it — they are intentionally coupled.",
+    "production_ready=true is a CONFIG-COMPLETENESS verdict, not a connectivity/authentication/benchmark check; a fully-declared but wrong config would read as ready. It gates human intent, it does not validate a live provider.",
+    "The persistent-store allow-list is a fixed set of known backends; a valid but unlisted store is warned (not accepted) and would need the list updated.",
+    "The scaffold reads only declared metadata; it deliberately never resolves credential_source to an actual secret, so it cannot confirm a credential is present or valid.",
+    "Wiring a real provider later must register it in VECTOR_EMBEDDER_FACTORIES and only then read config/credentials — this scaffold intentionally does not open that path.",
     "Environment note: the local interpreter is python3 (no bare 'python' on PATH); the quality-gate runner honors PYTHON=python3, and a local 'python->python3' PATH shim lets its default-interpreter meta-test pass."
   ],
   "credentials": [
-    "No credentials or .env files were read, created, or modified.",
-    "No external network calls or model calls were used for implementation or local tests.",
+    "No credentials or .env files were read, created, or modified; provider/store validators reject credential-shaped value fields and the scaffold uses only a credential_source env-var NAME.",
+    "No external network calls, provider calls, or vector-DB installs were used for implementation or local tests.",
     "No push performed; commit/push left to the maintainer."
   ]
 }
