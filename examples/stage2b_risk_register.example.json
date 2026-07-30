@@ -1,0 +1,10 @@
+{
+  "is_template": true,
+  "purpose": "Example wrapper for Stage 2B risk treatment evidence. Not real acceptance.",
+  "artifacts": {},
+  "notes": [
+    "Risk register names risks, owners, treatments, and evidence only.",
+    "Populate artifacts only after real treatment evidence and approvals exist.",
+    "Never include credential values."
+  ]
+}

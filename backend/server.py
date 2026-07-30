@@ -7595,6 +7595,110 @@ def build_stage2b_reproducibility_provenance(config: dict[str, Any] | None = Non
     }
 
 
+# --- Stage 2B risk register / treatment plan v1 ------------------------------
+
+STAGE2B_RISK_REGISTER_DOC = "docs/STAGE2B_RISK_REGISTER.md"
+STAGE2B_RISK_REGISTER_EXAMPLE_FILE = "examples/stage2b_risk_register.example.json"
+
+_STAGE2B_RISK_REGISTER_SPECS = {
+    "real_query_set": {
+        "risk_statement": "Evaluation decisions could be made on placeholder or insufficient query data.",
+        "impact": "quality metrics overstate readiness and miss real user retrieval failures",
+        "likelihood_default": "high",
+        "severity_default": "high",
+        "treatment_plan": "collect and review 50-100 anonymized real queries with qrels and provenance",
+        "owner_role": "evaluation_dataset_owner",
+        "evidence_to_close": ["ready_real dataset", "qrels coverage", "privacy review signoff"],
+    },
+    "real_query_bm25_calibration": {
+        "risk_statement": "BM25 parameters may be tuned to synthetic data rather than real retrieval behavior.",
+        "impact": "production recall/MRR can regress despite green placeholder gates",
+        "likelihood_default": "high",
+        "severity_default": "medium",
+        "treatment_plan": "run gated BM25 sweep on ready_real dataset and record selected parameters",
+        "owner_role": "retrieval_quality_owner",
+        "evidence_to_close": ["BM25 sweep manifest", "baseline comparison", "parameter decision record"],
+    },
+    "real_embedding_provider_vector_store": {
+        "risk_statement": "Vector rollout may fail provider, persistence, index, latency, or retrieval-quality expectations.",
+        "impact": "hybrid retrieval can be unavailable, non-reproducible, slow, or lower quality",
+        "likelihood_default": "medium",
+        "severity_default": "high",
+        "treatment_plan": "validate provider/store/index metadata, run rollout packet, eval, observability, rollback gates",
+        "owner_role": "retrieval_platform_owner",
+        "evidence_to_close": ["provider card", "persistent index manifest", "eval run", "observability snapshot"],
+    },
+    "real_reranker_rrf": {
+        "risk_statement": "Cross-encoder/RRF deepening may add latency/cost without measured ranking lift.",
+        "impact": "drafting workflow slows down while ranking quality does not improve",
+        "likelihood_default": "medium",
+        "severity_default": "medium",
+        "treatment_plan": "prove MRR/nDCG/MAP lift on real eval data within p95 latency and error budget",
+        "owner_role": "ranking_quality_owner",
+        "evidence_to_close": ["rerank eval card", "RRF config decision", "canary metrics", "rollback trigger"],
+    },
+    "real_nli_semantic_conflict": {
+        "risk_statement": "Semantic contradiction/entailment checks may miss unsupported claims or fabricate confidence.",
+        "impact": "unsupported or refuted material can pass citation review",
+        "likelihood_default": "medium",
+        "severity_default": "critical",
+        "treatment_plan": "validate three-verdict labels, policy, human escalation, fabrication audit, and semantic eval",
+        "owner_role": "semantic_safety_owner",
+        "evidence_to_close": ["semantic eval manifest", "label coverage", "policy signoff", "human review audit"],
+    },
+}
+
+
+def build_stage2b_risk_register(config: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Return Stage 2B risk register for unresolved external blockers.
+
+    Risk metadata only. It records default risk statements, treatment plans, owner
+    roles, and evidence needed to close each risk. It never fabricates acceptance,
+    runs evals, calls providers, reads credentials, or checks ROADMAP parent items.
+    """
+    audit = build_external_dependency_audit(config)
+    risks = []
+    for blocker in audit["blockers"]:
+        bid = blocker["id"]
+        spec = _STAGE2B_RISK_REGISTER_SPECS[bid]
+        risks.append({
+            "id": bid,
+            "roadmap_line": blocker["roadmap_line"],
+            "topic": blocker["topic"],
+            "risk_statement": spec["risk_statement"],
+            "impact": spec["impact"],
+            "likelihood_default": spec["likelihood_default"],
+            "severity_default": spec["severity_default"],
+            "treatment_plan": spec["treatment_plan"],
+            "owner_role": spec["owner_role"],
+            "evidence_to_close": list(spec["evidence_to_close"]),
+            "repo_guardrails": blocker["protected_by"],
+            "status": "risk_treatment_evidence_declared" if blocker["satisfied"] else "open_external_risk",
+            "satisfied": blocker["satisfied"],
+        })
+    open_ids = [r["id"] for r in risks if not r["satisfied"]]
+    return {
+        "method": "stage2b_risk_register_v1",
+        "boundary": (
+            "deterministic risk register/treatment plan only; no runtime network, no provider call, "
+            "no model download, no eval execution, no risk acceptance fabrication, no credential/.env "
+            "read, and no ROADMAP parent auto-check"
+        ),
+        "risk_register_doc": STAGE2B_RISK_REGISTER_DOC,
+        "example_file": STAGE2B_RISK_REGISTER_EXAMPLE_FILE,
+        "reference_alignment": [
+            "NIST AI RMF risk governance, measurement, and management",
+            "NIST AI RMF Playbook risk tracking/treatment concepts",
+            "ISO 31000 risk treatment and risk register concepts",
+        ],
+        "risk_count": len(risks),
+        "risks": risks,
+        "open_risk_ids": open_ids,
+        "all_risks_closed": not open_ids,
+        "roadmap_parent_items_checked": False,
+    }
+
+
 # --- Stage 2B evaluation-run contract / manifest (declared-shape) v1 ----------
 
 STAGE2B_EVAL_RUN_CONTRACT_DOC = "docs/STAGE2B_EVAL_RUN_CONTRACT.md"
