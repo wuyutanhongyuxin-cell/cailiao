@@ -39,6 +39,23 @@ class SelectionTest(unittest.TestCase):
         self.assertGreaterEqual(sel["rejected"], 1)
         self.assertGreaterEqual(sel["duplicates"], 1)
 
+    def test_accepts_both_display_and_snake_case_type_labels(self):
+        # The fixture mixes "Creative Writing" (card display label) and
+        # "creative_writing" (actual downloaded file label); both must be selected.
+        sel = prep.select_creative_writing_prompts(_records(), min_cases=50, max_cases=100)
+        raw_labels = {c["source_type_raw"] for c in sel["cases"]}
+        self.assertIn("Creative Writing", raw_labels)
+        self.assertIn("creative_writing", raw_labels)
+        # Canonical display label is preserved on every case.
+        self.assertTrue(all(c["source_type"] == prep.DOIT_CREATIVE_WRITING_TYPE for c in sel["cases"]))
+
+    def test_type_alias_normalization(self):
+        for label in ("Creative Writing", "creative_writing", "creative-writing",
+                      "  Creative   Writing  ", "CREATIVE WRITING"):
+            self.assertTrue(prep._is_creative_writing_type(label), label)
+        for label in ("Math", "roleplay", "", None, "creative"):
+            self.assertFalse(prep._is_creative_writing_type(label), label)
+
     def test_selection_is_deterministic(self):
         a = prep.select_creative_writing_prompts(_records())["cases"]
         b = prep.select_creative_writing_prompts(_records())["cases"]

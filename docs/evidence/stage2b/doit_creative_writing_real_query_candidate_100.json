@@ -1,0 +1,925 @@
+{
+  "method": "stage2b_real_query_candidate_set_v1",
+  "boundary": "public real-query CANDIDATE evidence from a licensed open dataset; user prompts only (no assistant answers), extracted deterministically from locally-downloaded DoIT records; not private production telemetry and not a synthetic placeholder",
+  "source": {
+    "name": "ChiyuSONG/dynamics-of-instruction-tuning (DoIT)",
+    "url": "https://huggingface.co/datasets/ChiyuSONG/dynamics-of-instruction-tuning",
+    "license": "MIT",
+    "category": "Creative Writing"
+  },
+  "extraction_method": "doit_creative_writing_user_prompts_v1",
+  "record_count": 100,
+  "min_cases": 50,
+  "max_cases": 100,
+  "selection_stats": {
+    "scanned": 1000,
+    "creative_writing": 1000,
+    "rejected": 0,
+    "duplicates": 0
+  },
+  "set_hash": "sha256:fca0300eea0480089a2f44f47d60b9a4cb7cbbc5aa6193f13427fa43e4be464b",
+  "cases": [
+    {
+      "id": "doit-cw-001",
+      "query": "请针对制造业公司做一份资质获取的规划",
+      "query_sha256": "sha256:5439e0d1987ef4c8fe05a9f81ff33d730f2039f45d235e4ebd9f9dea5ad6297b",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "401"
+    },
+    {
+      "id": "doit-cw-002",
+      "query": "以“如果我是中心总经理”为主题设计一个方案",
+      "query_sha256": "sha256:930e7f801729ed231d00e78d61faebf1f073096bb0ffec13a5a894ab6a87bafc",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "1995"
+    },
+    {
+      "id": "doit-cw-003",
+      "query": "家电行业发展,要求1000字",
+      "query_sha256": "sha256:f872402b059584b05a1ea23ab9a2e10ad8bd2e18cfaac6ee7ecf27158dffe82e",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "111328"
+    },
+    {
+      "id": "doit-cw-004",
+      "query": "写一篇故事，关于会计这个职业",
+      "query_sha256": "sha256:160a43abed358e72ec81375d71f2c6bad42902989dc3cf470a6ad65b3597b83b",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "1996"
+    },
+    {
+      "id": "doit-cw-005",
+      "query": "请用800字说明为什么要研究ct企业一线员工绩效评估的优化对策",
+      "query_sha256": "sha256:5b590a6b6630cbaec9684ae258e2b45203b5176a533752c396b71180f5d22cac",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "2129"
+    },
+    {
+      "id": "doit-cw-006",
+      "query": "帮我写一条三八节放假通知，要求内容简洁明了",
+      "query_sha256": "sha256:ff2065a0519280bdc8acf52382d866fec81c1cd50c00867c6286c41d6b989fd6",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "3135"
+    },
+    {
+      "id": "doit-cw-007",
+      "query": "请围绕“有山有水，有油菜花，有学生上学”为度假村写一篇宣传文章",
+      "query_sha256": "sha256:ce79f4d43b880bae0c584d4dfbf46f75a4ffb792fcc02182d4ae2694a24b4a10",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "815"
+    },
+    {
+      "id": "doit-cw-008",
+      "query": "请用小红书的话术写一段户外沙发的好评",
+      "query_sha256": "sha256:eaea19aae325c6f2be290039dadb2fde6b39068523994717828e08ed4316d1ea",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "874"
+    },
+    {
+      "id": "doit-cw-009",
+      "query": "书写一份1000字的焙烤食品糖制品行业饼店工作委员会秘书长张新奇的2000年工作总结,要深刻,有条理有逻辑",
+      "query_sha256": "sha256:aa50057ac3e3d9ff082365c0423301cd2965d9e89bcf668ea80833763f0124fd",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "1288965"
+    },
+    {
+      "id": "doit-cw-010",
+      "query": "请以“叶言不由分说运转灵气轰向鬼头”为开头写一篇故事，要注重细节描写，400字左右",
+      "query_sha256": "sha256:aa03a2f70bf76af6e8e896d08df9bc7ea764da272c0a064c057369eedcfb8345",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "2230"
+    },
+    {
+      "id": "doit-cw-011",
+      "query": "请帮我写一篇文章，内容包括“发挥‘定战略、作决策、防风险’作用”",
+      "query_sha256": "sha256:302d8c2e915f1ff4c3034fb0a2f3410a4046b1581c0b1cdcdb3e95ad353b7a59",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "869"
+    },
+    {
+      "id": "doit-cw-012",
+      "query": "请根据“双相情感障碍（Bipolar Disorder，BD）是一类既有躁狂发作或轻躁狂发作，又有抑郁发作的情感障碍。在全球范围内，BD 影响着超过 2.4％的人口 ； 2019 年，Lancet 报道我国BD的终生患病率和12个月患病率已达到0.6％和 0.5％ 。因此，BD是一个重大的公共卫生问题，因其常常导致认知和功能损害，给社会和家庭带来了沉重的负担和严重的危害。机体日常生理活动和能量代谢，包括进食、血压、核心体温、血糖水平、睡眠、情绪、激素分泌和氧化应激等多项生命活动都由生物节律所调控，一旦生物节律出现紊乱，则会严重影响机体的身心健康。昼夜节律紊乱是BD常见和重要的临床表现。正常的睡眠-觉醒周期对稳定情绪相当重要，因此当睡眠-觉醒周期被破坏时，常会引发抑郁情绪或躁狂的发作。”写一篇关于“双向情感障碍”的文章",
+      "query_sha256": "sha256:e3dcaa02f775082f68cd48c6870f30c008b71d98e25b4332a2b352991b927d2d",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "767"
+    },
+    {
+      "id": "doit-cw-013",
+      "query": "帮我写一篇AI的短视频文案",
+      "query_sha256": "sha256:8530eca99fcd97c4beb4dc3008764c595607ce3b4cddd445bab63d06cda72b35",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "1891"
+    },
+    {
+      "id": "doit-cw-014",
+      "query": "请以以下内容为开头，写一篇题为《跟着北京网站优化公司仕言科技来谈谈超链接对于网站SEO优化的作用》的文章：对于广大站长来说，超链接是一种每天都要接触的链接形式，对于网站来说，SEO优化也很重要，超链接主要是指当前页面的一个链接，指向另一个页面，它是页面和页面之间的桥梁，除了链接页面，还可以链接图片、视频、文档和文件夹，跟着北京网站优化公司仕言科技来谈谈超链接对于网站SEO优化的作用。",
+      "query_sha256": "sha256:9fe58af9628e0ed627a0c7155ce43e10df2b2d9ffe3b57853abe9234072553f2",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "1509"
+    },
+    {
+      "id": "doit-cw-015",
+      "query": "请帮我写一篇10分钟的岗位晋升演讲稿，谢谢！",
+      "query_sha256": "sha256:65bd20c28d8c7fddb5d46353055718b4075acc481205040c87b49a8fe9ddd7d0",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "893"
+    },
+    {
+      "id": "doit-cw-016",
+      "query": "写一篇黄晓明的文章",
+      "query_sha256": "sha256:fd8a0951a91d85ac6eb21a0a79e6713f0b9aa6c33a6de63e4c54bd144108d8be",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "2566"
+    },
+    {
+      "id": "doit-cw-017",
+      "query": "请帮我写一个一定会火的短视频脚本",
+      "query_sha256": "sha256:d73248d33bc3305105112dfc74de0611a81e244628aa231d9a70a413ea5bb53b",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "608"
+    },
+    {
+      "id": "doit-cw-018",
+      "query": "写一篇软文：为什么高考日语比英语提分快？",
+      "query_sha256": "sha256:1e6ac47fad2092015fa29a2079db948be1fb1a1b3de8ff7453f4097e40e5b98f",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "1447"
+    },
+    {
+      "id": "doit-cw-019",
+      "query": "用 god 写一段英文",
+      "query_sha256": "sha256:7c4bb6f566d89a588372e81156465f158ec08f8a81f5505e6bae28092a5f773a",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "2066"
+    },
+    {
+      "id": "doit-cw-020",
+      "query": "写一篇关于短视频的文章，要求内容包括：短视频是人们日常的主要娱乐方式，已经成为大众日常生活中的一部分。",
+      "query_sha256": "sha256:fc8c8a2b8960f2d947d1c107d5ae422f5870e64dece4d36e593e9367c5d6735c",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "500"
+    },
+    {
+      "id": "doit-cw-021",
+      "query": "成都哪些小吃好吃？请写一篇成都小吃攻略",
+      "query_sha256": "sha256:bfd79f5e6bdfb471a69af370894be630ea9e26ff2d33f4b985cec4314389f1a5",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "2615"
+    },
+    {
+      "id": "doit-cw-022",
+      "query": "以“最熟悉的陌生人”为主题，写一篇文章",
+      "query_sha256": "sha256:2d60f94917ea851b5c166e31de7521e96daaefde935da794d6de8afa75545b95",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "15"
+    },
+    {
+      "id": "doit-cw-023",
+      "query": "写一篇不低于1000字的标题为“餐饮品牌设计和餐饮空间设计的关系”的文章",
+      "query_sha256": "sha256:61f2eea531df1d705ab0e959d16d7ccda92ec96bd872e280f13df391586d98ff",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "1743"
+    },
+    {
+      "id": "doit-cw-024",
+      "query": "围绕“秋天，落叶”这两个关键词写一篇文章",
+      "query_sha256": "sha256:aa5a7957258455c6098012862c8101f826983c922c16c5711197dc092fa84144",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "1061"
+    },
+    {
+      "id": "doit-cw-025",
+      "query": "清远汇金融力量促知产转化，打造良好知产运营生态 1、立项该项目的作用 1、对接了企业完成广东股交挂牌展示 2、对接企业完成专利转化备案 3、下一步对企业继续服务的内容 4、该项目立项的意义 5、总结推广专利转化对接服务经验，广泛宣传专利 6、转化服务工作，在市级以上媒体平台宣传不少于 1 次。按照以上大纲，写一篇文章",
+      "query_sha256": "sha256:249cbbf3b010ac12125744f704a273a8dd13bdb4f104616cfa2553fc8a88874a",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "2713"
+    },
+    {
+      "id": "doit-cw-026",
+      "query": "写一篇一千字的文章关于：孩子不爱吃饭，家长别着急，这三个方法教给你",
+      "query_sha256": "sha256:a5277298f184340d5096a2e8ac441e278362a02ea16941f77cedec23418d19d6",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "240"
+    },
+    {
+      "id": "doit-cw-027",
+      "query": "请根据短视频市场需求写一篇文章，600字左右",
+      "query_sha256": "sha256:5d8db34a7a4abd72cbbc398126637cb5c377067316fba6f3c103992cbbd98a86",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "1695"
+    },
+    {
+      "id": "doit-cw-028",
+      "query": "写一篇详细大纲关于：如何帮助孩子更好地学习中文？",
+      "query_sha256": "sha256:547817eca63d1bc0c70db7c13f58f31c4c7bfd0b44aae8e0c7f50236fb886b92",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "152"
+    },
+    {
+      "id": "doit-cw-029",
+      "query": "请围绕“文化是带领还是引领？”写一篇文章",
+      "query_sha256": "sha256:056f5dd4d1162e9ac692a3b987e6a4ced7c5876289c4d818c56d2f6b2115d50a",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "672"
+    },
+    {
+      "id": "doit-cw-030",
+      "query": "写一篇宋制汉服婚纱照的文案，要求不少于200字",
+      "query_sha256": "sha256:08eb359ac2d007c360f4dcfb86c7171843616e7461e9ea9933c07a58a17c1561",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "1826"
+    },
+    {
+      "id": "doit-cw-031",
+      "query": "请帮我写一篇《物种起源》的学习心得",
+      "query_sha256": "sha256:7b57f3207d47f013a26bc291b43dfc417f314cd9ad1b9e820d7605f4261e34e1",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "1470"
+    },
+    {
+      "id": "doit-cw-032",
+      "query": "请帮我写几条关于卧室全屋定制的注意事项",
+      "query_sha256": "sha256:c93241f74a3cca71da776ee0d2588eff4173b73c81f03950fee9a055213ab86e",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "1769"
+    },
+    {
+      "id": "doit-cw-033",
+      "query": "“诚信、透明的发展理念，本旅游中心，与中国境内旅行社一起合作，”补全这段话",
+      "query_sha256": "sha256:c468eb18be45c38e31789868fdd7af93aa1c46e95bca7413fbb04835b1b3e930",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "2983"
+    },
+    {
+      "id": "doit-cw-034",
+      "query": "请理解这段话“高考那年非典,数学很难,人心紧张,最终考的还不错, 而今都过往云烟”，写一篇作文",
+      "query_sha256": "sha256:2aba8578e5595343a452f736e2a6d79d81c68167b2461906c6336d11a5996fff",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "143579"
+    },
+    {
+      "id": "doit-cw-035",
+      "query": "请帮我写一份同期举办展会的开展计划书",
+      "query_sha256": "sha256:8f39c329972e89c2cd189799f720249fc67135e84e64b0e1caf9c87cfbf00c55",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "613"
+    },
+    {
+      "id": "doit-cw-036",
+      "query": "请帮我写一篇物业品牌推广策划方案",
+      "query_sha256": "sha256:201e90f3b2397baa9bb1f235317648d49bcbdf754f77950c675ec2344fd878c4",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "2277"
+    },
+    {
+      "id": "doit-cw-037",
+      "query": "写一篇自然教育基地环境介绍，字数要求不低于300",
+      "query_sha256": "sha256:cd5e01ca3b645474da5f3df06e865764759e9a074091e355e794ff794044c8ae",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "1156"
+    },
+    {
+      "id": "doit-cw-038",
+      "query": "请帮我写一篇学完《论语诵读》对我的启示",
+      "query_sha256": "sha256:59238955251699dbf1cc56d61b080cba6dbacc252b1964af4bd8c694e492f9a6",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "2362"
+    },
+    {
+      "id": "doit-cw-039",
+      "query": "请帮我写一段雨水节气结合浴室取暖器很短很短的文案",
+      "query_sha256": "sha256:be5e7b7e50ffb602f5967b42a77102e6e9aaf96c3d64560ee728bc771d808da2",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "2242"
+    },
+    {
+      "id": "doit-cw-040",
+      "query": "请帮我写一篇公司通过AEO认证的报道",
+      "query_sha256": "sha256:cd042b71eb10ccf8e2ca29b67a3fd2812d0356dffddac09e320be37ad3dd4edd",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "2726"
+    },
+    {
+      "id": "doit-cw-041",
+      "query": "帮我写一篇关于M12航空连接器的论文，字数1000字",
+      "query_sha256": "sha256:86aae3e1079e1101ba9188f3974255088a7a943b604f429b8516090f1b2839cf",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "2817"
+    },
+    {
+      "id": "doit-cw-042",
+      "query": "请帮我写一篇关于感谢师恩活动的心得体会",
+      "query_sha256": "sha256:67e56df287ee325f8bb9a310d85e1e3e3d4101f6be06316fa1b010a227e48216",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "2594"
+    },
+    {
+      "id": "doit-cw-043",
+      "query": "写一首关于王阳明心学的诗歌",
+      "query_sha256": "sha256:2f6d72b5b9debd9e0f8f3ef22d7f5afee7a6e725a770334a101278348993cd51",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "2719"
+    },
+    {
+      "id": "doit-cw-044",
+      "query": "写一篇情感小说，以如果注定和他没有结果，但是又特别爱她，你选择要过程还是转身就走？为开头",
+      "query_sha256": "sha256:921b61c9f60134b3fdd3622958f007e8d83261323f71d772068a32a23665532a",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "2106"
+    },
+    {
+      "id": "doit-cw-045",
+      "query": "写一篇吸引人的小短文,结尾加上,今天肯德基疯狂星期四,v我五十",
+      "query_sha256": "sha256:b8f1f8f8dbab5ca182b85cd635c7e1fd00a162a265b8e234a1a3fa8c8d5daa93",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "309329"
+    },
+    {
+      "id": "doit-cw-046",
+      "query": "请根据另外有个候选人,想从产品转UX,所以约了今天15点,魏欣三面下 我初面+max复面都是通过的写一篇故事:",
+      "query_sha256": "sha256:edeacd86b1068a58d18bb0d63f519e674c0619456f32536d7c51a7d7ac431868",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "145411"
+    },
+    {
+      "id": "doit-cw-047",
+      "query": "请帮我写一段洛阳三日游文案，200字左右",
+      "query_sha256": "sha256:a59fc5ec0e52de452d74e5182236c0e8f78cf913aa26071f081bc4bd9fede80a",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "1548"
+    },
+    {
+      "id": "doit-cw-048",
+      "query": "写一篇西藏的旅游攻略，包括吃、住、行，景点及特色",
+      "query_sha256": "sha256:30f1f82a76f0ac50a5b4d26ccf09135b15ca6ee00757c62a00e2dcf7beb97776",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "2807"
+    },
+    {
+      "id": "doit-cw-049",
+      "query": "写一首关于春天的诗",
+      "query_sha256": "sha256:0fa5db3387597535835e1a3dae24ff5ee10586e989dc87c4ec3b2296c46a7b43",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "1998"
+    },
+    {
+      "id": "doit-cw-050",
+      "query": "帮我写一篇500字的重庆旅游攻略",
+      "query_sha256": "sha256:c4bd0f2a2d29a1f3b54c5e459bee4af69576598a10d6e2a45ff38f6a47843870",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "1514"
+    },
+    {
+      "id": "doit-cw-051",
+      "query": "以过年祝福为主题,为正正写一段贺年词:",
+      "query_sha256": "sha256:6ae49735411ed2ef1f8ff7519489860e28f93ba8dfe9109919fd6ce0abea1026",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "910437"
+    },
+    {
+      "id": "doit-cw-052",
+      "query": "以“新冠肺炎疫情成为淬炼网格员队伍的烈火熔炉”为题，写一篇文章",
+      "query_sha256": "sha256:9ca1ee0e251e89fd1e9f7384034e27f41a304bd076bcf445743436390b73ad03",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "1057"
+    },
+    {
+      "id": "doit-cw-053",
+      "query": "请根据“花瓶现代简约艺术摆件简花插客厅家居创意摆件软装饰品花瓶”帮我写一段好评",
+      "query_sha256": "sha256:f421336318730f3b39541b91d532bf72f191cad9f990994456bf15aab720f9f5",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "2500"
+    },
+    {
+      "id": "doit-cw-054",
+      "query": "写一条家务手套的脚本",
+      "query_sha256": "sha256:7e824e87e66d384ffe1f9a2b964bc8e0a9e4dd8feba2a3f45e7c2192c78e5ae6",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "1686"
+    },
+    {
+      "id": "doit-cw-055",
+      "query": "请帮我写一段描写可爱的猫的文字，200字左右",
+      "query_sha256": "sha256:d50ecaac3824a256f448d0720eb2d256b3a100ad6554b7d26227b2ba312a2353",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "692"
+    },
+    {
+      "id": "doit-cw-056",
+      "query": "请以“有美人兮，见之不忘”为主题写一篇文章:",
+      "query_sha256": "sha256:8d6f39e60c5598fe953f64b8b11644a0c192dfb6ca96f6a5b59892adffe7e7b2",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "609868"
+    },
+    {
+      "id": "doit-cw-057",
+      "query": "请帮我写一条关于供暖的公关文案，300字左右",
+      "query_sha256": "sha256:70285c77c3a4fc700b148854394f9dbb56616c0c6b292db05cfd82bb2f603770",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "2073"
+    },
+    {
+      "id": "doit-cw-058",
+      "query": "谈谈你参加儿童红歌演唱一周的收获",
+      "query_sha256": "sha256:4c8bfd6f938e79223be520adf2a9ed0555f3261cf87dda9ae4d56125523330f9",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "1224"
+    },
+    {
+      "id": "doit-cw-059",
+      "query": "请根据“惊蛰 创意海报 文案”以上关键词为图文广告公司写一段宣传文案",
+      "query_sha256": "sha256:e5a8daac0eddc7769fe03c5662119c2422de1ae63b29d2c7c7a9a7bd6a6cd273",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "511"
+    },
+    {
+      "id": "doit-cw-060",
+      "query": "请以“功能对等理论视角下汉译对比分析——以大陆和香港苹果官网iPhone14产品为例”为题写一篇文章",
+      "query_sha256": "sha256:ce4f23a97ef01102bbb010958b6de26fe4fa1f4b5d555edefc4ec7c9f1d87d9a",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "1547"
+    },
+    {
+      "id": "doit-cw-061",
+      "query": "请帮我写一份工作报告，内容包括：三年的疫情，导致收入和财政收支状况、经济总趋势",
+      "query_sha256": "sha256:d7ce5e8616e812ad7d89d0e0a66d5999f48540c042621b2b75a8cff043c13f2d",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "2623"
+    },
+    {
+      "id": "doit-cw-062",
+      "query": "写一个2020年真皮休闲老爹鞋的广告标题和唯美文案",
+      "query_sha256": "sha256:81c61787a84e3bd608fba35ac3e09197f11f778eac574e89286b9072cd72392d",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "2968"
+    },
+    {
+      "id": "doit-cw-063",
+      "query": "针对现在大学生就业难的问题写一篇网评文章",
+      "query_sha256": "sha256:7803982f7231950a0aef0d290274e04d9b9983f0fde6f7063661109ab95a4652",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "120"
+    },
+    {
+      "id": "doit-cw-064",
+      "query": "请帮我写一段情人节礼物上的祝福语",
+      "query_sha256": "sha256:1004c00477b39950280d3d8827a0e612be75786de2a649091c3f47de36ddc973",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "2439"
+    },
+    {
+      "id": "doit-cw-065",
+      "query": "请写一篇自我介绍，内容包括：24岁，爱唱歌跳舞",
+      "query_sha256": "sha256:c68e284564b3ed328665e97658a82b8d4e7e4551f28f4659c5ef752a421211d7",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "581"
+    },
+    {
+      "id": "doit-cw-066",
+      "query": "请根据“方向感好是李昕嫣的一大特点，劳动工作中，涉及到地图或劳动区域的问题，大多是由李昕嫣来为大家带路和确定区域”写一篇文章",
+      "query_sha256": "sha256:82df4d95fcf9578d9833e0b676aca4b5e1a3ad1e965df4657777850cdd1378a3",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "669"
+    },
+    {
+      "id": "doit-cw-067",
+      "query": "写出来帮助家长做家务的感受，字数不低于200",
+      "query_sha256": "sha256:2b86d44990ecbf24a4686ded32a15efd0b71a95d3da759d0847d1d83e916d44a",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "1461"
+    },
+    {
+      "id": "doit-cw-068",
+      "query": "核算员工作小结:",
+      "query_sha256": "sha256:155f0d2466c2f8a877458ff544638422c6dd4aecd53a450654bd36842074db8a",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "102409"
+    },
+    {
+      "id": "doit-cw-069",
+      "query": "写一篇300字钓鱼日记",
+      "query_sha256": "sha256:2fb9ea98e3a75ae63b4ef19f921ec282a5618ab47788e1fb0769c61f322f32a0",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "2290"
+    },
+    {
+      "id": "doit-cw-070",
+      "query": "帮我写一段AI做画的描述词",
+      "query_sha256": "sha256:6aae9cfac89efd7f1752102f8bc0fcb3e32dd1520544fa4d9f7a1f9972a68964",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "2158"
+    },
+    {
+      "id": "doit-cw-071",
+      "query": "帮我围绕用户打造生态平台写一篇文章",
+      "query_sha256": "sha256:d382f2b8dde8b7f382c09adb1fa7523a7831c2290fe11b9b9f7b272e4ca41354",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "3147"
+    },
+    {
+      "id": "doit-cw-072",
+      "query": "写一个关于捐资助学的英语结束语:",
+      "query_sha256": "sha256:900204d73a99bfa5a3b9c022bac5843c46a369f3c84d26cd05ceb4c2b629f32b",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "29551"
+    },
+    {
+      "id": "doit-cw-073",
+      "query": "写一篇文章大纲关于：泰戈尔文学中的面包与苦难",
+      "query_sha256": "sha256:c70a0faffb0c902a6dd9801b23eee9d3a9eda51002b5b375e7e89136fcb7c68b",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "176"
+    },
+    {
+      "id": "doit-cw-074",
+      "query": "写一篇关于宿迁外婆楼餐饮企业员工激励问题研究的文章",
+      "query_sha256": "sha256:a3c5012e01d95fd47cd746a48aaed7e0b816c9f9e20a4dcefd188439d573b0c6",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "1121"
+    },
+    {
+      "id": "doit-cw-075",
+      "query": "请以【市政中心安全巡查】为题写一篇简报",
+      "query_sha256": "sha256:61bdf6a369428ae319ff8ce74c634b1857aeb2d142e05683e42d13ec7726f923",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "1025"
+    },
+    {
+      "id": "doit-cw-076",
+      "query": "帮我想一个关于云闪付APP的推广文案",
+      "query_sha256": "sha256:2c95f2b560a0803d1df9fd183992ba31846c125e4d342a12f67e94bb827b2f37",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "1404"
+    },
+    {
+      "id": "doit-cw-077",
+      "query": "请根据“首先需要企业有品牌意识，同时这种品牌也必须要精准对接消费者，否则市场不支撑也难以成就品牌；其次是网页或者说企业信息输出途径选择。笔者将产品列在网页之后，因为对于网络营销来说，独特的媒体资源相对更重要。然而现阶段很多企业缺乏媒体策略，认为自媒体是低成本媒体，越全越好，实际上这是贪多心理，会导致推广部门效率低下，也容易导致媒体之间矛盾。”写一篇文章",
+      "query_sha256": "sha256:8fcdc0ca3ea402794432c5e10f6b5123862dec9bba81f113f301ae43f8f22808",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "740"
+    },
+    {
+      "id": "doit-cw-078",
+      "query": "请用比喻和夸张修辞手法写一段关于唐山大地震发生时的惨烈景象的文字",
+      "query_sha256": "sha256:5e988c4cf8dd98ea3d923a07c0e823a821d8010565fdc84001f4dff14dd6e66e",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "1815"
+    },
+    {
+      "id": "doit-cw-079",
+      "query": "写一句跟下面上联对仗的下联,上联：探索前人未达之境,下联是:",
+      "query_sha256": "sha256:b87900644683016c302fd495bc055f551da220b65fac4d48fe7815675c1a0342",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "220239"
+    },
+    {
+      "id": "doit-cw-080",
+      "query": "写一段关于2020华南口腔展在哪里承办?什么时候举办的介绍",
+      "query_sha256": "sha256:8632b99df6d907f16df995bfc1d01a69d9a8f2e5051365b5426fd6f924cfabd1",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "2379"
+    },
+    {
+      "id": "doit-cw-081",
+      "query": "帮我写一篇大疆无人机的营销软文",
+      "query_sha256": "sha256:dd4684f103083a45ce4789b2a0abbe5eb658f6a646813f467fe559ec4dffc100",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "673"
+    },
+    {
+      "id": "doit-cw-082",
+      "query": "写一个校园爱情剧本，女主叫小美，字数不低于200",
+      "query_sha256": "sha256:ee9fc08fe14fa7d1799bab857c43a2f3ebba0b1fe90b65a7a49d06625d186308",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "1166"
+    },
+    {
+      "id": "doit-cw-083",
+      "query": "写一段适合有钢琴伴奏的背景读出来的情人节表白的话（200字）",
+      "query_sha256": "sha256:863844ec6d324eb6144e7574312b9ca2d921b1cd3dc09e77084534e28fec8dab",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "419"
+    },
+    {
+      "id": "doit-cw-084",
+      "query": "写一篇一箭双雕的成语典故：一箭双雕是一个汉语成语,最早出自唐·李延寿《北史·长孙晟传》。 该成语的意思是指射箭技术高超,一箭射中两只雕。后比喻做一件事达到两个目的",
+      "query_sha256": "sha256:7bb086254b33544f7980d16d696b407556711f1aad20a12fe4b49f7f1591cfcf",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "287481"
+    },
+    {
+      "id": "doit-cw-085",
+      "query": "近年来,浙江省着力强化创新驱动,深入实施人才强省,创新强省首位战略,深入实施“鲲鹏行动”“高层次人才特殊支持计划”等人才工程,全省高质量发展水平持续提升。????? 新时代浙江青年,在各行各业,不同领域开拓创新。如95后姑娘徐枫灿,在空军航空大学刻苦训练,满分通过考核,成为我国陆军首位初放单飞的女飞行员；90后青年工人杨杰,从一名普通的学徒工成长为“浙江工匠”,获得浙江省劳动模范称号；之江实验室智能超算研究中心团队,35岁以下成员占比近九成,勇闯国内智能超算领域“无人区”,斩获超算应用领域的国际最高奖项——戈登贝尔奖……?????? 以上材料对你未来发展有什么启示？请写一篇文章。【注意】①角度自选,立意自定,题目自拟。②明确文体,不得写成诗歌。 ③不得少于800字。 ④不得抄袭,套作。",
+      "query_sha256": "sha256:5d031cc6bf19ccfb5b0a532c9946359ce9ae7eba337ae5eb2476faea6728d370",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "76472"
+    },
+    {
+      "id": "doit-cw-086",
+      "query": "帮我写一个电影假装情侣解说文案 1000字",
+      "query_sha256": "sha256:8ada2e386925c691fb335dd1e15207d798d6d5e298afc24a4782a62aa38f1a4a",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "1136"
+    },
+    {
+      "id": "doit-cw-087",
+      "query": "写一篇关于矛盾纠纷一站式化解平台实体化建设的文章",
+      "query_sha256": "sha256:7d9242486f77a5a5c2b1fe043ce8b8eb2f25e3abcda2be71c00f4f16b5836abf",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "277"
+    },
+    {
+      "id": "doit-cw-088",
+      "query": "请帮我写一篇年中的自我评价，500字左右",
+      "query_sha256": "sha256:e47ce4de48a57d89b13c8bf713645b4c421c391fbfa35efa58917e0c7a19b098",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "691"
+    },
+    {
+      "id": "doit-cw-089",
+      "query": "围绕“用户旅程 CDP”这几个关键词，写一篇文章",
+      "query_sha256": "sha256:fff3384fa66c0b852c8c7024f47252415d436c11e7f7a6d6e78aeab2ad9c5aec",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "114205"
+    },
+    {
+      "id": "doit-cw-090",
+      "query": "帮我写一篇关于网球馆运营方案",
+      "query_sha256": "sha256:5b0ed037579315379d622cc14412b341efadc25c01445d907a3a7bc0c2e125a1",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "3084"
+    },
+    {
+      "id": "doit-cw-091",
+      "query": "请以“英国航母在南海“逼退中国潜艇”？真相是……”为题写一篇新闻稿",
+      "query_sha256": "sha256:ac74e370dbd200901ce4a46b0e2a1416f6f88731809d906564154ed496ac2d28",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "1556"
+    },
+    {
+      "id": "doit-cw-092",
+      "query": "请帮我写一封信，内容包括：对老公为家庭的辛苦付出表达感激",
+      "query_sha256": "sha256:6f39553aa444efc1d5cefbff677c172dfe244d7f90d41b234649515dc6ecb830",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "1803"
+    },
+    {
+      "id": "doit-cw-093",
+      "query": "请帮我写一份智能煲汤锅方案，800字左右",
+      "query_sha256": "sha256:972072252cb74f6994575c79ff79cc370ea21279d2bdb97aa52e4349a2d1ac9d",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "2401"
+    },
+    {
+      "id": "doit-cw-094",
+      "query": "写一个 小男孩去月球旅行的故事",
+      "query_sha256": "sha256:b425455c215825815e882678776f296a3e6e33b60b15bb32f0f3dbfae4fb2b54",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "1496"
+    },
+    {
+      "id": "doit-cw-095",
+      "query": "我在抖音上发布了一个摩比斯美国技术中心介绍视频，请帮我写一段介绍",
+      "query_sha256": "sha256:0a527d08c78f5489c8fa6ac4d091ca7d9dfddeabcc44d2f1bba965dcff6baaec",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "778"
+    },
+    {
+      "id": "doit-cw-096",
+      "query": "请围绕“高质量的信息既要满足用户需求，又要符合客观实际”写一篇文章",
+      "query_sha256": "sha256:5963b9460c91e002d5633744af363a848185a390aee0d9f7a81df3be30b46831",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "1646"
+    },
+    {
+      "id": "doit-cw-097",
+      "query": "请帮我写一份办公室主任工作责任书",
+      "query_sha256": "sha256:09e3a63d30542b25809fe1c5f4e15bcdab2de9806abc80fafead69966eb6e084",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "742"
+    },
+    {
+      "id": "doit-cw-098",
+      "query": "来个肯德基疯狂星期四的文案",
+      "query_sha256": "sha256:a34c30d95f0aef04819ae3b03a518ebdfbdb58fa9b582c24f524ad4b1d79892a",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "422"
+    },
+    {
+      "id": "doit-cw-099",
+      "query": "我要去马尔代夫旅游，请给我罗列一个1-7天的旅游计划",
+      "query_sha256": "sha256:73695d9417356865cbcc3fe39a7a403015879254ae990b6142da2e6547a7f6be",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "402"
+    },
+    {
+      "id": "doit-cw-100",
+      "query": "英国女王去世,写一篇文章",
+      "query_sha256": "sha256:b9187de1c1e39fec60b6e06698204e06a3d10d1c2b1ac3592e5d8563c7a024f5",
+      "source_type": "Creative Writing",
+      "source_type_raw": "creative_writing",
+      "question_format": "1",
+      "source_idx": "376903"
+    }
+  ],
+  "contains_assistant_answers": false,
+  "roadmap_parent_items_checked": false
+}

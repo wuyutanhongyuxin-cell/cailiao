@@ -24,8 +24,11 @@ Exit codes:
   2  input could not be read / parsed
 
 DoIT record shape (per the dataset card): each record has `messages` (user content
-in `messages[0].content`), plus `idx`, `type`, and `question_format`. Creative
-Writing records have `type == "Creative Writing"`.
+in `messages[0].content`), plus `idx`, `type`, and `question_format`. The dataset
+card names the category "Creative Writing", but the actual downloaded file
+(`curated/1000/creative_writing_1000.json`) labels records `type == "creative_writing"`
+(snake_case). Both labels are accepted after normalization (strip, lower,
+spaces/hyphens -> underscores), so real records are selected regardless of casing.
 """
 from __future__ import annotations
 
@@ -38,7 +41,14 @@ from pathlib import Path
 
 DOIT_SOURCE_URL = "https://huggingface.co/datasets/ChiyuSONG/dynamics-of-instruction-tuning"
 DOIT_LICENSE = "MIT"
+# Human display label (dataset card) kept for the artifact's source.category.
 DOIT_CREATIVE_WRITING_TYPE = "Creative Writing"
+# Accepted record `type` values, matched after normalization (strip, lower, and
+# spaces/hyphens -> underscores). The dataset card shows the display label
+# "Creative Writing", but the actual downloaded file
+# (curated/1000/creative_writing_1000.json) uses the snake_case label
+# "creative_writing"; both normalize to "creative_writing".
+DOIT_CREATIVE_WRITING_ACCEPTED_TYPES = frozenset({"creative_writing"})
 EXTRACTION_METHOD = "doit_creative_writing_user_prompts_v1"
 ARTIFACT_METHOD = "stage2b_real_query_candidate_set_v1"
 
@@ -55,6 +65,22 @@ def _sha256(text: str) -> str:
 
 def _norm(text: str) -> str:
     return re.sub(r"\s+", " ", str(text or "")).strip()
+
+
+def _norm_type(text: str) -> str:
+    """Normalize a DoIT record `type` for alias-tolerant matching.
+
+    Strips, lowercases, and collapses whitespace/hyphens to single underscores, so
+    the dataset-card display label "Creative Writing" and the actual file label
+    "creative_writing" both normalize to "creative_writing".
+    """
+    t = str(text or "").strip().lower()
+    t = re.sub(r"[\s\-]+", "_", t)
+    return t
+
+
+def _is_creative_writing_type(record_type) -> bool:
+    return _norm_type(record_type) in DOIT_CREATIVE_WRITING_ACCEPTED_TYPES
 
 
 def _iter_records(path: Path):
@@ -116,7 +142,8 @@ def select_creative_writing_prompts(records, min_cases=MIN_CASES_DEFAULT,
     duplicates = 0
     for rec in records:
         scanned += 1
-        if str(rec.get("type", "")).strip() != DOIT_CREATIVE_WRITING_TYPE:
+        raw_type = rec.get("type", "")
+        if not _is_creative_writing_type(raw_type):
             continue
         creative += 1
         prompt = _user_prompt(rec)
@@ -132,7 +159,10 @@ def select_creative_writing_prompts(records, min_cases=MIN_CASES_DEFAULT,
                 "id": f"doit-cw-{len(cases) + 1:03d}",
                 "query": prompt,
                 "query_sha256": _sha256(prompt),
+                # Canonical category label for the case; the record's own label is
+                # preserved verbatim in source_type_raw for auditability.
                 "source_type": DOIT_CREATIVE_WRITING_TYPE,
+                "source_type_raw": _norm(raw_type),
                 "question_format": _norm(rec.get("question_format", "")),
                 "source_idx": rec.get("idx"),
             })
