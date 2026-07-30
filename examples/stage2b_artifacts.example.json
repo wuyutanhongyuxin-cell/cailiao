@@ -1,0 +1,44 @@
+{
+  "_note": "PLACEHOLDER-ONLY template for docs/STAGE2B_ARTIFACT_CONTRACTS.md. Shows the declared artifact SHAPE only. Contains no real data and no secret values; credential_source fields name environment variables, never secrets. This template is deliberately marked as a template so it does NOT satisfy real readiness by default (a placeholder/synthetic-marked query set can never be ready_real).",
+  "artifacts": {
+    "real_query_set": {
+      "metadata": {"name": "TEMPLATE real anonymized query set (fill me)", "version": "template-v1", "is_template": true},
+      "cases": [
+        {
+          "id": "template-001",
+          "query": "示例占位查询（请替换为真实且已匿名化的查询）",
+          "provenance": {"source": "template", "collected_at": "2026-01-01T00:00:00", "anonymized": true},
+          "relevant_titles": ["示例相关文件标题（占位）"]
+        }
+      ]
+    },
+    "real_query_bm25_calibration": {
+      "metadata": {"name": "TEMPLATE real set + corpus (fill me)", "is_template": true},
+      "cases": [
+        {
+          "id": "template-001",
+          "query": "示例占位查询（占位）",
+          "provenance": {"source": "template", "collected_at": "2026-01-01T00:00:00", "anonymized": true},
+          "relevant_titles": ["示例相关文件标题（占位）"]
+        }
+      ],
+      "corpus": [
+        {"title": "示例相关文件标题（占位）", "text": "示例正文（占位）", "format": "txt", "status": "有效"}
+      ]
+    },
+    "real_embedding_provider_vector_store": {
+      "provider": {"provider": "example-embedding-provider", "model": "example-embedding-model", "dim": 1024, "credential_source": "EXAMPLE_EMBEDDING_API_KEY_ENV"},
+      "store": {"backend": "qdrant", "backup_configured": true, "persistence_path": "/var/lib/example-vec"},
+      "index": {"metric": "cosine", "type": "hnsw"}
+    },
+    "real_reranker_rrf": {
+      "provider": {"provider": "example-reranker-provider", "model": "example-cross-encoder", "credential_source": "EXAMPLE_RERANK_API_KEY_ENV", "eval_metrics": ["ndcg", "mrr"]},
+      "rrf": {"rank_constant": 60, "rank_window_size": 100, "channels": ["bm25", "vector", "rerank"]}
+    },
+    "real_nli_semantic_conflict": {
+      "provider": {"provider": "example-nli-provider", "model": "example-nli-model", "credential_source": "EXAMPLE_NLI_API_KEY_ENV"},
+      "eval_labels": ["entailment", "contradiction", "neutral"],
+      "policy": {"verdict_labels": ["supports", "refutes", "not_enough_info"], "min_confidence": 0.7, "block_on": ["refutes"], "warn_on": ["not_enough_info"]}
+    }
+  }
+}

@@ -1,62 +1,67 @@
 {
   "status": "implemented_by_claude",
-  "task_id": "cailiao-stage2b-production-standards-playbook-v1",
-  "phase": "Stage 2B: production-quality implementation playbook + machine-readable readiness matrix turning the still-unchecked real-world items into an industry-aligned rollout plan. All Stage 2B real parent items REMAIN UNCHECKED; only the playbook/status scaffold is a checked sub-note.",
-  "baseline": "2cca50cdf1b0e9190a6403a715fc19f21c272f02 (external dependency audit gate head)",
-  "summary": "Added docs/STAGE2B_PRODUCTION_PLAYBOOK.md (honest current state; target hybrid architecture: BM25/FTS + dense + optional sparse + RRF/weighted-RRF/DBSF selection + CrossEncoder rerank over top-K only + NLI citation-entailment/semantic-conflict; 6-step rollout; BEIR-style metrics; acceptance gates + rollback; env-var-only credential boundary; reference links) and a machine-readable companion build_stage2b_production_playbook_status(config=None) that mirrors build_external_dependency_audit's five blockers as ordered rollout phases with required_metrics, acceptance_gates, and references. ready_for_real_provider_rollout is false by default and roadmap_parent_items_checked is always false. A CLI tools/check_stage2b_production_playbook.py exits 1 in the default repo state. No network, no provider call, no credential/.env read, and no real ROADMAP parent item is marked complete.",
+  "task_id": "cailiao-stage2b-artifact-contracts-v1",
+  "phase": "Stage 2B hardening: machine-readable artifact contracts + placeholder template for the real-world inputs under config.artifacts, so future human/provider work can be supplied in a standards-aligned, auditable way. All Stage 2B real parent items REMAIN UNCHECKED; only the contracts/template scaffold is a checked sub-note.",
+  "baseline": "62a6bf7e448e1417c52ad0344781a67d334da055 (Stage 2B production playbook head)",
+  "summary": "Added docs/STAGE2B_ARTIFACT_CONTRACTS.md (per-artifact required/forbidden fields, validator, proves / does_not_prove, a compact JSON example, and an explicit shape-only boundary), a placeholder-safe examples/stage2b_artifacts.example.json (no real data, no secret values, credential_source names env vars only, template-marked so it never satisfies real readiness by default), and build_stage2b_artifact_contracts(config=None) returning the five contracts keyed to the external-dependency blockers with contract_count=5, example_file, example_is_placeholder_only=true, ready_artifact_count (from the existing audit's satisfied_ids), and roadmap_parent_items_checked=false. A CLI tools/check_stage2b_artifact_contracts.py exits 0 by default (contracts/templates valid as docs; states no real artifacts supplied and parents unchecked) and exits 1 under --require-ready-artifacts unless all five blockers are satisfied by config metadata. No network, no provider call, no credential/.env read; no real ROADMAP parent item is marked complete.",
   "changed_files": [
-    "docs/STAGE2B_PRODUCTION_PLAYBOOK.md",
+    "docs/STAGE2B_ARTIFACT_CONTRACTS.md",
+    "examples/stage2b_artifacts.example.json",
     "backend/server.py",
-    "tools/check_stage2b_production_playbook.py",
-    "tests/test_stage2b_production_playbook.py",
+    "tools/check_stage2b_artifact_contracts.py",
+    "tests/test_stage2b_artifact_contracts.py",
     "tools/run_quality_gates.py",
     "README.md",
     "docs/ROADMAP.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "docs/STAGE2B_PRODUCTION_PLAYBOOK.md: planning-only playbook with current honest state, target production architecture, 6-step rollout sequence, BEIR-style evaluation metrics, acceptance gates + rollback criteria, credential/security boundary (env var names only), and the 4 reference URLs (Elasticsearch RRF, Qdrant hybrid, SBERT retrieve-rerank, BEIR).",
-    "backend/server.py: added STAGE2B_PLAYBOOK_DOC, _STAGE2B_PHASES, STAGE2B_REQUIRED_METRICS, STAGE2B_ACCEPTANCE_GATES, STAGE2B_REFERENCES, and build_stage2b_production_playbook_status(config=None) (method=stage2b_production_playbook_v1) which reflects build_external_dependency_audit's 5 blockers as ordered phases, exposes required_metrics/acceptance_gates/references, and sets ready_for_real_provider_rollout from the audit (false by default) with roadmap_parent_items_checked=false.",
-    "tools/check_stage2b_production_playbook.py: CLI (--config/--json); exit 0 only if ready_for_real_provider_rollout, 1 otherwise (repo default -> 1), 2 on load error.",
-    "tests/test_stage2b_production_playbook.py: 11 tests (default not ready + mirrors exactly the 5 blockers; required metrics incl. nDCG/MRR/MAP/recall/precision/latency_p95; references present; acceptance gates present; JSON serializable; ready flips only when all blockers satisfied via declared metadata while parents stay unchecked; doc exists + contains all 4 URLs + states planning-only; CLI default exits 1).",
-    "tools/run_quality_gates.py: py-compile gate now includes tests/test_stage2b_production_playbook.py and tools/check_stage2b_production_playbook.py.",
-    "README.md documents the playbook as a planning/readiness matrix with its boundary; docs/ROADMAP.md keeps all real parent items UNCHECKED and adds a checked sub-note for the playbook only."
+    "docs/STAGE2B_ARTIFACT_CONTRACTS.md: contracts for the 5 config.artifacts keys (required fields, forbidden secret-value fields, validator helper, proves / does_not_prove), a compact JSON example, and an explicit metadata/shape-only boundary.",
+    "examples/stage2b_artifacts.example.json: placeholder-only template; no real data, no secret values, credential_source uses env-var NAMES, query sets carry is_template so real readiness is never satisfied by default.",
+    "backend/server.py: added STAGE2B_ARTIFACT_CONTRACTS_DOC, STAGE2B_ARTIFACTS_EXAMPLE_FILE, _STAGE2B_ARTIFACT_CONTRACTS (5), and build_stage2b_artifact_contracts(config=None) (method=stage2b_artifact_contracts_v1) returning contract_count=5, contracts list, example_file, example_is_placeholder_only=true, ready_artifact_count from build_external_dependency_audit satisfied_ids, roadmap_parent_items_checked=false.",
+    "tools/check_stage2b_artifact_contracts.py: CLI (--config/--json, --require-ready-artifacts); default exit 0 with a note that no real artifacts are supplied and parents remain unchecked; --require-ready-artifacts exit 1 unless all 5 blockers satisfied; exit 2 on load error.",
+    "tests/test_stage2b_artifact_contracts.py: 13 tests (contract_count 5 + keys match blockers; contract doc fields; default placeholder-only + no parent check; JSON serializable; example exists/parses, no secret-shaped values, does not satisfy external audit by default, ready_artifact_count < 5; doc exists + documents all keys + shape-only boundary; CLI default exits 0, --require-ready-artifacts exits 1, and with the placeholder example still exits 1).",
+    "tools/run_quality_gates.py: py-compile gate now includes tests/test_stage2b_artifact_contracts.py and tools/check_stage2b_artifact_contracts.py.",
+    "README.md documents the contracts + template as a shape-only contract layer with its boundary; docs/ROADMAP.md keeps all real parent items UNCHECKED and adds a checked sub-note for the contracts only."
   ],
   "not_implemented": [
     "No real Stage 2B capability is added: no real query set, no BM25 calibration run, no real embedding provider/persistent store/index, no real reranker/cross-encoder, no real NLI/LLM semantic conflict.",
     "All Stage 2B real parent items (ROADMAP lines 97/100/103/106/112) remain unchecked by design.",
-    "ready_for_real_provider_rollout is a DECLARED-METADATA-SHAPE aggregate (delegates to the external-dependency audit); it never means a provider/dataset was contacted, authenticated, or evaluated.",
+    "The example template is placeholder-only and intentionally does not satisfy the real query-set / BM25 contracts (is_template markers keep readiness below ready_real).",
+    "Contract satisfaction is DECLARED-METADATA-SHAPE only; it never means a provider/dataset was contacted, authenticated, built, or evaluated.",
     "No network, no provider call, no model download, no credential/.env read."
   ],
   "test_files": [
-    "tests/test_stage2b_production_playbook.py"
+    "tests/test_stage2b_artifact_contracts.py"
   ],
   "required_test_commands_for_codex": [
-    "python -m unittest tests.test_stage2b_production_playbook -v",
+    "python -m unittest tests.test_stage2b_artifact_contracts -v",
     "python -m unittest discover -s tests -v",
-    "python tools/check_stage2b_production_playbook.py --json",
+    "python tools/check_stage2b_artifact_contracts.py --json",
+    "python tools/check_stage2b_artifact_contracts.py --require-ready-artifacts --json",
     "python tools/run_quality_gates.py --json",
     "python -m json.tool CODEX_HANDOFF.json",
     "git diff --check"
   ],
   "test_status": [
-    "python -m unittest tests.test_stage2b_production_playbook -v: 11 tests OK.",
-    "python -m unittest discover -s tests -v: 533 tests OK.",
-    "python tools/check_stage2b_production_playbook.py --json: ready_for_real_provider_rollout=false, 6 phases all pending, roadmap_parent_items_checked=false, exit 1.",
-    "python tools/run_quality_gates.py --json (default 'python' on PATH): passed=true, all 5 gates passed; unittest gate ran 533 tests OK.",
+    "python -m unittest tests.test_stage2b_artifact_contracts -v: 13 tests OK.",
+    "python -m unittest discover -s tests -v: 546 tests OK.",
+    "python tools/check_stage2b_artifact_contracts.py --json: contract_count=5, ready_artifact_count=0, roadmap_parent_items_checked=false, exit 0.",
+    "python tools/check_stage2b_artifact_contracts.py --require-ready-artifacts --json: exit 1 (default repo state; no artifacts ready).",
+    "python tools/run_quality_gates.py --json (default 'python' on PATH): passed=true, all 5 gates passed (secret-scan clean over new files); unittest gate ran 546 tests OK.",
     "python -m json.tool CODEX_HANDOFF.json: valid JSON.",
     "git diff --check: no whitespace/conflict issues."
   ],
-  "roadmap_item_status": "ALL STAGE 2B REAL PARENT ITEMS UNCHECKED (lines 97/100/103/106/112). Only a checked sub-note for the production playbook + readiness matrix was added.",
+  "roadmap_item_status": "ALL STAGE 2B REAL PARENT ITEMS UNCHECKED (lines 97/100/103/106/112). Only a checked sub-note for the artifact contracts + placeholder template was added.",
   "risks": [
-    "ready_for_real_provider_rollout=true is a config-completeness aggregate delegating to the external-dependency audit; a fully-declared but wrong config would read as ready. It informs a human decision and never auto-checks a ROADMAP parent.",
-    "The playbook is guidance, not enforcement: the target architecture and acceptance gates are documented, not wired into a live pipeline, so following them is a human/process responsibility.",
-    "Metrics/gates are an industry-aligned starting set (BEIR/Elastic/Qdrant/SBERT-inspired), not a calibrated per-project threshold model; real thresholds must be set on the real eval set.",
-    "The status helper reuses the audit's readiness helpers, so it is exactly as strict and as metadata-only as they are.",
+    "Contract satisfaction (and ready_artifact_count) is a declared-metadata-shape verdict reusing the external-dependency audit; a fully-declared but wrong config would count as ready. It informs a human decision and never auto-checks a ROADMAP parent.",
+    "The provider/vector/rerank/NLI contracts can be satisfied by a well-shaped config with env-var credential names even in the placeholder example (no real DATA is faked); the two DATA-bearing contracts (query set, BM25) stay unsatisfied because the template is is_template-marked. This is intended and tested.",
+    "The example file is documentation; a user copying it must replace placeholders with real anonymized data and real provider/env details before any contract reflects reality.",
+    "Contracts describe shape, not enforcement of a live pipeline; wiring real providers still requires the readiness helpers + real eval before flipping any parent item.",
     "Environment note: the local interpreter is python3 (no bare 'python' on PATH); the quality-gate runner honors PYTHON=python3, and a local 'python->python3' PATH shim lets its default-interpreter meta-test pass."
   ],
   "credentials": [
-    "No credentials or .env files were read, created, or modified; the playbook and status helper name env vars only and resolve no secret.",
+    "No credentials or .env files were read, created, or modified; contracts forbid credential-value fields and the example names env vars only.",
     "No external network calls, provider calls, or model downloads were used for implementation or local tests.",
     "No push performed; commit/push left to the maintainer."
   ]

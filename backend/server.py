@@ -6568,6 +6568,102 @@ def build_stage2b_production_playbook_status(config: dict[str, Any] | None = Non
     }
 
 
+# --- Stage 2B artifact contracts (declared-shape templates) v1 ----------------
+
+STAGE2B_ARTIFACT_CONTRACTS_DOC = "docs/STAGE2B_ARTIFACT_CONTRACTS.md"
+STAGE2B_ARTIFACTS_EXAMPLE_FILE = "examples/stage2b_artifacts.example.json"
+
+# One contract per external-dependency blocker id. Each declares the required and
+# forbidden fields, the readiness validator that checks it, and honest proves /
+# does-not-prove semantics. Reference URLs align with the playbook.
+_STAGE2B_ARTIFACT_CONTRACTS = (
+    {
+        "key": "real_query_set",
+        "required_fields": ["metadata.name", "cases[].id", "cases[].query",
+                            "cases[].provenance{source,collected_at,anonymized=true}",
+                            "cases[].relevance_target(>=1)", "50-100 cases", "no placeholder/synthetic markers"],
+        "forbidden_fields": ["name", "phone", "email", "id_card", "身份证", "api_key", "secret", "token",
+                            "PII-shaped values in text"],
+        "validator": "summarize_real_query_readiness (status == ready_real)",
+        "proves": "declared set is shaped like a real anonymized eval set with provenance",
+        "does_not_prove": "that the queries are genuinely real or truly de-identified",
+        "reference_url": ["https://github.com/beir-cellar/beir"],
+    },
+    {
+        "key": "real_query_bm25_calibration",
+        "required_fields": ["all real_query_set fields", "corpus[] (docs with title/text)"],
+        "forbidden_fields": ["same PII/secret restrictions as real_query_set"],
+        "validator": "summarize_real_query_readiness == ready_real AND corpus present "
+                     "(run_bm25_sweep_on_real_query_set gate)",
+        "proves": "a calibration run could execute on the declared set + corpus",
+        "does_not_prove": "that calibration was run or thresholds tuned on real data",
+        "reference_url": ["https://www.elastic.co/docs/reference/elasticsearch/rest-apis/reciprocal-rank-fusion"],
+    },
+    {
+        "key": "real_embedding_provider_vector_store",
+        "required_fields": ["provider{provider,model,dim,credential_source}", "store{backend=persistent}",
+                            "index{metric|type}"],
+        "forbidden_fields": ["api_key", "key", "secret", "password", "token", "authorization", "endpoint_url"],
+        "validator": "build_vector_index_readiness (production_ready == true)",
+        "proves": "declared provider+store+index config is complete",
+        "does_not_prove": "the provider is reachable, the credential valid, or an index exists",
+        "reference_url": ["https://qdrant.tech/documentation/search/hybrid-queries/"],
+    },
+    {
+        "key": "real_reranker_rrf",
+        "required_fields": ["provider{provider,model,credential_source,eval_metrics[]}",
+                            "rrf{rank_constant>=1,rank_window_size>=1,channels[]}"],
+        "forbidden_fields": ["api_key", "key", "secret", "password", "token", "authorization", "endpoint_url"],
+        "validator": "build_rerank_pipeline_readiness (production_ready == true)",
+        "proves": "a real cross-encoder + RRF fusion config is completely declared",
+        "does_not_prove": "the reranker was called, evaluated, or latency/quality measured",
+        "reference_url": ["https://www.sbert.net/examples/sentence_transformer/applications/retrieve_rerank/README.html"],
+    },
+    {
+        "key": "real_nli_semantic_conflict",
+        "required_fields": ["provider{provider,model,credential_source}",
+                            "eval_labels[] covering supports/refutes/not_enough_info",
+                            "policy{verdict_labels,min_confidence[0..1],block_on,warn_on}"],
+        "forbidden_fields": ["api_key", "key", "secret", "password", "token", "authorization", "endpoint_url"],
+        "validator": "build_semantic_conflict_readiness (production_ready == true)",
+        "proves": "a real NLI provider + eval labels + decision policy are completely declared",
+        "does_not_prove": "entailment/contradiction inference ran or was evaluated",
+        "reference_url": ["https://github.com/beir-cellar/beir"],
+    },
+)
+
+
+def build_stage2b_artifact_contracts(config: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Return the Stage 2B artifact contracts (declared-shape templates).
+
+    Machine-readable companion to docs/STAGE2B_ARTIFACT_CONTRACTS.md: one contract
+    per external-dependency blocker, each with required/forbidden fields, the
+    readiness validator, and honest proves / does_not_prove semantics. When a
+    ``config`` is supplied, ``ready_artifact_count`` reflects how many blockers the
+    existing external-dependency audit reports satisfied (declared metadata shape
+    only). ``roadmap_parent_items_checked`` is always false. Deterministic, stdlib
+    only; no network, no credential/.env read.
+    """
+    audit = build_external_dependency_audit(config)
+    satisfied = set(audit["satisfied_ids"])
+    contracts = [dict(c) for c in _STAGE2B_ARTIFACT_CONTRACTS]
+    return {
+        "method": "stage2b_artifact_contracts_v1",
+        "boundary": (
+            "declared artifact metadata/data-shape contracts only; passing a contract "
+            "proves the declared config is complete, NOT that a real provider/dataset was "
+            "contacted, authenticated, built, or evaluated; no network, no credential/.env read"
+        ),
+        "contracts_doc": STAGE2B_ARTIFACT_CONTRACTS_DOC,
+        "contract_count": len(contracts),
+        "contracts": contracts,
+        "example_file": STAGE2B_ARTIFACTS_EXAMPLE_FILE,
+        "example_is_placeholder_only": True,
+        "ready_artifact_count": len(satisfied),
+        "roadmap_parent_items_checked": False,
+    }
+
+
 def add_evidence(item: dict[str, str]) -> dict[str, str]:
     item_id = str(uuid.uuid4())
     title = item.get("title", "").strip()
