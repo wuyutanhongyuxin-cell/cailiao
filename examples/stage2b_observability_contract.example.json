@@ -1,0 +1,10 @@
+{
+  "is_template": true,
+  "purpose": "Example wrapper for Stage 2B observability evidence. Not real telemetry.",
+  "artifacts": {},
+  "notes": [
+    "Telemetry contract names required metrics and dimensions only.",
+    "Populate artifacts only after real telemetry/eval snapshots exist.",
+    "Never include credential values."
+  ]
+}

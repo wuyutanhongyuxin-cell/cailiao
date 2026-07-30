@@ -7302,6 +7302,106 @@ def build_stage2b_promotion_gates(config: dict[str, Any] | None = None) -> dict[
     }
 
 
+# --- Stage 2B observability / telemetry contract v1 --------------------------
+
+STAGE2B_OBSERVABILITY_CONTRACT_DOC = "docs/STAGE2B_OBSERVABILITY_CONTRACT.md"
+STAGE2B_OBSERVABILITY_CONTRACT_EXAMPLE_FILE = "examples/stage2b_observability_contract.example.json"
+
+_STAGE2B_OBSERVABILITY_SPECS = {
+    "real_query_set": {
+        "required_metrics_or_events": ["dataset_intake_count", "pii_rejection_count", "qrels_coverage_ratio"],
+        "required_dimensions": ["dataset_id", "source_type", "anonymized", "review_status"],
+        "four_golden_signal_mapping": {"traffic": "dataset_intake_count", "errors": "pii_rejection_count"},
+        "alert_or_rollback_signal": "PII-shaped value detected, qrels coverage below gate, or provenance missing",
+        "evidence_source": "real query intake log + anonymization review summary",
+    },
+    "real_query_bm25_calibration": {
+        "required_metrics_or_events": ["bm25_sweep_runs", "recall@10", "mrr", "miss_rate"],
+        "required_dimensions": ["dataset_id", "corpus_id", "k1", "b", "threshold"],
+        "four_golden_signal_mapping": {"traffic": "bm25_sweep_runs", "errors": "failed_sweep_runs"},
+        "alert_or_rollback_signal": "recall@10/MRR regression or miss_rate increase vs lexical baseline",
+        "evidence_source": "BM25 sweep manifest + eval-run report",
+    },
+    "real_embedding_provider_vector_store": {
+        "required_metrics_or_events": ["retrieval_latency_p50", "retrieval_latency_p95", "provider_error_rate",
+                                       "index_build_status", "recall@10", "ndcg@10"],
+        "required_dimensions": ["provider", "model", "store_backend", "index_id", "dataset_id"],
+        "four_golden_signal_mapping": {"latency": "retrieval_latency_p95", "traffic": "query_count",
+                                       "errors": "provider_error_rate", "saturation": "index_queue_depth"},
+        "alert_or_rollback_signal": "latency p95 breach, provider error spike, index mismatch, or recall/nDCG regression",
+        "evidence_source": "vector rollout packet + observability snapshot + eval-run report",
+    },
+    "real_reranker_rrf": {
+        "required_metrics_or_events": ["rerank_latency_p95", "rerank_invocation_count", "rerank_error_rate",
+                                       "mrr", "ndcg", "map"],
+        "required_dimensions": ["provider", "model", "rank_constant", "rank_window_size", "candidate_top_k"],
+        "four_golden_signal_mapping": {"latency": "rerank_latency_p95", "traffic": "rerank_invocation_count",
+                                       "errors": "rerank_error_rate", "saturation": "rerank_queue_depth"},
+        "alert_or_rollback_signal": "no measured quality lift, latency p95 breach, RRF config drift, or error spike",
+        "evidence_source": "rerank rollout packet + canary metrics + eval-run report",
+    },
+    "real_nli_semantic_conflict": {
+        "required_metrics_or_events": ["nli_latency_p95", "verdict_distribution", "per_label_f1",
+                                       "fabrication_count", "human_review_queue_depth"],
+        "required_dimensions": ["provider", "model", "verdict", "confidence_bucket", "document_type"],
+        "four_golden_signal_mapping": {"latency": "nli_latency_p95", "traffic": "claims_checked",
+                                       "errors": "unsupported_or_refuted_miss_count",
+                                       "saturation": "human_review_queue_depth"},
+        "alert_or_rollback_signal": "fabrication_count > 0, missed refutation, calibration drift, or review queue breach",
+        "evidence_source": "semantic rollout packet + NLI eval report + human review log",
+    },
+}
+
+
+def build_stage2b_observability_contract(config: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Return observability/telemetry contract for Stage 2B external blockers.
+
+    Contract metadata only. It names metrics, dimensions, SRE-style golden-signal
+    mappings, and alert/rollback signals expected before production promotion. It
+    never emits telemetry, creates dashboards, runs evals, calls providers, reads
+    credentials, or checks ROADMAP parent items.
+    """
+    audit = build_external_dependency_audit(config)
+    entries = []
+    for blocker in audit["blockers"]:
+        bid = blocker["id"]
+        spec = _STAGE2B_OBSERVABILITY_SPECS[bid]
+        entries.append({
+            "id": bid,
+            "roadmap_line": blocker["roadmap_line"],
+            "topic": blocker["topic"],
+            "required_metrics_or_events": list(spec["required_metrics_or_events"]),
+            "required_dimensions": list(spec["required_dimensions"]),
+            "four_golden_signal_mapping": dict(spec["four_golden_signal_mapping"]),
+            "alert_or_rollback_signal": spec["alert_or_rollback_signal"],
+            "evidence_source": spec["evidence_source"],
+            "repo_guardrails": blocker["protected_by"],
+            "status": "telemetry_declared" if blocker["satisfied"] else "missing_real_telemetry",
+            "satisfied": blocker["satisfied"],
+        })
+    missing_ids = [e["id"] for e in entries if not e["satisfied"]]
+    return {
+        "method": "stage2b_observability_contract_v1",
+        "boundary": (
+            "deterministic telemetry contract only; no runtime network, no provider call, "
+            "no model download, no eval execution, no dashboard creation, no credential/.env "
+            "read, and no ROADMAP parent auto-check"
+        ),
+        "contract_doc": STAGE2B_OBSERVABILITY_CONTRACT_DOC,
+        "example_file": STAGE2B_OBSERVABILITY_CONTRACT_EXAMPLE_FILE,
+        "reference_alignment": [
+            "OpenTelemetry metrics/traces and GenAI semantic-convention concepts",
+            "Google SRE four golden signals: latency, traffic, errors, saturation",
+            "NIST AI RMF / GenAI monitoring and measurement",
+        ],
+        "entry_count": len(entries),
+        "entries": entries,
+        "missing_telemetry_ids": missing_ids,
+        "observability_ready": not missing_ids,
+        "roadmap_parent_items_checked": False,
+    }
+
+
 # --- Stage 2B evaluation-run contract / manifest (declared-shape) v1 ----------
 
 STAGE2B_EVAL_RUN_CONTRACT_DOC = "docs/STAGE2B_EVAL_RUN_CONTRACT.md"

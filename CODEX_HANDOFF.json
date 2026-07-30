@@ -1,46 +1,46 @@
 {
   "status": "codex_implemented_after_claude_not_consuming_task",
-  "task_id": "cailiao-stage2b-promotion-gates-v1",
-  "phase": "Stage 2B promotion/SLO gate hardening.",
-  "baseline": "5b6eb4b Add Stage 2B standards traceability",
-  "summary": "Claude task dispatch returned sent=true, but two polls showed no matching report and no WSL diff. Codex added a Stage 2B promotion/SLO gate policy mapping the five unresolved external blockers to required metrics/artifacts, default gates, rollback triggers, evidence sources, and blocked_by_external_input status. No real parent item was checked.",
+  "task_id": "cailiao-stage2b-observability-contract-v1",
+  "phase": "Stage 2B observability contract hardening.",
+  "baseline": "6711976 Add Stage 2B promotion gates",
+  "summary": "Claude task dispatch returned sent=true, but two polls showed no matching report and no WSL diff. Codex added a Stage 2B observability/telemetry contract mapping the five unresolved external blockers to required metrics/events, dimensions, SRE golden-signal mappings, alert/rollback signals, evidence sources, and missing_real_telemetry status. No real parent item was checked.",
   "changed_files": [
     "backend/server.py",
-    "tools/check_stage2b_promotion_gates.py",
-    "docs/STAGE2B_PROMOTION_GATES.md",
-    "examples/stage2b_promotion_gates.example.json",
-    "tests/test_stage2b_promotion_gates.py",
+    "tools/check_stage2b_observability_contract.py",
+    "docs/STAGE2B_OBSERVABILITY_CONTRACT.md",
+    "examples/stage2b_observability_contract.example.json",
+    "tests/test_stage2b_observability_contract.py",
     "tools/run_quality_gates.py",
     "README.md",
     "docs/ROADMAP.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "backend/server.py: added build_stage2b_promotion_gates(config=None).",
-    "tools/check_stage2b_promotion_gates.py: added CLI; default exits 1 while external promotion evidence is missing.",
-    "docs/STAGE2B_PROMOTION_GATES.md and examples/stage2b_promotion_gates.example.json: documented/template-only promotion gates.",
-    "tests/test_stage2b_promotion_gates.py: added helper, file, and CLI honesty tests.",
-    "tools/run_quality_gates.py, README.md, docs/ROADMAP.md: wired and documented the gates."
+    "backend/server.py: added build_stage2b_observability_contract(config=None).",
+    "tools/check_stage2b_observability_contract.py: added CLI; default exits 1 while real telemetry is missing.",
+    "docs/STAGE2B_OBSERVABILITY_CONTRACT.md and examples/stage2b_observability_contract.example.json: documented/template-only observability contract.",
+    "tests/test_stage2b_observability_contract.py: added helper, file, and CLI honesty tests.",
+    "tools/run_quality_gates.py, README.md, docs/ROADMAP.md: wired and documented the contract."
   ],
   "not_implemented": [
     "No real query set, provider connection, vector DB connection, model download, or eval run was performed.",
     "ROADMAP parent lines 97, 100, 103, 107, and 114 remain unchecked by design."
   ],
   "required_test_commands_for_codex": [
-    "python -m unittest tests.test_stage2b_promotion_gates -v",
+    "python -m unittest tests.test_stage2b_observability_contract -v",
     "python tools/run_quality_gates.py --json",
     "python -m json.tool CODEX_HANDOFF.json",
     "git diff --check"
   ],
   "test_status": [
-    "python -m unittest tests.test_stage2b_promotion_gates -v: 6 tests OK.",
-    "python tools/check_stage2b_promotion_gates.py --json: expected exit 1; reported 5 blocked external promotion gates.",
-    "python tools/run_quality_gates.py --json: passed=true, 5 gates passed, 645 tests OK.",
+    "python -m unittest tests.test_stage2b_observability_contract -v: 6 tests OK.",
+    "python tools/check_stage2b_observability_contract.py --json: expected exit 1; reported 5 missing real telemetry entries.",
+    "python tools/run_quality_gates.py --json: passed=true, 5 gates passed, 651 tests OK.",
     "python -m json.tool CODEX_HANDOFF.json: valid JSON.",
     "git diff --check: passed."
   ],
   "claude_monitoring": [
-    "Task file written to E:/tmp/without_human/tmp/cailiao-stage2b-promotion-gates-v1.md.",
+    "Task file written to E:/tmp/without_human/tmp/cailiao-stage2b-observability-contract-v1.md.",
     "send-claude-task.ps1 returned sent=true and used_uia=true.",
     "Two post-dispatch polls showed no matching report and no WSL diff.",
     "Codex proceeded to avoid idle looping."
