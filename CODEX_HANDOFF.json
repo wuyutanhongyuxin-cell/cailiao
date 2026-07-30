@@ -1,62 +1,63 @@
 {
   "status": "implemented_by_claude",
-  "task_id": "cailiao-final-external-dependency-audit-v1",
-  "phase": "Final: deterministic external-dependency audit/gate aggregating the 5 ROADMAP items that require human data or real provider credentials. All 5 parent items REMAIN UNCHECKED; only the audit/gate scaffold is delivered and marked as a checked sub-note.",
-  "baseline": "d01a569f8cc2ccbe66a0ea351f7aa046ee2e199e (semantic conflict readiness scaffold head)",
-  "summary": "Added build_external_dependency_audit(config=None): a deterministic, stdlib-only capstone that aggregates the five still-unchecked real-world blockers (real query set, real-query BM25 calibration, real embedding provider + persistent vector store + production index, real reranker/cross-encoder + RRF, real NLI/LLM semantic conflict) into one machine-readable report. Each blocker names its ROADMAP line/topic, required external input, current repo state, and the readiness scaffold/gate protecting it. all_external_dependencies_satisfied is false by default; roadmap_parent_items_checked is always false. A blocker is 'satisfied' only when config declares an artifact whose METADATA SHAPE passes the matching readiness helper (summarize_real_query_readiness=='ready_real' or *_readiness.production_ready==true) — declared-metadata shape only, never credential read, provider contact, or evaluation. A CLI tools/check_external_dependency_audit.py exits 1 in the default repo state. No dataset/connectivity/metric/credential/model-download/eval result is fabricated.",
+  "task_id": "cailiao-stage2b-production-standards-playbook-v1",
+  "phase": "Stage 2B: production-quality implementation playbook + machine-readable readiness matrix turning the still-unchecked real-world items into an industry-aligned rollout plan. All Stage 2B real parent items REMAIN UNCHECKED; only the playbook/status scaffold is a checked sub-note.",
+  "baseline": "2cca50cdf1b0e9190a6403a715fc19f21c272f02 (external dependency audit gate head)",
+  "summary": "Added docs/STAGE2B_PRODUCTION_PLAYBOOK.md (honest current state; target hybrid architecture: BM25/FTS + dense + optional sparse + RRF/weighted-RRF/DBSF selection + CrossEncoder rerank over top-K only + NLI citation-entailment/semantic-conflict; 6-step rollout; BEIR-style metrics; acceptance gates + rollback; env-var-only credential boundary; reference links) and a machine-readable companion build_stage2b_production_playbook_status(config=None) that mirrors build_external_dependency_audit's five blockers as ordered rollout phases with required_metrics, acceptance_gates, and references. ready_for_real_provider_rollout is false by default and roadmap_parent_items_checked is always false. A CLI tools/check_stage2b_production_playbook.py exits 1 in the default repo state. No network, no provider call, no credential/.env read, and no real ROADMAP parent item is marked complete.",
   "changed_files": [
+    "docs/STAGE2B_PRODUCTION_PLAYBOOK.md",
     "backend/server.py",
-    "tools/check_external_dependency_audit.py",
-    "tests/test_external_dependency_audit.py",
+    "tools/check_stage2b_production_playbook.py",
+    "tests/test_stage2b_production_playbook.py",
     "tools/run_quality_gates.py",
     "README.md",
     "docs/ROADMAP.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "backend/server.py: added _EXTERNAL_DEPENDENCY_BLOCKERS (5 specs) and build_external_dependency_audit(config=None) returning method=external_dependency_audit_v1 with all_external_dependencies_satisfied (false by default), blocker_count=5, satisfied_ids/outstanding_ids, per-blocker {id, roadmap_line, topic, required_external_input, current_repo_state, protected_by, satisfied, verification_mode='declared_metadata_shape_only', detail}, and roadmap_parent_items_checked=false.",
-    "backend/server.py: satisfaction is computed only via existing readiness helpers over declared artifact metadata (summarize_real_query_readiness, build_vector_index_readiness, build_rerank_pipeline_readiness, build_semantic_conflict_readiness) plus a corpus-presence check for BM25 calibration; no credential read, no provider contact.",
-    "tools/check_external_dependency_audit.py: CLI (--config/--json); exit 0 only if all_external_dependencies_satisfied, 1 otherwise (repo default -> 1), 2 on load error.",
-    "tests/test_external_dependency_audit.py: 9 tests (default has exactly 5 outstanding blockers; default does not check ROADMAP parents; each blocker documents input/state/gate + verification_mode; JSON serializable; complete declared metadata can satisfy but stays metadata-only and never checks parents; dropping corpus reopens only bm25; partial config leaves others outstanding; CLI default exits 1, complete declared config exits 0).",
-    "tools/run_quality_gates.py: py-compile gate now includes tests/test_external_dependency_audit.py and tools/check_external_dependency_audit.py.",
-    "README.md documents the final audit gate + honesty boundary; docs/ROADMAP.md keeps all 5 parent items UNCHECKED and adds a checked sub-note ONLY for this audit/gate under a new '外部依赖终审门禁' section."
+    "docs/STAGE2B_PRODUCTION_PLAYBOOK.md: planning-only playbook with current honest state, target production architecture, 6-step rollout sequence, BEIR-style evaluation metrics, acceptance gates + rollback criteria, credential/security boundary (env var names only), and the 4 reference URLs (Elasticsearch RRF, Qdrant hybrid, SBERT retrieve-rerank, BEIR).",
+    "backend/server.py: added STAGE2B_PLAYBOOK_DOC, _STAGE2B_PHASES, STAGE2B_REQUIRED_METRICS, STAGE2B_ACCEPTANCE_GATES, STAGE2B_REFERENCES, and build_stage2b_production_playbook_status(config=None) (method=stage2b_production_playbook_v1) which reflects build_external_dependency_audit's 5 blockers as ordered phases, exposes required_metrics/acceptance_gates/references, and sets ready_for_real_provider_rollout from the audit (false by default) with roadmap_parent_items_checked=false.",
+    "tools/check_stage2b_production_playbook.py: CLI (--config/--json); exit 0 only if ready_for_real_provider_rollout, 1 otherwise (repo default -> 1), 2 on load error.",
+    "tests/test_stage2b_production_playbook.py: 11 tests (default not ready + mirrors exactly the 5 blockers; required metrics incl. nDCG/MRR/MAP/recall/precision/latency_p95; references present; acceptance gates present; JSON serializable; ready flips only when all blockers satisfied via declared metadata while parents stay unchecked; doc exists + contains all 4 URLs + states planning-only; CLI default exits 1).",
+    "tools/run_quality_gates.py: py-compile gate now includes tests/test_stage2b_production_playbook.py and tools/check_stage2b_production_playbook.py.",
+    "README.md documents the playbook as a planning/readiness matrix with its boundary; docs/ROADMAP.md keeps all real parent items UNCHECKED and adds a checked sub-note for the playbook only."
   ],
   "not_implemented": [
-    "None of the 5 real-world dependencies are implemented: no real anonymized query set, no real-query BM25 calibration run, no real embedding provider/persistent store/production index, no real reranker/cross-encoder, no real NLI/LLM entailment or semantic conflict inference.",
-    "All 5 ROADMAP parent items (lines 97/100/103/106/112) remain unchecked by design.",
-    "'satisfied' / all_external_dependencies_satisfied is a DECLARED-METADATA-SHAPE verdict; it never means a provider/dataset was contacted, authenticated, downloaded, or evaluated.",
-    "No dataset, connectivity, metric, credential, model download, or eval result is fabricated. No network, no credential/.env read."
+    "No real Stage 2B capability is added: no real query set, no BM25 calibration run, no real embedding provider/persistent store/index, no real reranker/cross-encoder, no real NLI/LLM semantic conflict.",
+    "All Stage 2B real parent items (ROADMAP lines 97/100/103/106/112) remain unchecked by design.",
+    "ready_for_real_provider_rollout is a DECLARED-METADATA-SHAPE aggregate (delegates to the external-dependency audit); it never means a provider/dataset was contacted, authenticated, or evaluated.",
+    "No network, no provider call, no model download, no credential/.env read."
   ],
   "test_files": [
-    "tests/test_external_dependency_audit.py"
+    "tests/test_stage2b_production_playbook.py"
   ],
   "required_test_commands_for_codex": [
-    "python -m unittest tests.test_external_dependency_audit -v",
+    "python -m unittest tests.test_stage2b_production_playbook -v",
     "python -m unittest discover -s tests -v",
-    "python tools/check_external_dependency_audit.py --json",
+    "python tools/check_stage2b_production_playbook.py --json",
     "python tools/run_quality_gates.py --json",
     "python -m json.tool CODEX_HANDOFF.json",
     "git diff --check"
   ],
   "test_status": [
-    "python -m unittest tests.test_external_dependency_audit -v: 9 tests OK.",
-    "python -m unittest discover -s tests -v: 522 tests OK.",
-    "python tools/check_external_dependency_audit.py --json: all_external_dependencies_satisfied=false, 5 outstanding blockers, roadmap_parent_items_checked=false, exit 1.",
-    "python tools/run_quality_gates.py --json (default 'python' on PATH): passed=true, all 5 gates passed; unittest gate ran 522 tests OK.",
+    "python -m unittest tests.test_stage2b_production_playbook -v: 11 tests OK.",
+    "python -m unittest discover -s tests -v: 533 tests OK.",
+    "python tools/check_stage2b_production_playbook.py --json: ready_for_real_provider_rollout=false, 6 phases all pending, roadmap_parent_items_checked=false, exit 1.",
+    "python tools/run_quality_gates.py --json (default 'python' on PATH): passed=true, all 5 gates passed; unittest gate ran 533 tests OK.",
     "python -m json.tool CODEX_HANDOFF.json: valid JSON.",
     "git diff --check: no whitespace/conflict issues."
   ],
-  "roadmap_item_status": "ALL FIVE PARENT ITEMS UNCHECKED (lines 97/100/103/106/112). Only a checked sub-note for the aggregated external-dependency audit/gate was added.",
+  "roadmap_item_status": "ALL STAGE 2B REAL PARENT ITEMS UNCHECKED (lines 97/100/103/106/112). Only a checked sub-note for the production playbook + readiness matrix was added.",
   "risks": [
-    "all_external_dependencies_satisfied=true is a CONFIG-COMPLETENESS aggregate, not a connectivity/authentication/evaluation check; a fully-declared but wrong config would read as satisfied. It informs a human decision and never auto-checks a ROADMAP parent.",
-    "The audit only checks artifacts explicitly named under config.artifacts; it does not scan the filesystem or discover real datasets/providers on its own.",
-    "It reuses the same readiness helpers as the individual scaffolds, so its verdict is exactly as strict (and as metadata-only) as they are — if one is loosened, this aggregate loosens with it.",
-    "It deliberately never resolves credential_source to a secret and never contacts a provider, so it cannot confirm a credential is valid or a model is reachable.",
+    "ready_for_real_provider_rollout=true is a config-completeness aggregate delegating to the external-dependency audit; a fully-declared but wrong config would read as ready. It informs a human decision and never auto-checks a ROADMAP parent.",
+    "The playbook is guidance, not enforcement: the target architecture and acceptance gates are documented, not wired into a live pipeline, so following them is a human/process responsibility.",
+    "Metrics/gates are an industry-aligned starting set (BEIR/Elastic/Qdrant/SBERT-inspired), not a calibrated per-project threshold model; real thresholds must be set on the real eval set.",
+    "The status helper reuses the audit's readiness helpers, so it is exactly as strict and as metadata-only as they are.",
     "Environment note: the local interpreter is python3 (no bare 'python' on PATH); the quality-gate runner honors PYTHON=python3, and a local 'python->python3' PATH shim lets its default-interpreter meta-test pass."
   ],
   "credentials": [
-    "No credentials or .env files were read, created, or modified; the audit resolves no credential_source to a secret and reuses validators that reject credential-shaped fields.",
-    "No external network calls, provider calls, model downloads, or dataset fabrication were used for implementation or local tests.",
+    "No credentials or .env files were read, created, or modified; the playbook and status helper name env vars only and resolve no secret.",
+    "No external network calls, provider calls, or model downloads were used for implementation or local tests.",
     "No push performed; commit/push left to the maintainer."
   ]
 }

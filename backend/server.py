@@ -6493,6 +6493,81 @@ def build_external_dependency_audit(config: dict[str, Any] | None = None) -> dic
     }
 
 
+# --- Stage 2B production playbook status (planning matrix) v1 ------------------
+
+STAGE2B_PLAYBOOK_DOC = "docs/STAGE2B_PRODUCTION_PLAYBOOK.md"
+
+# Ordered rollout phases (mirror docs/STAGE2B_PRODUCTION_PLAYBOOK.md section 3),
+# each tied to the external blocker id it depends on.
+_STAGE2B_PHASES = (
+    {"step": 1, "name": "collect_ready_real_query_set", "blocker_id": "real_query_set"},
+    {"step": 2, "name": "calibrate_bm25_on_real_set", "blocker_id": "real_query_bm25_calibration"},
+    {"step": 3, "name": "choose_provider_build_persistent_index",
+     "blocker_id": "real_embedding_provider_vector_store"},
+    {"step": 4, "name": "run_hybrid_eval_and_tune_fusion",
+     "blocker_id": "real_embedding_provider_vector_store"},
+    {"step": 5, "name": "add_cross_encoder_rerank_eval_topk", "blocker_id": "real_reranker_rrf"},
+    {"step": 6, "name": "add_nli_semantic_conflict_entailment_eval",
+     "blocker_id": "real_nli_semantic_conflict"},
+)
+
+# BEIR-style retrieval + serving metrics required before any real rollout.
+STAGE2B_REQUIRED_METRICS = (
+    "recall@k", "precision@k", "ndcg@k", "mrr", "map",
+    "miss_rate", "latency_p50", "latency_p95", "refusal_insufficiency_rate",
+)
+
+# Acceptance gates (see playbook section 5).
+STAGE2B_ACCEPTANCE_GATES = (
+    "no retrieval-quality regression vs lexical baseline (ndcg@10, recall@10 >= baseline; miss_rate <= baseline)",
+    "rerank adds measurable precision lift within the latency p95 budget",
+    "citation entailment reaches agreed supports/refutes/NEI accuracy; key-fact fabrication rate 0; citation traceability 100%",
+)
+
+STAGE2B_REFERENCES = (
+    "https://www.elastic.co/docs/reference/elasticsearch/rest-apis/reciprocal-rank-fusion",
+    "https://qdrant.tech/documentation/search/hybrid-queries/",
+    "https://www.sbert.net/examples/sentence_transformer/applications/retrieve_rerank/README.html",
+    "https://github.com/beir-cellar/beir",
+)
+
+
+def build_stage2b_production_playbook_status(config: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Return the Stage 2B production-playbook status / readiness matrix.
+
+    Machine-readable companion to docs/STAGE2B_PRODUCTION_PLAYBOOK.md: the ordered
+    rollout phases (each tied to an external blocker), the required BEIR-style
+    metrics, the acceptance gates, and the reference set. Reflects the five external
+    blockers from ``build_external_dependency_audit`` — each phase is ``ready`` only
+    when its blocker is satisfied there. ``ready_for_real_provider_rollout`` is false
+    by default and true only when every external dependency is satisfied (declared
+    metadata shape only). Deterministic, stdlib only; no network, no credential read.
+    """
+    audit = build_external_dependency_audit(config)
+    satisfied = set(audit["satisfied_ids"])
+    phases = [
+        {**phase, "blocker_satisfied": phase["blocker_id"] in satisfied,
+         "ready": phase["blocker_id"] in satisfied}
+        for phase in _STAGE2B_PHASES
+    ]
+    return {
+        "method": "stage2b_production_playbook_v1",
+        "boundary": (
+            "planning/readiness matrix only; mirrors the external-dependency audit and "
+            "never marks a real ROADMAP parent item complete; no network, no provider "
+            "call, no credential/.env read"
+        ),
+        "playbook_doc": STAGE2B_PLAYBOOK_DOC,
+        "ready_for_real_provider_rollout": audit["all_external_dependencies_satisfied"],
+        "roadmap_parent_items_checked": False,
+        "phases": phases,
+        "required_metrics": list(STAGE2B_REQUIRED_METRICS),
+        "acceptance_gates": list(STAGE2B_ACCEPTANCE_GATES),
+        "references": list(STAGE2B_REFERENCES),
+        "external_dependency_audit": audit,
+    }
+
+
 def add_evidence(item: dict[str, str]) -> dict[str, str]:
     item_id = str(uuid.uuid4())
     title = item.get("title", "").strip()
