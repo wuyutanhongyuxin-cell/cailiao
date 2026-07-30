@@ -1,63 +1,66 @@
 {
-  "status": "implemented_by_claude_then_codex_finished",
-  "task_id": "cailiao-stage2b-real-query-collection-protocol-v1",
-  "phase": "Stage 2B hardening: privacy-aware real-query collection protocol and de-identification checklist gate for the future 50-100 real anonymized query set. The real query-set parent item remains unchecked; only the collection protocol/checklist scaffold is a checked sub-note.",
-  "baseline": "f8b7e554a8d8cffcc3a6d6af46254da86c5db008 (Stage 2B eval run contract head)",
-  "summary": "Added docs/STAGE2B_REAL_QUERY_COLLECTION_PROTOCOL.md, examples/real_query_collection_packet.example.json, build_real_query_collection_protocol(config=None), validate_real_query_collection_packet(packet), and tools/check_real_query_collection_protocol.py. The protocol covers data minimization, de-identification checklist, pseudonymization notes, retention/disposal, access control, and handoff into the real_query_set artifact contract. The validator checks declared packet metadata/checklist shape only: collector role, purpose, retention policy, access-control summary, all de-identification checklist items true, target_count in [50,100], and no PII-shaped sample values. It collects no real queries, reads no secrets, and never marks the parent ROADMAP item complete. Claude produced the partial implementation but hit API Error 402 before docs/handoff/report completion; Codex finished README/ROADMAP/CODEX_HANDOFF and verified locally.",
+  "status": "codex_implemented_after_claude_not_consuming_task",
+  "task_id": "cailiao-stage2b-vector-provider-runbook-v1",
+  "phase": "Stage 2B hardening: metadata-only rollout protocol for real embedding provider, persistent vector store, and production vector index. The real embedding/vector parent item remains unchecked.",
+  "baseline": "5938782 Add real query collection protocol",
+  "summary": "Claude task dispatch succeeded at the channel level, but polling showed the report remained on an older task and the WSL repo stayed clean. Codex implemented the small gated slice directly: docs/STAGE2B_VECTOR_ROLLOUT_PROTOCOL.md, examples/stage2b_vector_rollout.example.json, build_stage2b_vector_rollout_protocol(config=None), validate_stage2b_vector_rollout_packet(packet), and tools/check_stage2b_vector_rollout_protocol.py. The protocol checks declared metadata shape only: provider/store/index config, index manifest, migration and rollback steps, observability metrics, acceptance gates, credential-source hygiene, dimension consistency, and metric consistency. It never calls providers, connects a vector DB, reads secrets, builds an index, or marks ROADMAP line 103 complete.",
   "changed_files": [
-    "docs/STAGE2B_REAL_QUERY_COLLECTION_PROTOCOL.md",
-    "examples/real_query_collection_packet.example.json",
+    "docs/STAGE2B_VECTOR_ROLLOUT_PROTOCOL.md",
+    "examples/stage2b_vector_rollout.example.json",
     "backend/server.py",
-    "tools/check_real_query_collection_protocol.py",
-    "tests/test_real_query_collection_protocol.py",
+    "tools/check_stage2b_vector_rollout_protocol.py",
+    "tests/test_stage2b_vector_rollout_protocol.py",
     "tools/run_quality_gates.py",
     "README.md",
     "docs/ROADMAP.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "docs/STAGE2B_REAL_QUERY_COLLECTION_PROTOCOL.md: NIST/FTC/ICO-aligned collection protocol covering data minimization, de-identification checklist, pseudonymization boundary, retention/disposal, access control, and artifact-contract handoff.",
-    "examples/real_query_collection_packet.example.json: placeholder-only packet with is_template=true; no real queries, no secret values, checklist false by default.",
-    "backend/server.py: added protocol constants, validate_real_query_collection_packet(packet), and build_real_query_collection_protocol(config=None).",
-    "tools/check_real_query_collection_protocol.py: CLI (--config/--json); default exits 1, complete declared packet exits 0, load error exits 2.",
-    "tests/test_real_query_collection_protocol.py: 17 tests covering default not ready, example not ready, complete packet ready, missing checklist/control fields, PII-shaped sample rejection without leaking value, target count bounds, CLI default/example/complete behavior, JSON serializability.",
-    "tools/run_quality_gates.py: py-compile gate now includes tests/test_real_query_collection_protocol.py and tools/check_real_query_collection_protocol.py.",
-    "README.md and docs/ROADMAP.md document this as a checked protocol/checklist sub-note only; the real query-set parent remains unchecked."
+    "docs/STAGE2B_VECTOR_ROLLOUT_PROTOCOL.md: provider selection/security, index manifest, migration, rollback, observability, dimension/metric consistency, and rollout sequence.",
+    "examples/stage2b_vector_rollout.example.json: placeholder-only rollout packet with is_template=true and credential_source env var name only.",
+    "backend/server.py: added validate_stage2b_vector_rollout_packet(packet) and build_stage2b_vector_rollout_protocol(config=None).",
+    "tools/check_stage2b_vector_rollout_protocol.py: CLI (--config/--json); default exits 1, valid declared packet exits 0, load error exits 2.",
+    "tests/test_stage2b_vector_rollout_protocol.py: focused tests for default/example not ready, complete packet ready, dim mismatch, metric mismatch, secret-shaped field rejection, CLI behavior, JSON serializability, and doc boundary.",
+    "tools/run_quality_gates.py: py-compile gate includes the new CLI and test file.",
+    "README.md and docs/ROADMAP.md document this as a checked sub-note only; the real embedding/vector parent remains unchecked."
   ],
   "not_implemented": [
-    "No real queries were collected.",
-    "No real 50-100 anonymized query set exists in the repo.",
-    "ROADMAP line 97 remains unchecked by design.",
-    "The protocol validates declared metadata/checklist shape only; it does not prove de-identification quality or real-world collection happened.",
-    "No network, no provider call, no credential/.env read, no mapping table/salt/pepper committed."
+    "No real embedding provider was connected.",
+    "No persistent vector store was installed or contacted.",
+    "No production vector index was built.",
+    "No credentials, .env files, endpoint secrets, or provider calls were used.",
+    "ROADMAP line 103 remains unchecked by design."
   ],
   "test_files": [
-    "tests/test_real_query_collection_protocol.py"
+    "tests/test_stage2b_vector_rollout_protocol.py"
   ],
   "required_test_commands_for_codex": [
-    "python -m unittest tests.test_real_query_collection_protocol -v",
-    "python -m unittest discover -s tests -v",
-    "python tools/check_real_query_collection_protocol.py --json",
+    "python -m unittest tests.test_stage2b_vector_rollout_protocol -v",
+    "python tools/check_stage2b_vector_rollout_protocol.py --json",
+    "python tools/check_stage2b_vector_rollout_protocol.py --config examples/stage2b_vector_rollout.example.json --json",
     "python tools/run_quality_gates.py --json",
     "python -m json.tool CODEX_HANDOFF.json",
     "git diff --check"
   ],
   "test_status": [
-    "python -m unittest tests.test_real_query_collection_protocol -v: 17 tests OK.",
-    "python tools/check_real_query_collection_protocol.py --json: ready_for_collection=false, contains_real_queries=false, roadmap_parent_items_checked=false, exit 1.",
+    "python -m unittest tests.test_stage2b_vector_rollout_protocol -v: 11 tests OK.",
+    "python tools/check_stage2b_vector_rollout_protocol.py --json: ready_for_vector_rollout=false, roadmap_parent_items_checked=false, expected exit 1.",
+    "python tools/check_stage2b_vector_rollout_protocol.py --config examples/stage2b_vector_rollout.example.json --json: template rejected, expected exit 1.",
+    "python tools/run_quality_gates.py --json: passed=true, 5 gates passed, 593 tests OK.",
     "python -m json.tool CODEX_HANDOFF.json: valid JSON.",
-    "Full quality gate to be run by Codex before commit/push."
+    "git diff --check: passed."
   ],
-  "roadmap_item_status": "REAL QUERY SET PARENT ITEM UNCHECKED (line 97). Only a checked sub-note for the collection protocol/de-identification gate was added.",
-  "risks": [
-    "A ready collection packet is a process/checklist readiness signal, not proof that de-identification is sufficient or that data was collected.",
-    "PII detection is pattern-based and cannot catch every sensitive detail or re-identification risk.",
-    "Humans must still review rare facts, quasi-identifiers, and provenance before creating a ready_real set.",
-    "Claude Code quota failed with API Error 402 during this task, so Codex finished the small remaining documentation/handoff work."
+  "roadmap_item_status": "REAL EMBEDDING PROVIDER / PERSISTENT VECTOR STORE / PRODUCTION INDEX PARENT ITEM UNCHECKED (line 103). Only a checked rollout-protocol sub-note was added.",
+  "claude_monitoring": [
+    "Task file written to /home/kiro/kiro-work/work/CODEX_TO_CLAUDE_LATEST.md.",
+    "send-claude-task.ps1 returned sent=true and used_uia=true.",
+    "check-claude-channel.ps1 reported Claude PID 9, TTY /dev/pts/0 writable, WSL repo clean.",
+    "Two polls after UIA and direct TTY trigger showed no matching report and no WSL diff.",
+    "Codex proceeded to avoid idle looping."
   ],
   "credentials": [
     "No credentials or .env files were read, created, or modified.",
-    "No external network calls, provider calls, model downloads, or real data collection were performed.",
+    "No external network calls, provider calls, model downloads, vector DB connections, or real index builds were performed.",
     "No push performed yet at handoff update time."
   ]
 }

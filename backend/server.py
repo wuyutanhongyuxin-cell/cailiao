@@ -6807,6 +6807,161 @@ def build_stage2b_eval_run_contract(config: dict[str, Any] | None = None) -> dic
     }
 
 
+# --- Stage 2B: vector provider + persistent index rollout packet v1 ----------
+
+STAGE2B_VECTOR_ROLLOUT_EXAMPLE_FILE = "examples/stage2b_vector_rollout.example.json"
+VECTOR_ALLOWED_DISTANCE_METRICS = frozenset({"cosine", "dot", "inner_product", "l2", "euclidean"})
+VECTOR_ALLOWED_ROLLOUT_MODES = frozenset({"shadow", "canary", "full"})
+
+
+def validate_stage2b_vector_rollout_packet(packet: Any) -> dict[str, Any]:
+    """Validate a metadata-only vector rollout packet.
+
+    This checks declared rollout metadata only. It never calls an embedding
+    provider, opens a vector store, reads credentials, builds an index, or verifies
+    real latency/quality numbers.
+    """
+    errors: list[str] = []
+    warnings: list[str] = []
+    if not isinstance(packet, dict):
+        return {"passed": False, "ready": False,
+                "errors": [f"packet must be a JSON object, got {type(packet).__name__}"],
+                "warnings": []}
+    if packet.get("is_template"):
+        errors.append("packet is marked is_template=true")
+
+    rollout_id = str(packet.get("rollout_id") or "").strip()
+    if not rollout_id:
+        errors.append("rollout_id is required")
+    mode = str(packet.get("rollout_mode") or "").strip().lower()
+    if mode not in VECTOR_ALLOWED_ROLLOUT_MODES:
+        errors.append(f"rollout_mode must be one of {sorted(VECTOR_ALLOWED_ROLLOUT_MODES)}")
+
+    vector_config = packet.get("vector_config")
+    if not isinstance(vector_config, dict):
+        errors.append("vector_config must be a JSON object")
+        vector_readiness = build_vector_index_readiness()
+    else:
+        leaked = [f for f in VECTOR_FORBIDDEN_FIELDS if f in vector_config]
+        if leaked:
+            errors.append(f"vector_config must not carry credential/endpoint value field(s) {leaked}")
+        vector_readiness = build_vector_index_readiness(vector_config)
+        if not vector_readiness["production_ready"]:
+            errors.append("vector_config does not pass build_vector_index_readiness")
+
+    provider = vector_config.get("provider") if isinstance(vector_config, dict) else {}
+    index = vector_config.get("index") if isinstance(vector_config, dict) else {}
+    try:
+        provider_dim = int(provider.get("dim")) if isinstance(provider, dict) and provider.get("dim") is not None else None
+    except (TypeError, ValueError):
+        provider_dim = None
+    try:
+        index_dim = int(index.get("dim")) if isinstance(index, dict) and index.get("dim") is not None else None
+    except (TypeError, ValueError):
+        index_dim = None
+    metric = str(index.get("metric") or "").strip().lower() if isinstance(index, dict) else ""
+    if not index_dim:
+        errors.append("vector_config.index.dim is required")
+    if provider_dim and index_dim and provider_dim != index_dim:
+        errors.append("provider dim must match index dim")
+    if metric not in VECTOR_ALLOWED_DISTANCE_METRICS:
+        errors.append(f"vector_config.index.metric must be one of {sorted(VECTOR_ALLOWED_DISTANCE_METRICS)}")
+
+    manifest = packet.get("index_manifest")
+    if not isinstance(manifest, dict):
+        errors.append("index_manifest must be a JSON object")
+    else:
+        for field in ("manifest_id", "source_corpus_version", "chunker_version",
+                      "embedding_model", "store_collection", "build_command",
+                      "rebuild_command", "rollback_plan"):
+            if not str(manifest.get(field) or "").strip():
+                errors.append(f"index_manifest.{field} is required")
+        manifest_dim = manifest.get("embedding_dim")
+        try:
+            manifest_dim = int(manifest_dim) if manifest_dim is not None else None
+        except (TypeError, ValueError):
+            manifest_dim = None
+        if not manifest_dim:
+            errors.append("index_manifest.embedding_dim is required")
+        if index_dim and manifest_dim and index_dim != manifest_dim:
+            errors.append("index dim must match index_manifest.embedding_dim")
+        manifest_metric = str(manifest.get("distance_metric") or "").strip().lower()
+        if manifest_metric not in VECTOR_ALLOWED_DISTANCE_METRICS:
+            errors.append(f"index_manifest.distance_metric must be one of {sorted(VECTOR_ALLOWED_DISTANCE_METRICS)}")
+        if metric and manifest_metric and metric != manifest_metric:
+            errors.append("index metric must match index_manifest.distance_metric")
+
+    migration = packet.get("migration")
+    if not isinstance(migration, dict):
+        errors.append("migration must be a JSON object")
+    else:
+        for field in ("preflight_checklist", "cutover_steps", "rollback_steps"):
+            value = migration.get(field)
+            if not isinstance(value, list) or not value:
+                errors.append(f"migration.{field} must be a non-empty list")
+
+    observability = packet.get("observability")
+    if not isinstance(observability, dict):
+        errors.append("observability must be a JSON object")
+    else:
+        metrics = observability.get("metrics")
+        if not isinstance(metrics, list) or not metrics:
+            errors.append("observability.metrics must be a non-empty list")
+        required_metrics = {"latency_p50", "latency_p95", "error_rate", "recall@k"}
+        seen_metrics = {str(m).strip().lower() for m in metrics} if isinstance(metrics, list) else set()
+        missing_metrics = sorted(required_metrics - seen_metrics)
+        if missing_metrics:
+            errors.append(f"observability.metrics missing {missing_metrics}")
+
+    acceptance = packet.get("acceptance")
+    if not isinstance(acceptance, dict):
+        errors.append("acceptance must be a JSON object")
+    else:
+        gates = acceptance.get("gates")
+        if not isinstance(gates, list) or not gates:
+            errors.append("acceptance.gates must be a non-empty list")
+        if not str(acceptance.get("rollback_trigger") or "").strip():
+            errors.append("acceptance.rollback_trigger is required")
+
+    return {
+        "passed": not errors,
+        "ready": not errors,
+        "errors": errors,
+        "warnings": warnings,
+        "vector_readiness": vector_readiness,
+        "roadmap_parent_items_checked": False,
+    }
+
+
+def build_stage2b_vector_rollout_protocol(config: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Build the vector provider/store/index rollout protocol status."""
+    raw = config if isinstance(config, dict) else {}
+    packet = raw.get("vector_rollout") if isinstance(raw.get("vector_rollout"), dict) else raw
+    validation = validate_stage2b_vector_rollout_packet(packet) if raw else validate_stage2b_vector_rollout_packet({})
+    return {
+        "method": "stage2b_vector_rollout_protocol_v1",
+        "boundary": (
+            "metadata-only rollout protocol for a real embedding provider, persistent vector store, "
+            "and production index; no provider call, no vector DB connection, no index build, no secret read"
+        ),
+        "example_file": STAGE2B_VECTOR_ROLLOUT_EXAMPLE_FILE,
+        "example_is_placeholder_only": True,
+        "required_sections": [
+            "vector_config", "index_manifest", "migration", "observability", "acceptance",
+        ],
+        "allowed_rollout_modes": sorted(VECTOR_ALLOWED_ROLLOUT_MODES),
+        "allowed_distance_metrics": sorted(VECTOR_ALLOWED_DISTANCE_METRICS),
+        "ready_for_vector_rollout": bool(validation["ready"]),
+        "validation": validation,
+        "current_shipped_state": {
+            "embedder": "deterministic_local_test",
+            "store": "in_process",
+            "production_ready": False,
+        },
+        "roadmap_parent_items_checked": False,
+    }
+
+
 # --- Stage 2B real-query collection protocol / de-identification gate v1 -------
 
 STAGE2B_COLLECTION_PROTOCOL_DOC = "docs/STAGE2B_REAL_QUERY_COLLECTION_PROTOCOL.md"

@@ -1,0 +1,73 @@
+{
+  "is_template": true,
+  "rollout_id": "VECTOR-ROLLOUT-TEMPLATE",
+  "rollout_mode": "shadow",
+  "vector_config": {
+    "provider": {
+      "provider": "openai",
+      "model": "text-embedding-3-large",
+      "dim": 3072,
+      "credential_source": "OPENAI_API_KEY"
+    },
+    "store": {
+      "backend": "postgres_pgvector",
+      "backup_configured": true,
+      "persistence_path": "managed database, not stored in repo"
+    },
+    "index": {
+      "type": "hnsw",
+      "metric": "cosine",
+      "dim": 3072
+    }
+  },
+  "index_manifest": {
+    "manifest_id": "vector-index-template",
+    "source_corpus_version": "corpus-version-placeholder",
+    "chunker_version": "chunker-version-placeholder",
+    "embedding_model": "text-embedding-3-large",
+    "embedding_dim": 3072,
+    "distance_metric": "cosine",
+    "store_collection": "collection-placeholder",
+    "build_command": "documented command, not run by this packet",
+    "rebuild_command": "documented rebuild command, not run by this packet",
+    "rollback_plan": "restore previous collection alias and disable vector channel"
+  },
+  "migration": {
+    "preflight_checklist": [
+      "credential env var exists in runtime, value never committed",
+      "embedding dim equals index dim",
+      "backup/restore path tested outside this repository"
+    ],
+    "cutover_steps": [
+      "build index in shadow collection",
+      "run retrieval eval against ready_real query set",
+      "enable canary traffic only after gates pass"
+    ],
+    "rollback_steps": [
+      "disable vector channel",
+      "restore previous collection alias",
+      "retain failed manifest for audit"
+    ]
+  },
+  "observability": {
+    "metrics": [
+      "latency_p50",
+      "latency_p95",
+      "error_rate",
+      "recall@k"
+    ],
+    "dashboards": [
+      "retrieval latency",
+      "embedding provider errors",
+      "vector recall"
+    ]
+  },
+  "acceptance": {
+    "gates": [
+      "ready_real query set exists",
+      "recall@10 and MRR meet documented thresholds",
+      "latency_p95 within rollout budget"
+    ],
+    "rollback_trigger": "quality regression, elevated error rate, or latency budget breach"
+  }
+}
