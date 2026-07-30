@@ -109,7 +109,8 @@
 - [x] 主张到证据的精确映射 v1：`map_claim_to_evidence` 逐标记归因到覆盖分段列表（`covered_markers`: marker → [chunk_id, ...]）、`missing_markers`、逐分段 `supporting_items`（`matched_markers`/`matched_terms`/`hit_reasons`）与 `coverage_ratio`，并入 `verify_claim` 的 `evidence_map`；保守判定不变
 - [x] 确定性冲突证据候选 v1：`detect_conflict_evidence`/`verify_claim.conflict_evidence` 对同上下文不同数量标记、必备标记附近明确否定进行保守提示；命中时把原本 `supported` 的结论降级为 `needs_verification`
 - [x] 证据不足/拒绝理由 v1：`build_evidence_insufficiency`/`verify_claim.insufficiency` 在每次核验中返回稳定、机器可读的 `summary`、`blocking`、`missing_markers`、`conflict_count`、词面 `overlap` 和 `details`；仅为确定性词面审计元数据，不是语义蕴含、NLI 或真伪判断
-- [ ] 引用蕴含与完整语义级冲突证据检测（需 LLM/NLI，超出当前词面候选范围）
+- [ ] 引用蕴含与完整语义级冲突证据检测（需 LLM/NLI，超出当前词面候选范围）（**仍未完成**：仓库仅有确定性词面冲突检测，未接入真实 NLI/LLM、未做真实蕴含/冲突推理与评测，不得勾选本项）
+  - [x] NLI/语义冲突生产就绪校验脚手架 v1：确定性 `build_nli_provider_readiness(config=None)`/`validate_nli_provider_config(config)`/`build_semantic_conflict_policy(config=None)`/`validate_semantic_conflict_policy(policy)`/`build_semantic_conflict_readiness(config=None)` 与确定性标签映射 `map_nli_label_to_verdict(label)`（SNLI/MNLI 的 entailment/contradiction/neutral 与 FEVER/CFEVER 的 supports/refutes/NEI → `supports`/`refutes`/`not_enough_info`，未知标签抛 `ValueError`）与 `tools/check_semantic_conflict_readiness.py`；区分既有确定性**词面**冲突检测（`is_real_nli_model=false`、`does_semantic_entailment=false`）与真实语义就绪——仅当声明真实 NLI/LLM 供应商（含 `credential_source` 环境变量名而非密钥值）、覆盖三类判定的评测标签、合法冲突策略（`min_confidence`∈[0,1]、`block_on`/`warn_on` 为已知判定）时才判 `production_ready`，词面检测器/凭据形字段一律拒绝；`current_shipped_state.production_ready=false` 诚实回报当前状态；CLI 默认（当前仓库状态）退出非 0。**边界：仅就绪/配置/标签映射脚手架，不接入真实 NLI/LLM、不下载模型、不联网、不读 `.env`/凭据；既有词面冲突检测保持词面，真实推理与评测前上一条保持未勾选。**
 - [x] 展示检索过程和命中理由的可审计面板 v1：资料库新增“检索与核验”标签，检索结果展示 RRF 融合分、各通道 rank/score、命中理由、向量启用状态与 BM25 参数；主张核验展示 status/理由/必备与缺失标记/覆盖率/`covered_markers`(marker→分段列表)/`supporting_items`/`cited_chunk_ids`，并明确标注“词面覆盖 ≠ 语义蕴含，需人工语义复核”
 
 参考 `zh-policy-rag` 的 MIT 许可实现，复用时保留版权与许可证。

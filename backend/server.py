@@ -6167,6 +6167,205 @@ def build_rerank_pipeline_readiness(config: dict[str, Any] | None = None) -> dic
     }
 
 
+# --- Stage 3: real NLI / semantic-conflict production-readiness scaffold v1 ----
+
+# The current shipped conflict detector is deterministic LEXICAL only; these modes
+# mark "not a real NLI/entailment model".
+NLI_LEXICAL_MODES = frozenset({"lexical", "deterministic_lexical", "none", "test"})
+
+# The three canonical verdicts (FEVER/CFEVER-style) the pipeline reasons in.
+NLI_VERDICTS = ("supports", "refutes", "not_enough_info")
+
+# Accepted input label vocab -> canonical verdict. Covers SNLI/MNLI (entailment/
+# contradiction/neutral) and FEVER/CFEVER (supports/refutes/NEI) label spellings.
+NLI_LABEL_MAP = {
+    "entailment": "supports", "entail": "supports", "supports": "supports", "support": "supports",
+    "contradiction": "refutes", "contradict": "refutes", "refutes": "refutes", "refute": "refutes",
+    "neutral": "not_enough_info", "nei": "not_enough_info",
+    "not_enough_info": "not_enough_info", "notenoughinfo": "not_enough_info",
+    "not enough info": "not_enough_info",
+}
+
+
+def map_nli_label_to_verdict(label: Any) -> str:
+    """Map an NLI/RTE or FEVER label to a canonical verdict (deterministic).
+
+    entailment/supports -> "supports"; contradiction/refutes -> "refutes";
+    neutral/nei -> "not_enough_info". Unknown labels raise ValueError so a caller
+    can never silently coerce an unrecognized label. Stdlib only.
+    """
+    key = str(label or "").strip().lower()
+    if key not in NLI_LABEL_MAP:
+        raise ValueError(f"unknown NLI label {label!r} (known: {sorted(set(NLI_LABEL_MAP))})")
+    return NLI_LABEL_MAP[key]
+
+
+def build_nli_provider_readiness(config: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Assess whether an NLI/entailment provider config describes a REAL model.
+
+    Distinguishes the current deterministic lexical conflict detector (never a real
+    NLI model) from a declared real NLI/LLM provider. A real provider must name a
+    non-lexical provider, a model, and a credential SOURCE (env var NAME) — never a
+    secret. Declared metadata only; no model call, no credential read.
+    """
+    raw = config if isinstance(config, dict) else {}
+    provider = str(raw.get("provider") or "").strip()
+    mode = str(raw.get("mode") or "").strip().lower()
+    model = str(raw.get("model") or "").strip()
+    credential_source = str(raw.get("credential_source") or "").strip()
+
+    is_lexical = (mode in NLI_LEXICAL_MODES) or (provider.lower() in NLI_LEXICAL_MODES) or not provider
+    missing: list[str] = []
+    if is_lexical:
+        missing.append("real NLI/LLM provider (current detector is deterministic lexical only)")
+    else:
+        if not model:
+            missing.append("model")
+        if not credential_source:
+            missing.append("credential_source (env var NAME, never a secret value)")
+
+    return {
+        "method": "nli_provider_readiness_v1",
+        "boundary": (
+            "declared NLI-provider metadata only; distinguishes the deterministic lexical "
+            "conflict detector from a real entailment model; no model call, no credential read"
+        ),
+        "provider": provider or "(none)",
+        "is_lexical_only": is_lexical,
+        "is_real_provider_declared": (not is_lexical) and not missing,
+        "model": model,
+        "credential_source": credential_source,
+        "missing": missing,
+    }
+
+
+def validate_nli_provider_config(config: Any) -> dict[str, Any]:
+    """Validate an NLI-provider config's shape and credential hygiene."""
+    errors: list[str] = []
+    warnings: list[str] = []
+    if not isinstance(config, dict):
+        return {"passed": False, "errors": [f"config must be a JSON object, got {type(config).__name__}"],
+                "warnings": [], "is_real_provider_declared": False}
+    leaked = [f for f in VECTOR_FORBIDDEN_FIELDS if f in config]
+    if leaked:
+        errors.append(f"NLI config must not carry credential/endpoint value field(s) {leaked}; "
+                      "use 'credential_source' (an env var name) instead")
+    readiness = build_nli_provider_readiness(config)
+    if readiness["is_lexical_only"]:
+        warnings.append("config resolves to the deterministic lexical detector (not a real NLI model)")
+    return {"passed": not errors, "errors": errors, "warnings": warnings,
+            "is_real_provider_declared": readiness["is_real_provider_declared"]}
+
+
+def build_semantic_conflict_policy(config: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Build a semantic-conflict decision policy (label set, threshold, action).
+
+    Describes how NLI verdicts would gate a claim: the accepted label set, a
+    minimum confidence threshold, and which verdict blocks vs warns. Metadata only —
+    no inference is performed here. Stdlib only.
+    """
+    raw = config if isinstance(config, dict) else {}
+    try:
+        threshold = float(raw.get("min_confidence", 0.7))
+    except (TypeError, ValueError):
+        threshold = 0.7
+    if not (0.0 <= threshold <= 1.0):
+        threshold = 0.7
+    block_on = raw.get("block_on") if isinstance(raw.get("block_on"), list) else ["refutes"]
+    block_on = [v for v in (str(x).strip().lower() for x in block_on) if v in NLI_VERDICTS]
+    warn_on = raw.get("warn_on") if isinstance(raw.get("warn_on"), list) else ["not_enough_info"]
+    warn_on = [v for v in (str(x).strip().lower() for x in warn_on) if v in NLI_VERDICTS]
+    return {
+        "method": "semantic_conflict_policy_v1",
+        "boundary": "conflict decision policy metadata only; no NLI inference is performed here",
+        "verdict_labels": list(NLI_VERDICTS),
+        "min_confidence": round(threshold, 4),
+        "block_on": block_on or ["refutes"],
+        "warn_on": warn_on,
+    }
+
+
+def validate_semantic_conflict_policy(policy: Any) -> dict[str, Any]:
+    """Validate a semantic-conflict policy: known verdict labels, sane threshold."""
+    errors: list[str] = []
+    if not isinstance(policy, dict):
+        return {"passed": False, "errors": [f"policy must be a JSON object, got {type(policy).__name__}"],
+                "warnings": []}
+    labels = policy.get("verdict_labels")
+    if not isinstance(labels, list) or not labels:
+        errors.append("'verdict_labels' must be a non-empty list")
+    else:
+        unknown = [v for v in labels if v not in NLI_VERDICTS]
+        if unknown:
+            errors.append(f"unknown verdict label(s) {unknown} (known: {list(NLI_VERDICTS)})")
+    thr = policy.get("min_confidence")
+    if not (isinstance(thr, (int, float)) and not isinstance(thr, bool) and 0.0 <= thr <= 1.0):
+        errors.append("'min_confidence' must be a number in [0, 1]")
+    for key in ("block_on", "warn_on"):
+        vals = policy.get(key, [])
+        if vals and not (isinstance(vals, list) and all(v in NLI_VERDICTS for v in vals)):
+            errors.append(f"'{key}' must be a list of known verdicts {list(NLI_VERDICTS)}")
+    if isinstance(labels, list) and not any(v in (policy.get("block_on") or []) for v in NLI_VERDICTS):
+        # not a hard error, but a policy that blocks on nothing is suspicious
+        pass
+    return {"passed": not errors, "errors": errors, "warnings": []}
+
+
+def build_semantic_conflict_readiness(config: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Aggregate NLI provider + eval labels + policy into a production verdict.
+
+    ``production_ready`` is true ONLY when a real NLI provider is declared, an
+    eval-label set covering the canonical verdicts is declared, and a valid policy
+    is present. The current shipped detector is deterministic LEXICAL and is NEVER
+    semantic-ready. Deterministic, stdlib only; no network, no credential read.
+    """
+    raw = config if isinstance(config, dict) else {}
+    provider = build_nli_provider_readiness(raw.get("provider") if isinstance(raw.get("provider"), dict) else raw)
+    policy = build_semantic_conflict_policy(raw.get("policy") if isinstance(raw.get("policy"), dict) else {})
+    policy_check = validate_semantic_conflict_policy(
+        raw.get("policy") if isinstance(raw.get("policy"), dict) else policy)
+
+    eval_labels = raw.get("eval_labels") if isinstance(raw.get("eval_labels"), list) else []
+    eval_verdicts: set[str] = set()
+    for lbl in eval_labels:
+        try:
+            eval_verdicts.add(map_nli_label_to_verdict(lbl))
+        except ValueError:
+            continue
+    labels_ok = set(NLI_VERDICTS).issubset(eval_verdicts)
+
+    missing: list[str] = []
+    if not provider["is_real_provider_declared"]:
+        missing.append("real NLI/LLM provider")
+        missing.extend(f"provider: {m}" for m in provider["missing"])
+    if not labels_ok:
+        missing.append(f"eval labels covering all verdicts {list(NLI_VERDICTS)}")
+    if not policy_check["passed"]:
+        missing.append("valid semantic-conflict policy")
+        missing.extend(f"policy: {e}" for e in policy_check["errors"])
+
+    production_ready = not missing
+    return {
+        "method": "semantic_conflict_readiness_v1",
+        "boundary": (
+            "production-readiness verdict over DECLARED config only; the shipped code "
+            "still uses the deterministic LEXICAL conflict detector; a ready verdict here "
+            "means the config is complete, not that real NLI inference ran or was evaluated"
+        ),
+        "production_ready": production_ready,
+        "provider": provider,
+        "policy": policy,
+        "eval_labels_cover_verdicts": labels_ok,
+        "missing": missing,
+        "current_shipped_state": {
+            "detector": "deterministic_lexical",
+            "is_real_nli_model": False,
+            "does_semantic_entailment": False,
+            "production_ready": False,
+        },
+    }
+
+
 def add_evidence(item: dict[str, str]) -> dict[str, str]:
     item_id = str(uuid.uuid4())
     title = item.get("title", "").strip()
