@@ -6167,6 +6167,157 @@ def build_rerank_pipeline_readiness(config: dict[str, Any] | None = None) -> dic
     }
 
 
+# --- Stage 2B: reranker provider + RRF rollout protocol v1 -------------------
+
+STAGE2B_RERANK_ROLLOUT_EXAMPLE_FILE = "examples/stage2b_rerank_rollout.example.json"
+RERANK_ROLLOUT_MODES = frozenset({"shadow", "canary", "full"})
+RERANK_REQUIRED_EVAL_METRICS = frozenset({"mrr", "ndcg", "map", "recall@k", "latency_p95"})
+RERANK_ALLOWED_TIE_POLICIES = frozenset({"stable_id", "original_rank", "bm25_then_id"})
+
+
+def validate_stage2b_rerank_rollout_packet(packet: Any) -> dict[str, Any]:
+    """Validate a metadata-only reranker/cross-encoder rollout packet.
+
+    Shape validation only: no provider call, model download, credential read, or
+    eval run. A ready packet does not prove real rollout or real quality.
+    """
+    errors: list[str] = []
+    warnings: list[str] = []
+    if not isinstance(packet, dict):
+        return {"passed": False, "ready": False,
+                "errors": [f"packet must be a JSON object, got {type(packet).__name__}"],
+                "warnings": []}
+    if packet.get("is_template"):
+        errors.append("packet is marked is_template=true")
+
+    if not str(packet.get("rollout_id") or "").strip():
+        errors.append("rollout_id is required")
+    mode = str(packet.get("rollout_mode") or "").strip().lower()
+    if mode not in RERANK_ROLLOUT_MODES:
+        errors.append(f"rollout_mode must be one of {sorted(RERANK_ROLLOUT_MODES)}")
+
+    rerank_config = packet.get("rerank_config")
+    if not isinstance(rerank_config, dict):
+        errors.append("rerank_config must be a JSON object")
+        readiness = build_rerank_pipeline_readiness()
+    else:
+        leaked = [f for f in VECTOR_FORBIDDEN_FIELDS if f in rerank_config]
+        if leaked:
+            errors.append(f"rerank_config must not carry credential/endpoint value field(s) {leaked}")
+        readiness = build_rerank_pipeline_readiness(rerank_config)
+        if not readiness["production_ready"]:
+            errors.append("rerank_config does not pass build_rerank_pipeline_readiness")
+
+    candidate_policy = packet.get("candidate_policy")
+    if not isinstance(candidate_policy, dict):
+        errors.append("candidate_policy must be a JSON object")
+    else:
+        try:
+            top_k = int(candidate_policy.get("top_k"))
+        except (TypeError, ValueError):
+            top_k = 0
+        if top_k < 1:
+            errors.append("candidate_policy.top_k must be an integer >= 1")
+        if top_k > 200:
+            warnings.append("candidate_policy.top_k > 200 may exceed latency budget")
+        if candidate_policy.get("rerank_only_fused_top_k") is not True:
+            errors.append("candidate_policy.rerank_only_fused_top_k must be true")
+        if candidate_policy.get("may_retrieve_new_chunks") is not False:
+            errors.append("candidate_policy.may_retrieve_new_chunks must be false")
+
+    rrf_policy = packet.get("rrf_policy")
+    if not isinstance(rrf_policy, dict):
+        errors.append("rrf_policy must be a JSON object")
+    else:
+        rrf_plan = {
+            "rank_constant": rrf_policy.get("rank_constant"),
+            "rank_window_size": rrf_policy.get("rank_window_size"),
+            "channels": rrf_policy.get("channels"),
+        }
+        rrf_check = validate_rrf_fusion_plan(rrf_plan)
+        if not rrf_check["passed"]:
+            errors.extend(f"rrf_policy.{e}" for e in rrf_check["errors"])
+        tie_policy = str(rrf_policy.get("tie_policy") or "").strip().lower()
+        if tie_policy not in RERANK_ALLOWED_TIE_POLICIES:
+            errors.append(f"rrf_policy.tie_policy must be one of {sorted(RERANK_ALLOWED_TIE_POLICIES)}")
+
+    eval_packet = packet.get("eval_packet")
+    if not isinstance(eval_packet, dict):
+        errors.append("eval_packet must be a JSON object")
+    else:
+        dataset_status = str(eval_packet.get("dataset_readiness_status") or "").strip()
+        if dataset_status != "ready_real":
+            errors.append("eval_packet.dataset_readiness_status must be ready_real")
+        metrics = eval_packet.get("required_metrics")
+        metric_set = {str(m).strip().lower() for m in metrics} if isinstance(metrics, list) else set()
+        missing_metrics = sorted(RERANK_REQUIRED_EVAL_METRICS - metric_set)
+        if missing_metrics:
+            errors.append(f"eval_packet.required_metrics missing {missing_metrics}")
+        if not str(eval_packet.get("run_manifest_ref") or "").strip():
+            errors.append("eval_packet.run_manifest_ref is required")
+
+    observability = packet.get("observability")
+    if not isinstance(observability, dict):
+        errors.append("observability must be a JSON object")
+    else:
+        metrics = observability.get("metrics")
+        metric_set = {str(m).strip().lower() for m in metrics} if isinstance(metrics, list) else set()
+        required_obs = {"latency_p50", "latency_p95", "provider_error_rate", "rerank_invocations"}
+        missing_obs = sorted(required_obs - metric_set)
+        if missing_obs:
+            errors.append(f"observability.metrics missing {missing_obs}")
+
+    rollout = packet.get("rollout")
+    if not isinstance(rollout, dict):
+        errors.append("rollout must be a JSON object")
+    else:
+        for field in ("preflight_checklist", "canary_steps", "rollback_steps"):
+            value = rollout.get(field)
+            if not isinstance(value, list) or not value:
+                errors.append(f"rollout.{field} must be a non-empty list")
+        if not str(rollout.get("rollback_trigger") or "").strip():
+            errors.append("rollout.rollback_trigger is required")
+
+    return {
+        "passed": not errors,
+        "ready": not errors,
+        "errors": errors,
+        "warnings": warnings,
+        "rerank_readiness": readiness,
+        "roadmap_parent_items_checked": False,
+    }
+
+
+def build_stage2b_rerank_rollout_protocol(config: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Build reranker/cross-encoder rollout protocol status."""
+    raw = config if isinstance(config, dict) else {}
+    packet = raw.get("rerank_rollout") if isinstance(raw.get("rerank_rollout"), dict) else raw
+    validation = validate_stage2b_rerank_rollout_packet(packet) if raw else validate_stage2b_rerank_rollout_packet({})
+    return {
+        "method": "stage2b_rerank_rollout_protocol_v1",
+        "boundary": (
+            "metadata-only rollout protocol for a real reranker/cross-encoder and RRF fusion; "
+            "no provider call, no model download, no eval run, no secret read"
+        ),
+        "example_file": STAGE2B_RERANK_ROLLOUT_EXAMPLE_FILE,
+        "example_is_placeholder_only": True,
+        "required_sections": [
+            "rerank_config", "candidate_policy", "rrf_policy", "eval_packet",
+            "observability", "rollout",
+        ],
+        "required_eval_metrics": sorted(RERANK_REQUIRED_EVAL_METRICS),
+        "allowed_tie_policies": sorted(RERANK_ALLOWED_TIE_POLICIES),
+        "ready_for_rerank_rollout": bool(validation["ready"]),
+        "validation": validation,
+        "current_shipped_state": {
+            "reranker": "deterministic_local",
+            "is_real_rerank_model": False,
+            "production_ready": False,
+        },
+        "roadmap_parent_items_checked": False,
+    }
+
+
 # --- Stage 3: real NLI / semantic-conflict production-readiness scaffold v1 ----
 
 # The current shipped conflict detector is deterministic LEXICAL only; these modes

@@ -1,0 +1,78 @@
+{
+  "is_template": true,
+  "rollout_id": "RERANK-ROLLOUT-TEMPLATE",
+  "rollout_mode": "shadow",
+  "rerank_config": {
+    "provider": {
+      "provider": "cohere",
+      "model": "rerank-3.5",
+      "credential_source": "COHERE_API_KEY",
+      "eval_metrics": [
+        "mrr",
+        "ndcg",
+        "map"
+      ]
+    },
+    "rrf": {
+      "rank_constant": 60,
+      "rank_window_size": 100,
+      "channels": [
+        "bm25",
+        "vector",
+        "rerank"
+      ]
+    }
+  },
+  "candidate_policy": {
+    "top_k": 50,
+    "rerank_only_fused_top_k": true,
+    "may_retrieve_new_chunks": false
+  },
+  "rrf_policy": {
+    "rank_constant": 60,
+    "rank_window_size": 100,
+    "channels": [
+      "bm25",
+      "vector",
+      "rerank"
+    ],
+    "tie_policy": "stable_id"
+  },
+  "eval_packet": {
+    "dataset_readiness_status": "ready_real",
+    "run_manifest_ref": "stage2b-eval-run-manifest-placeholder",
+    "required_metrics": [
+      "mrr",
+      "ndcg",
+      "map",
+      "recall@k",
+      "latency_p95"
+    ]
+  },
+  "observability": {
+    "metrics": [
+      "latency_p50",
+      "latency_p95",
+      "provider_error_rate",
+      "rerank_invocations"
+    ]
+  },
+  "rollout": {
+    "preflight_checklist": [
+      "credential env var exists in runtime, value never committed",
+      "reranker only consumes fused Top-K candidates",
+      "offline eval manifest exists outside this template"
+    ],
+    "canary_steps": [
+      "enable shadow scoring",
+      "enable low traffic canary",
+      "compare against lexical/vector baseline"
+    ],
+    "rollback_steps": [
+      "disable rerank flag",
+      "restore previous RRF config",
+      "retain failed packet for audit"
+    ],
+    "rollback_trigger": "latency, error-rate, or quality regression"
+  }
+}

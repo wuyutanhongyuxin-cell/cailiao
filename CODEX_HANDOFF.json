@@ -1,66 +1,71 @@
 {
   "status": "codex_implemented_after_claude_not_consuming_task",
-  "task_id": "cailiao-stage2b-vector-provider-runbook-v1",
-  "phase": "Stage 2B hardening: metadata-only rollout protocol for real embedding provider, persistent vector store, and production vector index. The real embedding/vector parent item remains unchecked.",
-  "baseline": "5938782 Add real query collection protocol",
-  "summary": "Claude task dispatch succeeded at the channel level, but polling showed the report remained on an older task and the WSL repo stayed clean. Codex implemented the small gated slice directly: docs/STAGE2B_VECTOR_ROLLOUT_PROTOCOL.md, examples/stage2b_vector_rollout.example.json, build_stage2b_vector_rollout_protocol(config=None), validate_stage2b_vector_rollout_packet(packet), and tools/check_stage2b_vector_rollout_protocol.py. The protocol checks declared metadata shape only: provider/store/index config, index manifest, migration and rollback steps, observability metrics, acceptance gates, credential-source hygiene, dimension consistency, and metric consistency. It never calls providers, connects a vector DB, reads secrets, builds an index, or marks ROADMAP line 103 complete.",
+  "task_id": "cailiao-stage2b-reranker-rollout-protocol-v1",
+  "phase": "Stage 2B hardening: metadata-only rollout protocol for real reranker/cross-encoder provider and RRF fusion deepening. The real reranker/RRF parent item remains unchecked.",
+  "baseline": "a0442a6 Add Stage 2B vector rollout protocol",
+  "summary": "Claude task dispatch succeeded at the channel level, but polling after UIA and direct TTY trigger showed no matching report and no WSL diff. Codex implemented the small gated slice directly: docs/STAGE2B_RERANK_ROLLOUT_PROTOCOL.md, examples/stage2b_rerank_rollout.example.json, build_stage2b_rerank_rollout_protocol(config=None), validate_stage2b_rerank_rollout_packet(packet), and tools/check_stage2b_rerank_rollout_protocol.py. The protocol validates declared metadata shape only: provider/model config, credential-source hygiene, fused Top-K-only candidate policy, RRF fusion plan, eval packet metrics, observability, canary rollout, and rollback. It never calls providers, downloads models, runs real evals, reads secrets, or marks ROADMAP line 107 complete.",
   "changed_files": [
-    "docs/STAGE2B_VECTOR_ROLLOUT_PROTOCOL.md",
-    "examples/stage2b_vector_rollout.example.json",
+    "docs/STAGE2B_RERANK_ROLLOUT_PROTOCOL.md",
+    "examples/stage2b_rerank_rollout.example.json",
     "backend/server.py",
-    "tools/check_stage2b_vector_rollout_protocol.py",
-    "tests/test_stage2b_vector_rollout_protocol.py",
+    "tools/check_stage2b_rerank_rollout_protocol.py",
+    "tests/test_stage2b_rerank_rollout_protocol.py",
     "tools/run_quality_gates.py",
     "README.md",
     "docs/ROADMAP.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "docs/STAGE2B_VECTOR_ROLLOUT_PROTOCOL.md: provider selection/security, index manifest, migration, rollback, observability, dimension/metric consistency, and rollout sequence.",
-    "examples/stage2b_vector_rollout.example.json: placeholder-only rollout packet with is_template=true and credential_source env var name only.",
-    "backend/server.py: added validate_stage2b_vector_rollout_packet(packet) and build_stage2b_vector_rollout_protocol(config=None).",
-    "tools/check_stage2b_vector_rollout_protocol.py: CLI (--config/--json); default exits 1, valid declared packet exits 0, load error exits 2.",
-    "tests/test_stage2b_vector_rollout_protocol.py: focused tests for default/example not ready, complete packet ready, dim mismatch, metric mismatch, secret-shaped field rejection, CLI behavior, JSON serializability, and doc boundary.",
+    "docs/STAGE2B_RERANK_ROLLOUT_PROTOCOL.md: provider/model selection/security, fused Top-K candidate policy, RRF plan, offline eval packet, observability, canary, and rollback.",
+    "examples/stage2b_rerank_rollout.example.json: placeholder-only rollout packet with is_template=true and credential_source env var name only.",
+    "backend/server.py: added validate_stage2b_rerank_rollout_packet(packet) and build_stage2b_rerank_rollout_protocol(config=None).",
+    "tools/check_stage2b_rerank_rollout_protocol.py: CLI (--config/--json); default exits 1, valid declared packet exits 0, load error exits 2.",
+    "tests/test_stage2b_rerank_rollout_protocol.py: focused tests for default/example not ready, complete packet ready, no-new-chunk guard, required eval metrics, RRF validation, secret-shaped field rejection, CLI behavior, JSON serializability, and doc boundary.",
     "tools/run_quality_gates.py: py-compile gate includes the new CLI and test file.",
-    "README.md and docs/ROADMAP.md document this as a checked sub-note only; the real embedding/vector parent remains unchecked."
+    "README.md and docs/ROADMAP.md document this as a checked sub-note only; the real reranker/RRF parent remains unchecked."
   ],
   "not_implemented": [
-    "No real embedding provider was connected.",
-    "No persistent vector store was installed or contacted.",
-    "No production vector index was built.",
+    "No real reranker/cross-encoder provider was connected.",
+    "No model was downloaded.",
+    "No real RRF deepening eval was run.",
     "No credentials, .env files, endpoint secrets, or provider calls were used.",
-    "ROADMAP line 103 remains unchecked by design."
+    "ROADMAP line 107 remains unchecked by design."
   ],
   "test_files": [
-    "tests/test_stage2b_vector_rollout_protocol.py"
+    "tests/test_stage2b_rerank_rollout_protocol.py"
   ],
   "required_test_commands_for_codex": [
-    "python -m unittest tests.test_stage2b_vector_rollout_protocol -v",
-    "python tools/check_stage2b_vector_rollout_protocol.py --json",
-    "python tools/check_stage2b_vector_rollout_protocol.py --config examples/stage2b_vector_rollout.example.json --json",
+    "python -m unittest tests.test_stage2b_rerank_rollout_protocol -v",
+    "python tools/check_stage2b_rerank_rollout_protocol.py --json",
+    "python tools/check_stage2b_rerank_rollout_protocol.py --config examples/stage2b_rerank_rollout.example.json --json",
     "python tools/run_quality_gates.py --json",
     "python -m json.tool CODEX_HANDOFF.json",
     "git diff --check"
   ],
   "test_status": [
-    "python -m unittest tests.test_stage2b_vector_rollout_protocol -v: 11 tests OK.",
-    "python tools/check_stage2b_vector_rollout_protocol.py --json: ready_for_vector_rollout=false, roadmap_parent_items_checked=false, expected exit 1.",
-    "python tools/check_stage2b_vector_rollout_protocol.py --config examples/stage2b_vector_rollout.example.json --json: template rejected, expected exit 1.",
-    "python tools/run_quality_gates.py --json: passed=true, 5 gates passed, 593 tests OK.",
+    "python -m unittest tests.test_stage2b_rerank_rollout_protocol -v: 12 tests OK.",
+    "python tools/check_stage2b_rerank_rollout_protocol.py --json: ready_for_rerank_rollout=false, roadmap_parent_items_checked=false, expected exit 1.",
+    "python tools/check_stage2b_rerank_rollout_protocol.py --config examples/stage2b_rerank_rollout.example.json --json: template rejected, expected exit 1.",
+    "python tools/run_quality_gates.py --json: passed=true, 5 gates passed, 605 tests OK.",
     "python -m json.tool CODEX_HANDOFF.json: valid JSON.",
     "git diff --check: passed."
   ],
-  "roadmap_item_status": "REAL EMBEDDING PROVIDER / PERSISTENT VECTOR STORE / PRODUCTION INDEX PARENT ITEM UNCHECKED (line 103). Only a checked rollout-protocol sub-note was added.",
+  "roadmap_item_status": "REAL RERANKER / CROSS-ENCODER PROVIDER AND RRF DEEPENING PARENT ITEM UNCHECKED (line 107). Only a checked rollout-protocol sub-note was added.",
   "claude_monitoring": [
     "Task file written to /home/kiro/kiro-work/work/CODEX_TO_CLAUDE_LATEST.md.",
     "send-claude-task.ps1 returned sent=true and used_uia=true.",
-    "check-claude-channel.ps1 reported Claude PID 9, TTY /dev/pts/0 writable, WSL repo clean.",
-    "Two polls after UIA and direct TTY trigger showed no matching report and no WSL diff.",
-    "Codex proceeded to avoid idle looping."
+    "Post-dispatch polls showed no matching report and no WSL diff.",
+    "Direct TTY trigger was sent to /dev/pts/0.",
+    "After continued polling, no matching report or WSL diff appeared; Codex proceeded to avoid idle looping."
+  ],
+  "references_used": [
+    "Sentence-Transformers retrieve-and-rerank guidance for cross-encoder top-candidate reranking.",
+    "Elasticsearch and Qdrant RRF/hybrid search docs for rank_constant/rank_window_size and rank-based fusion.",
+    "BEIR/IR evaluation conventions for mrr, ndcg, map, recall@k metrics."
   ],
   "credentials": [
     "No credentials or .env files were read, created, or modified.",
-    "No external network calls, provider calls, model downloads, vector DB connections, or real index builds were performed.",
+    "No external provider calls, model downloads, or real eval runs were performed.",
     "No push performed yet at handoff update time."
   ]
 }
