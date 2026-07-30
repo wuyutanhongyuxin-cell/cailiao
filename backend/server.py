@@ -6872,6 +6872,162 @@ def build_stub_semantic_eval_report(cases: list[dict[str, Any]]) -> dict[str, An
     }
 
 
+PUBLIC_NLI_DATASET_TYPES = frozenset({"fever", "cfever", "snli", "mnli", "nli_jsonl"})
+PUBLIC_NLI_FORBIDDEN_FIELDS = frozenset(VECTOR_FORBIDDEN_FIELDS) | frozenset({
+    "apiKey", "access_token", "refresh_token", "client_secret",
+})
+
+
+def _has_forbidden_semantic_field(value: Any) -> bool:
+    if isinstance(value, dict):
+        for key, child in value.items():
+            key_norm = str(key or "").strip()
+            if key_norm in PUBLIC_NLI_FORBIDDEN_FIELDS or key_norm.lower() in PUBLIC_NLI_FORBIDDEN_FIELDS:
+                return True
+            if _has_forbidden_semantic_field(child):
+                return True
+    elif isinstance(value, list):
+        return any(_has_forbidden_semantic_field(item) for item in value)
+    return False
+
+
+def load_public_nli_eval_records(path: str | os.PathLike[str]) -> list[dict[str, Any]]:
+    """Load local JSON/JSONL public NLI-style records. Never downloads."""
+    p = Path(path)
+    text = p.read_text(encoding="utf-8")
+    if p.suffix.lower() == ".jsonl":
+        return [json.loads(line) for line in text.splitlines() if line.strip()]
+    data = json.loads(text)
+    if isinstance(data, list):
+        return data
+    if isinstance(data, dict) and isinstance(data.get("records"), list):
+        return data["records"]
+    raise ValueError("public NLI eval input must be a JSON array, JSON object with records, or JSONL")
+
+
+def build_public_nli_semantic_eval_dataset(records: list[dict[str, Any]],
+                                           provenance: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Transform local public FEVER/SNLI/CFEVER-style records into semantic eval cases."""
+    prov = provenance if isinstance(provenance, dict) else {}
+    dataset_type = str(prov.get("dataset_type") or "nli_jsonl").strip().lower()
+    if dataset_type not in PUBLIC_NLI_DATASET_TYPES:
+        dataset_type = "nli_jsonl"
+    source_url = str(prov.get("source_url") or "").strip()
+    license_name = str(prov.get("license") or "").strip()
+    is_template = bool(prov.get("is_template") or prov.get("synthetic") or prov.get("example"))
+    cases = []
+    errors = []
+    for idx, record in enumerate(records if isinstance(records, list) else []):
+        if not isinstance(record, dict):
+            errors.append(f"record {idx + 1} is not an object")
+            continue
+        if _has_forbidden_semantic_field(record):
+            errors.append(f"record {idx + 1} contains forbidden credential-shaped field")
+            continue
+        claim = str(record.get("claim") or record.get("hypothesis") or record.get("statement") or "").strip()
+        evidence = str(record.get("evidence") or record.get("premise") or record.get("context") or "").strip()
+        label = record.get("label", record.get("gold_label", record.get("verdict")))
+        try:
+            verdict = normalize_semantic_eval_verdict(label)
+        except ValueError:
+            errors.append(f"record {idx + 1} has unsupported label")
+            continue
+        if not claim or not evidence:
+            errors.append(f"record {idx + 1} must include non-empty claim/hypothesis and evidence/premise")
+            continue
+        rid = str(record.get("id") or record.get("uid") or f"public-nli-{idx + 1:04d}").strip()
+        cases.append({
+            "id": rid,
+            "claim": claim,
+            "evidence": evidence,
+            "expected_verdict": verdict,
+            "source_record_index": idx,
+        })
+    set_hash = "sha256:" + hashlib.sha256(json.dumps(cases, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
+    return {
+        "method": "public_nli_semantic_eval_dataset_v1",
+        "boundary": "local public NLI dataset intake only; no provider inference or production semantic evidence",
+        "dataset_type": dataset_type,
+        "source_url": source_url,
+        "license": license_name,
+        "is_template": is_template,
+        "record_count": len(cases),
+        "verdict_labels": list(SEMANTIC_EVAL_VERDICTS),
+        "set_hash": set_hash,
+        "cases": cases,
+        "errors": errors,
+        "is_real_nli_provider_evidence": False,
+        "roadmap_parent_items_checked": False,
+    }
+
+
+def validate_public_nli_semantic_eval_dataset(dataset: Any, *, min_cases: int = 3) -> dict[str, Any]:
+    """Validate public NLI eval intake shape and honesty boundaries."""
+    errors = []
+    warnings = []
+    if not isinstance(dataset, dict):
+        return {"passed": False, "errors": ["dataset must be a JSON object"], "warnings": []}
+    cases = dataset.get("cases")
+    if not isinstance(cases, list):
+        errors.append("cases must be a list")
+        cases = []
+    if dataset.get("dataset_type") not in PUBLIC_NLI_DATASET_TYPES:
+        errors.append(f"dataset_type must be one of {sorted(PUBLIC_NLI_DATASET_TYPES)}")
+    if dataset.get("is_template"):
+        errors.append("template/synthetic/example datasets are not accepted as public-real eval intake")
+    if dataset.get("is_real_nli_provider_evidence"):
+        errors.append("public dataset intake must not claim real NLI provider evidence")
+    if dataset.get("roadmap_parent_items_checked"):
+        errors.append("public dataset intake must not mark roadmap parent items checked")
+    if not dataset.get("source_url"):
+        warnings.append("source_url is missing")
+    if not dataset.get("license"):
+        warnings.append("license is missing")
+    if len(cases) < int(min_cases):
+        errors.append(f"dataset must contain at least {int(min_cases)} valid cases")
+    seen = set()
+    covered = set()
+    for idx, case in enumerate(cases):
+        if not isinstance(case, dict):
+            errors.append(f"case {idx + 1} is not an object")
+            continue
+        cid = str(case.get("id") or "")
+        if not cid:
+            errors.append(f"case {idx + 1} missing id")
+        elif cid in seen:
+            errors.append(f"duplicate case id {cid!r}")
+        seen.add(cid)
+        if not str(case.get("claim") or "").strip() or not str(case.get("evidence") or "").strip():
+            errors.append(f"case {idx + 1} must include claim and evidence")
+        try:
+            covered.add(normalize_semantic_eval_verdict(case.get("expected_verdict")))
+        except ValueError:
+            errors.append(f"case {idx + 1} has unknown expected_verdict")
+    if not {"entailment", "contradiction", "neutral"}.issubset(covered):
+        warnings.append("dataset does not cover entailment, contradiction, and neutral labels")
+    expected_hash = "sha256:" + hashlib.sha256(
+        json.dumps(cases, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
+    if dataset.get("set_hash") != expected_hash:
+        errors.append("set_hash does not match cases")
+    return {"passed": not errors, "errors": errors, "warnings": warnings}
+
+
+def summarize_public_nli_semantic_eval_readiness(dataset: Any) -> dict[str, Any]:
+    validation = validate_public_nli_semantic_eval_dataset(dataset, min_cases=3)
+    cases = dataset.get("cases", []) if isinstance(dataset, dict) else []
+    report = build_stub_semantic_eval_report(cases if isinstance(cases, list) else [])
+    return {
+        "method": "public_nli_semantic_eval_readiness_v1",
+        "ready_for_stub_eval": bool(validation["passed"]),
+        "validation": validation,
+        "case_count": len(cases) if isinstance(cases, list) else 0,
+        "stub_eval_report": report,
+        "is_real_nli_provider_evidence": False,
+        "does_semantic_entailment": False,
+        "roadmap_parent_items_checked": False,
+    }
+
+
 def build_nli_provider_readiness(config: dict[str, Any] | None = None) -> dict[str, Any]:
     """Assess whether an NLI/entailment provider config describes a REAL model.
 

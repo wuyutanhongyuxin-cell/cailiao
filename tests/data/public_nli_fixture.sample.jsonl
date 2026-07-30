@@ -1,0 +1,3 @@
+{"id":"snli-1","premise":"A policy document says the archive keeps source URLs.","hypothesis":"The archive records source URLs.","label":"entailment"}
+{"id":"fever-1","evidence":"The notice was repealed in 2021.","claim":"The notice is still valid in 2024.","label":"refutes"}
+{"id":"cfever-1","evidence":"The source does not mention any budget amount.","claim":"The budget was 10 million yuan.","label":"NEI"}

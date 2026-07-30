@@ -1,50 +1,65 @@
 {
-  "status": "implemented_by_codex_after_claude_channel_failed",
-  "task_id": "cailiao-stage2b-nli-llm-provider-semantic-eval-v1",
-  "phase": "Stage 2B line 114 bridge: HTTP NLI/LLM semantic judge adapter plus local-stub semantic eval report path. The real semantic entailment/conflict parent remains unchecked.",
-  "baseline": "ff5c69dc7a2d122a0113d7ba50680df39a3aded8 (Add rerank provider adapter and stub RRF eval)",
-  "summary": "Claude dispatch produced no matching report or WSL diff, so Codex implemented the next aligned step directly. Added HTTPSemanticJudgeProvider, a stdlib generic semantic judge adapter requiring endpoint_url, model, and credential_source env var name. It reads only the named env var at call time, never .env, does not expose key values in metadata/errors, and proves connectivity only after a successful call. Added normalize_semantic_eval_verdict and build_stub_semantic_eval_report(cases), which reports verdict labels entailment/contradiction/neutral/abstain, confusion matrix, per-label precision/recall/F1, accuracy, provider_evidence=local_stub, and is_real_nli_provider_evidence=false.",
+  "status": "implemented_by_codex_after_claude_no_ack_or_diff",
+  "task_id": "cailiao-stage2b-public-nli-eval-intake-v1",
+  "phase": "Stage 2B line 114 bridge: public FEVER/SNLI/CFEVER-style NLI eval data intake for local stub semantic eval. The real semantic entailment/conflict parent remains unchecked.",
+  "baseline": "af1385b88550c712b38b4a8682e599267f239db6 (Add semantic judge adapter and stub eval)",
+  "claude_channel": {
+    "task_written_to_wsl": "/home/kiro/kiro-work/work/CODEX_TO_CLAUDE_LATEST.md",
+    "sent_via_cli_session_to_session": true,
+    "observed_kind": "none",
+    "report_or_ack": "No matching Task ID appeared in CLAUDE_ACK_FROM_CODEX.txt or CLAUDE_TO_CODEX.md, and WSL repo had no diff during polling.",
+    "codex_takeover_reason": "Claude channel produced no verifiable ack/report/diff for this Task ID."
+  },
+  "summary": "Added stdlib-only public NLI semantic eval intake helpers and CLI. The tool reads local JSON/JSONL only, accepts FEVER/CFEVER/SNLI/MNLI-style claim/evidence or hypothesis/premise records, normalizes entailment/contradiction/neutral labels, validates source/license/hash/schema/credential hygiene, and can feed the existing local stub semantic eval report. It explicitly reports is_real_nli_provider_evidence=false and roadmap_parent_items_checked=false.",
   "changed_files": [
     "backend/server.py",
-    "tests/test_semantic_conflict_readiness.py",
+    "tools/prepare_stage2b_public_nli_eval.py",
+    "tests/data/public_nli_fixture.sample.jsonl",
+    "tests/test_public_nli_eval_intake.py",
     "docs/ROADMAP.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "HTTPSemanticJudgeProvider: stdlib HTTP POST to generic semantic judge endpoints with endpoint/model/env-var credential source config.",
-    "build_stub_semantic_eval_report: local-stub semantic evaluation harness with confusion matrix and per-label precision/recall/F1.",
-    "Focused tests verify request path/body/auth header through a local HTTP stub, missing env failure, secret non-leakage, placeholder credential_source rejection, endpoint_url readiness handling, verdict aliases including abstain, and JSON-serializable stub eval report.",
-    "ROADMAP records the bridge while keeping the real NLI/LLM semantic parent unchecked."
+    "load_public_nli_eval_records(path): local JSON/JSONL loader only; no download.",
+    "build_public_nli_semantic_eval_dataset(records, provenance): deterministic transform to semantic eval cases with set_hash.",
+    "validate_public_nli_semantic_eval_dataset(dataset): schema, count, labels, duplicate id, credential-shaped field, template, provider-evidence, and roadmap-parent guard.",
+    "summarize_public_nli_semantic_eval_readiness(dataset): combines validation with build_stub_semantic_eval_report while preserving local-stub boundary.",
+    "tools/prepare_stage2b_public_nli_eval.py build/validate CLI.",
+    "Focused fixture and tests covering build, validation, rejection, summary, and CLI."
   ],
   "not_implemented": [
-    "ROADMAP semantic entailment/conflict parent remains unchecked: no real external NLI/LLM credential, real provider call, production semantic inference, real eval run, telemetry, or acceptance evidence.",
+    "ROADMAP semantic entailment/conflict parent remains unchecked: no real external NLI/LLM credential, provider call, production semantic inference, real model eval run, telemetry, approval, or rollout evidence.",
+    "No dataset was downloaded by this task. The fixture is tiny and test-only.",
     "No .env/secret file was read. No real external network call was made.",
-    "All remaining real parent blockers still need external proof before any parent checkbox can honestly change."
+    "All five Stage 2B real parent blockers remain unchecked until real data/provider/eval evidence exists."
   ],
   "test_files": [
+    "tests/test_public_nli_eval_intake.py",
     "tests/test_semantic_conflict_readiness.py"
   ],
   "required_test_commands_for_codex": [
+    "python -m unittest tests.test_public_nli_eval_intake -v",
     "python -m unittest tests.test_semantic_conflict_readiness -v",
     "python tools/run_quality_gates.py --json",
     "python -m json.tool CODEX_HANDOFF.json",
     "git diff --check"
   ],
   "test_status": [
+    "python -m unittest tests.test_public_nli_eval_intake -v: 5 tests OK.",
     "python -m unittest tests.test_semantic_conflict_readiness -v: 26 tests OK.",
-    "python tools/run_quality_gates.py --json: passed 5 gates; unittest ran 750 tests OK.",
+    "python tools/run_quality_gates.py --json: passed 5 gates; unittest ran 755 tests OK.",
     "python -m json.tool CODEX_HANDOFF.json: valid JSON.",
     "git diff --check: clean."
   ],
-  "roadmap_item_status": "ALL FIVE STAGE 2B REAL PARENT BLOCKERS STILL UNCHECKED. This improves the real NLI/LLM semantic implementation path but does not prove production semantic eval readiness.",
+  "roadmap_item_status": "ALL FIVE STAGE 2B REAL PARENT BLOCKERS STILL UNCHECKED. This adds public NLI eval intake plumbing but does not prove production semantic eval readiness.",
   "risks": [
-    "The adapter shape is real but unproven against an external NLI/LLM provider in this environment.",
-    "The semantic eval report builder currently uses local stub predictions, not real NLI/LLM inference.",
-    "A future real-provider pass needs credentials supplied via env var, provider call evidence, eval run manifest, observability, and rollout/rollback evidence."
+    "The helper validates dataset shape and boundary claims, not the truth or legal sufficiency of a downloaded public dataset.",
+    "The eval summary uses local stub predictions, not real NLI/LLM inference.",
+    "A future real-provider pass still needs credentials supplied via env var, provider call evidence, eval manifest, observability, and rollout/rollback evidence."
   ],
   "credentials": [
     "No credentials or .env files were read, created, or modified.",
-    "Tests used only a local HTTP stub and a test env var value scoped to the test process.",
+    "No real provider or external network call was made.",
     "Codex handles commit/push after independent verification."
   ]
 }
