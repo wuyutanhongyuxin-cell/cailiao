@@ -37,6 +37,6 @@
   "credentials": [
     "No credentials or .env files were read, created, or modified.",
     "No external provider calls, model downloads, DB connections, or real eval runs were performed.",
-    "No push performed yet at handoff update time."
+    "Push/CI/sync status is verified by Codex after committing this handoff update."
   ]
 }
