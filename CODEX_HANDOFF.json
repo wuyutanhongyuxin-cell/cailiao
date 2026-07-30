@@ -1,54 +1,55 @@
 {
   "status": "codex_implemented_after_claude_not_consuming_task",
-  "task_id": "cailiao-stage2b-risk-register-v1",
-  "phase": "Stage 2B risk register / treatment plan hardening.",
-  "baseline": "3e840fa Add Stage 2B reproducibility provenance",
-  "summary": "Claude task dispatch returned sent=true, but polling showed no matching report and no WSL diff. Codex added a Stage 2B risk register mapping the five unresolved external blockers to risk statements, impacts, default likelihood/severity, treatment plans, owner roles, and closure evidence. No real parent item was checked.",
+  "task_id": "cailiao-final-blocker-audit-v1",
+  "phase": "Final completion blocker audit.",
+  "baseline": "26e1493 Add Stage 2B risk register",
+  "summary": "Claude task dispatch and resend both returned sent=true, but repeated polls showed no matching report and no WSL diff. Codex added a deterministic final completion blocker audit that states project_complete=false, repo_only_work_remaining=false, and blocked_by_external_input=true until the five real external blockers have evidence. No real parent item was checked.",
   "changed_files": [
     "backend/server.py",
-    "tools/check_stage2b_risk_register.py",
-    "docs/STAGE2B_RISK_REGISTER.md",
-    "examples/stage2b_risk_register.example.json",
-    "tests/test_stage2b_risk_register.py",
+    "tools/check_final_completion_blocker_audit.py",
+    "docs/FINAL_COMPLETION_BLOCKER_AUDIT.md",
+    "tests/test_final_completion_blocker_audit.py",
     "tools/run_quality_gates.py",
     "README.md",
     "docs/ROADMAP.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "backend/server.py: added build_stage2b_risk_register(config=None).",
-    "tools/check_stage2b_risk_register.py: added CLI; default exits 1 while external risks remain open.",
-    "docs/STAGE2B_RISK_REGISTER.md and examples/stage2b_risk_register.example.json: documented/template-only risk treatment evidence.",
-    "tests/test_stage2b_risk_register.py: added helper, file, and CLI honesty tests.",
-    "tools/run_quality_gates.py, README.md, docs/ROADMAP.md: wired and documented the risk register."
+    "backend/server.py: added build_final_completion_blocker_audit(config=None).",
+    "tools/check_final_completion_blocker_audit.py: added CLI; default exits 1 while project completion is externally blocked.",
+    "docs/FINAL_COMPLETION_BLOCKER_AUDIT.md: documented final completion boundary.",
+    "tests/test_final_completion_blocker_audit.py: added helper, doc, and CLI honesty tests.",
+    "tools/run_quality_gates.py, README.md, docs/ROADMAP.md: wired and documented final blocker audit."
   ],
   "not_implemented": [
-    "No real query set, provider connection, vector DB connection, model download, risk acceptance, or eval run was performed.",
+    "No real query set, provider connection, vector DB connection, model download, risk acceptance, approval, or eval run was performed.",
     "ROADMAP parent lines 97, 100, 103, 107, and 114 remain unchecked by design."
   ],
   "required_test_commands_for_codex": [
-    "python -m unittest tests.test_stage2b_risk_register -v",
-    "python tools/check_stage2b_risk_register.py --json",
+    "python -m unittest tests.test_final_completion_blocker_audit -v",
+    "python tools/check_final_completion_blocker_audit.py --json",
     "python tools/run_quality_gates.py --json",
     "python -m json.tool CODEX_HANDOFF.json",
     "git diff --check"
   ],
   "test_status": [
-    "python -m unittest tests.test_stage2b_risk_register -v: 6 tests OK.",
-    "python tools/check_stage2b_risk_register.py --json: expected exit 1; reported 5 open_external_risk entries.",
-    "python tools/run_quality_gates.py --json: passed=true, 5 gates passed, 669 tests OK.",
+    "python -m unittest tests.test_final_completion_blocker_audit -v: 6 tests OK.",
+    "python tools/check_final_completion_blocker_audit.py --json: expected exit 1; reported project_complete=false and 5 external blockers.",
+    "python tools/run_quality_gates.py --json: passed=true, 5 gates passed, 675 tests OK.",
     "python -m json.tool CODEX_HANDOFF.json: valid JSON.",
     "git diff --check: passed."
   ],
   "claude_monitoring": [
-    "Task file written to E:/tmp/without_human/tmp/cailiao-stage2b-risk-register-v1.md.",
+    "Task file written to E:/tmp/without_human/tmp/cailiao-final-blocker-audit-v1.md.",
     "send-claude-task.ps1 returned sent=true and used_uia=true.",
-    "Post-dispatch polling showed no matching report and no WSL diff.",
+    "Three post-dispatch polls showed no matching report and no WSL diff.",
+    "Task was resent; resend returned sent=true and used_uia=true.",
+    "Post-resend poll still showed no matching report and no WSL diff.",
     "Codex proceeded to avoid idle looping."
   ],
   "credentials": [
     "No credentials or .env files were read, created, or modified.",
-    "No external provider calls, model downloads, DB connections, risk acceptance, or real eval runs were performed.",
+    "No external provider calls, model downloads, DB connections, risk acceptance, approval, or real eval runs were performed.",
     "Push/CI/sync status is verified by Codex after committing this handoff update."
   ]
 }

@@ -7699,6 +7699,52 @@ def build_stage2b_risk_register(config: dict[str, Any] | None = None) -> dict[st
     }
 
 
+# --- Final completion blocker audit v1 ----------------------------------------
+
+FINAL_COMPLETION_BLOCKER_AUDIT_DOC = "docs/FINAL_COMPLETION_BLOCKER_AUDIT.md"
+
+
+def build_final_completion_blocker_audit(config: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Return final project-completion blocker audit.
+
+    This is a completion boundary report, not a release approval. It never turns
+    declared metadata into real evidence and never checks ROADMAP parent items.
+    """
+    external = build_external_dependency_audit(config)
+    risk = build_stage2b_risk_register(config)
+    blockers = [{
+        "id": b["id"],
+        "roadmap_line": b["roadmap_line"],
+        "topic": b["topic"],
+        "required_external_input": b["required_external_input"],
+        "current_repo_state": b["current_repo_state"],
+        "satisfied": b["satisfied"],
+        "status": "closed_declared_metadata_only" if b["satisfied"] else "blocked_by_external_input",
+    } for b in external["blockers"]]
+    open_ids = [b["id"] for b in blockers if not b["satisfied"]]
+    repo_only_work_remaining = False
+    return {
+        "method": "final_completion_blocker_audit_v1",
+        "boundary": (
+            "deterministic final completion boundary only; no external evidence is created, "
+            "no provider/model/vector DB is contacted, no eval is run, no risk acceptance is "
+            "fabricated, no credential/.env is read, and no ROADMAP parent item is checked"
+        ),
+        "completion_blocker_audit_doc": FINAL_COMPLETION_BLOCKER_AUDIT_DOC,
+        "project_complete": not open_ids and not repo_only_work_remaining,
+        "repo_only_work_remaining": repo_only_work_remaining,
+        "blocked_by_external_input": bool(open_ids),
+        "external_blocker_count": len(blockers),
+        "open_external_blocker_ids": open_ids,
+        "blockers": blockers,
+        "risk_register_method": risk["method"],
+        "all_risks_closed": risk["all_risks_closed"],
+        "external_dependency_audit_method": external["method"],
+        "all_external_dependencies_satisfied": external["all_external_dependencies_satisfied"],
+        "roadmap_parent_items_checked": False,
+    }
+
+
 # --- Stage 2B evaluation-run contract / manifest (declared-shape) v1 ----------
 
 STAGE2B_EVAL_RUN_CONTRACT_DOC = "docs/STAGE2B_EVAL_RUN_CONTRACT.md"
