@@ -1,46 +1,46 @@
 {
   "status": "codex_implemented_after_claude_not_consuming_task",
-  "task_id": "cailiao-stage2b-release-dossier-v1",
-  "phase": "Stage 2B release dossier hardening.",
-  "baseline": "f2dbe6b Add Stage 2B observability contract",
-  "summary": "Claude task dispatch returned sent=true, but two polls showed no matching report and no WSL diff. Codex added a Stage 2B release dossier/model-data card contract mapping the five unresolved external blockers to required cards/records, accountable owners, reviewers, approval-record shapes, required links, and missing_release_evidence status. No real parent item was checked.",
+  "task_id": "cailiao-stage2b-reproducibility-provenance-v1",
+  "phase": "Stage 2B reproducibility/provenance hardening.",
+  "baseline": "04d27dc Add Stage 2B release dossier",
+  "summary": "Claude task dispatch returned sent=true, but two polls showed no matching report and no WSL diff. Codex added a Stage 2B reproducibility/provenance checklist mapping the five unresolved external blockers to W3C-PROV-style entities/activities/agents, reproducibility artifacts, immutability requirements, and missing_reproducibility_proof status. No real parent item was checked.",
   "changed_files": [
     "backend/server.py",
-    "tools/check_stage2b_release_dossier.py",
-    "docs/STAGE2B_RELEASE_DOSSIER.md",
-    "examples/stage2b_release_dossier.example.json",
-    "tests/test_stage2b_release_dossier.py",
+    "tools/check_stage2b_reproducibility_provenance.py",
+    "docs/STAGE2B_REPRODUCIBILITY_PROVENANCE.md",
+    "examples/stage2b_reproducibility_provenance.example.json",
+    "tests/test_stage2b_reproducibility_provenance.py",
     "tools/run_quality_gates.py",
     "README.md",
     "docs/ROADMAP.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "backend/server.py: added build_stage2b_release_dossier(config=None).",
-    "tools/check_stage2b_release_dossier.py: added CLI; default exits 1 while release evidence is missing.",
-    "docs/STAGE2B_RELEASE_DOSSIER.md and examples/stage2b_release_dossier.example.json: documented/template-only release dossier.",
-    "tests/test_stage2b_release_dossier.py: added helper, file, and CLI honesty tests.",
-    "tools/run_quality_gates.py, README.md, docs/ROADMAP.md: wired and documented the dossier."
+    "backend/server.py: added build_stage2b_reproducibility_provenance(config=None).",
+    "tools/check_stage2b_reproducibility_provenance.py: added CLI; default exits 1 while reproducibility proof is missing.",
+    "docs/STAGE2B_REPRODUCIBILITY_PROVENANCE.md and examples/stage2b_reproducibility_provenance.example.json: documented/template-only checklist.",
+    "tests/test_stage2b_reproducibility_provenance.py: added helper, file, and CLI honesty tests.",
+    "tools/run_quality_gates.py, README.md, docs/ROADMAP.md: wired and documented the checklist."
   ],
   "not_implemented": [
     "No real query set, provider connection, vector DB connection, model download, or eval run was performed.",
     "ROADMAP parent lines 97, 100, 103, 107, and 114 remain unchecked by design."
   ],
   "required_test_commands_for_codex": [
-    "python -m unittest tests.test_stage2b_release_dossier -v",
+    "python -m unittest tests.test_stage2b_reproducibility_provenance -v",
     "python tools/run_quality_gates.py --json",
     "python -m json.tool CODEX_HANDOFF.json",
     "git diff --check"
   ],
   "test_status": [
-    "python -m unittest tests.test_stage2b_release_dossier -v: 6 tests OK.",
-    "python tools/check_stage2b_release_dossier.py --json: expected exit 1; reported 5 missing release evidence entries.",
-    "python tools/run_quality_gates.py --json: passed=true, 5 gates passed, 657 tests OK.",
+    "python -m unittest tests.test_stage2b_reproducibility_provenance -v: 6 tests OK.",
+    "python tools/check_stage2b_reproducibility_provenance.py --json: expected exit 1; reported 5 missing reproducibility proof entries.",
+    "python tools/run_quality_gates.py --json: passed=true, 5 gates passed, 663 tests OK.",
     "python -m json.tool CODEX_HANDOFF.json: valid JSON.",
     "git diff --check: passed."
   ],
   "claude_monitoring": [
-    "Task file written to E:/tmp/without_human/tmp/cailiao-stage2b-release-dossier-v1.md.",
+    "Task file written to E:/tmp/without_human/tmp/cailiao-stage2b-reproducibility-provenance-v1.md.",
     "send-claude-task.ps1 returned sent=true and used_uia=true.",
     "Two post-dispatch polls showed no matching report and no WSL diff.",
     "Codex proceeded to avoid idle looping."

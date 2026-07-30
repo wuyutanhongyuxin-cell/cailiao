@@ -7501,6 +7501,100 @@ def build_stage2b_release_dossier(config: dict[str, Any] | None = None) -> dict[
     }
 
 
+# --- Stage 2B reproducibility / provenance checklist v1 ----------------------
+
+STAGE2B_REPRO_PROVENANCE_DOC = "docs/STAGE2B_REPRODUCIBILITY_PROVENANCE.md"
+STAGE2B_REPRO_PROVENANCE_EXAMPLE_FILE = "examples/stage2b_reproducibility_provenance.example.json"
+
+_STAGE2B_REPRO_PROVENANCE_SPECS = {
+    "real_query_set": {
+        "provenance_entities": ["query_set", "qrels", "anonymization_policy", "source_corpus_snapshot"],
+        "provenance_activities": ["collection", "de_identification", "qrels_labeling", "review"],
+        "provenance_agents": ["dataset_owner", "privacy_reviewer", "label_reviewer"],
+        "reproducibility_artifacts": ["dataset manifest", "qrels file", "schema validation report"],
+        "immutability_requirements": ["dataset_id", "case ids", "qrels hash", "source snapshot id"],
+    },
+    "real_query_bm25_calibration": {
+        "provenance_entities": ["ready_real_query_set", "corpus_snapshot", "sweep_grid", "sweep_results"],
+        "provenance_activities": ["bm25_grid_sweep", "metric_computation", "parameter_selection"],
+        "provenance_agents": ["retrieval_quality_owner", "evaluation_runner"],
+        "reproducibility_artifacts": ["sweep manifest", "runfile", "qrels", "selected parameter record"],
+        "immutability_requirements": ["run_id", "dataset_id", "corpus_id", "grid values", "metric output hash"],
+    },
+    "real_embedding_provider_vector_store": {
+        "provenance_entities": ["embedding_provider_card", "vector_store_config", "index_manifest", "eval_run"],
+        "provenance_activities": ["embedding_generation", "index_build", "hybrid_eval", "canary_rollout"],
+        "provenance_agents": ["retrieval_platform_owner", "provider_operator", "evaluation_runner"],
+        "reproducibility_artifacts": ["index manifest", "provider metadata", "eval manifest", "rollback plan"],
+        "immutability_requirements": ["provider model id", "embedding_dim", "index_id", "distance_metric", "dataset_id"],
+    },
+    "real_reranker_rrf": {
+        "provenance_entities": ["reranker_provider_card", "rrf_config", "candidate_runfile", "rerank_eval"],
+        "provenance_activities": ["candidate_generation", "top_k_rerank", "rrf_fusion", "quality_latency_eval"],
+        "provenance_agents": ["ranking_quality_owner", "provider_operator", "evaluation_runner"],
+        "reproducibility_artifacts": ["rerank manifest", "RRF decision record", "eval metrics", "canary snapshot"],
+        "immutability_requirements": ["model_id", "rank_constant", "rank_window_size", "candidate_top_k", "run_id"],
+    },
+    "real_nli_semantic_conflict": {
+        "provenance_entities": ["nli_provider_card", "label_set", "semantic_policy", "human_review_log"],
+        "provenance_activities": ["claim_evidence_pairing", "nli_inference", "verdict_mapping", "human_escalation"],
+        "provenance_agents": ["semantic_safety_owner", "policy_reviewer", "human_reviewer"],
+        "reproducibility_artifacts": ["semantic eval manifest", "label mapping record", "policy record", "audit log"],
+        "immutability_requirements": ["policy_id", "model_id", "label_set_id", "evidence_snapshot_id", "run_id"],
+    },
+}
+
+
+def build_stage2b_reproducibility_provenance(config: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Return reproducibility/provenance checklist for Stage 2B blockers.
+
+    Checklist metadata only. It names W3C-PROV-style entities/activities/agents,
+    reproducibility artifacts, and immutable identifiers expected for real evidence
+    packages. It never verifies hashes against contents, runs evals, calls providers,
+    reads credentials, or checks ROADMAP parent items.
+    """
+    audit = build_external_dependency_audit(config)
+    entries = []
+    for blocker in audit["blockers"]:
+        bid = blocker["id"]
+        spec = _STAGE2B_REPRO_PROVENANCE_SPECS[bid]
+        entries.append({
+            "id": bid,
+            "roadmap_line": blocker["roadmap_line"],
+            "topic": blocker["topic"],
+            "provenance_entities": list(spec["provenance_entities"]),
+            "provenance_activities": list(spec["provenance_activities"]),
+            "provenance_agents": list(spec["provenance_agents"]),
+            "reproducibility_artifacts": list(spec["reproducibility_artifacts"]),
+            "immutability_requirements": list(spec["immutability_requirements"]),
+            "repo_guardrails": blocker["protected_by"],
+            "status": "provenance_declared" if blocker["satisfied"] else "missing_reproducibility_proof",
+            "satisfied": blocker["satisfied"],
+        })
+    missing_ids = [e["id"] for e in entries if not e["satisfied"]]
+    return {
+        "method": "stage2b_reproducibility_provenance_v1",
+        "boundary": (
+            "deterministic provenance/reproducibility checklist only; no runtime network, "
+            "no provider call, no model download, no eval execution, no hash verification "
+            "against contents, no credential/.env read, and no ROADMAP parent auto-check"
+        ),
+        "checklist_doc": STAGE2B_REPRO_PROVENANCE_DOC,
+        "example_file": STAGE2B_REPRO_PROVENANCE_EXAMPLE_FILE,
+        "reference_alignment": [
+            "W3C PROV entity/activity/agent provenance model",
+            "TREC qrels/run/eval reproducibility conventions",
+            "ML reproducibility checklist concepts",
+            "NIST measurement provenance and trustworthiness concepts",
+        ],
+        "entry_count": len(entries),
+        "entries": entries,
+        "missing_reproducibility_ids": missing_ids,
+        "reproducibility_ready": not missing_ids,
+        "roadmap_parent_items_checked": False,
+    }
+
+
 # --- Stage 2B evaluation-run contract / manifest (declared-shape) v1 ----------
 
 STAGE2B_EVAL_RUN_CONTRACT_DOC = "docs/STAGE2B_EVAL_RUN_CONTRACT.md"

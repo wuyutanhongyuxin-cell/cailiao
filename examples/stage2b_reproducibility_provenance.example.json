@@ -1,0 +1,10 @@
+{
+  "is_template": true,
+  "purpose": "Example wrapper for Stage 2B reproducibility/provenance evidence. Not real proof.",
+  "artifacts": {},
+  "notes": [
+    "Checklist names provenance entities, activities, agents, artifacts, and immutable ids only.",
+    "Populate artifacts only after real reproducibility evidence exists.",
+    "Never include credential values."
+  ]
+}
