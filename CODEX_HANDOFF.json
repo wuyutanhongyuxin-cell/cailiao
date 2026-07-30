@@ -1,46 +1,46 @@
 {
   "status": "implemented_by_codex_after_claude_channel_failed",
-  "task_id": "cailiao-stage2b-openai-compatible-embedding-sqlite-index-v1",
-  "phase": "Stage 2B line 103 bridge: OpenAI-compatible embedding adapter plus local persistent SQLite vector index path. The real embedding/vector production parent remains unchecked.",
-  "baseline": "6593bba90c07738bfa552bf8bb51bea0264d30b8 (Add DoIT BM25 sweep evidence)",
-  "summary": "Claude dispatch via CLI and UIA produced no matching report or WSL diff, so Codex implemented the next minimal aligned step directly. Added a stdlib OpenAI-compatible embedding provider adapter requiring explicit endpoint_url, model, and credential_source env var name. It reads only the named env var at call time, never .env, does not expose key values in metadata/errors, and proves provider connectivity only after a successful call. Added SQLiteVectorIndex for persistent local vector storage with documents, vectors, dimensions, provider metadata, manifest, reopen support, and deterministic cosine scan. Tests use a local stdlib HTTP server stub; no external network/provider was contacted.",
+  "task_id": "cailiao-stage2b-cross-encoder-rerank-provider-rrf-eval-v1",
+  "phase": "Stage 2B line 107 bridge: HTTP rerank provider adapter plus local-stub RRF rerank eval report path. The real cross-encoder/reranker parent remains unchecked.",
+  "baseline": "6d336c630b3f2c1faf4d5ff0dc525ba2da1ddf13 (Add embedding provider adapter and sqlite vector index)",
+  "summary": "Claude dispatch produced no matching report or WSL diff, so Codex implemented the next aligned step directly. Added HTTPRerankProvider, a stdlib generic rerank API adapter requiring endpoint_url, model, and credential_source env var name. It reads only the named env var at call time, never .env, does not expose key values in metadata/errors, and proves connectivity only after a successful call. Added build_stub_rrf_rerank_eval_report(dataset), which runs a JSON-serializable BM25-like vs BM25+local-stub-rerank RRF report over a ready_real dataset with corpus and explicitly marks provider_evidence=local_stub and is_real_rerank_provider_evidence=false.",
   "changed_files": [
     "backend/server.py",
-    "tests/test_vector_production_readiness.py",
+    "tests/test_rerank_production_readiness.py",
     "docs/ROADMAP.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "OpenAICompatibleEmbeddingProvider: stdlib HTTP POST to OpenAI-compatible embeddings endpoints with endpoint/model/env-var credential source config.",
-    "SQLiteVectorIndex: stdlib sqlite3 persistent local vector document/index manifest storage and cosine-scan search.",
-    "Focused tests verify request path/body/auth header shape through a local HTTP stub, missing env var failure, secret non-leakage, placeholder credential_source rejection, provider readiness endpoint_url handling, and SQLite persist/reopen/query behavior.",
-    "ROADMAP records the bridge while keeping the real provider/vector parent unchecked."
+    "HTTPRerankProvider: stdlib HTTP POST to generic rerank endpoints with endpoint/model/env-var credential source config.",
+    "build_stub_rrf_rerank_eval_report: local deterministic RRF rerank eval harness over ready_real+corpus datasets.",
+    "Focused tests verify request path/body/auth header through a local HTTP stub, missing env failure, secret non-leakage, placeholder credential_source rejection, only-input-candidate reordering, endpoint_url readiness handling, and JSON-serializable stub eval report.",
+    "ROADMAP records the bridge while keeping the real reranker/RRF parent unchecked."
   ],
   "not_implemented": [
-    "ROADMAP embedding/vector parent remains unchecked: no real external provider credential, real provider call, production vector DB, ANN index, migration, telemetry, or acceptance evidence.",
+    "ROADMAP reranker/cross-encoder parent remains unchecked: no real external provider credential, real provider call, production cross-encoder inference, real RRF eval, telemetry, or acceptance evidence.",
     "No .env/secret file was read. No real external network call was made.",
-    "Reranker/cross-encoder/RRF and NLI/LLM semantic evidence remain unchecked."
+    "NLI/LLM semantic entailment/conflict evidence remains unchecked."
   ],
   "test_files": [
-    "tests/test_vector_production_readiness.py"
+    "tests/test_rerank_production_readiness.py"
   ],
   "required_test_commands_for_codex": [
-    "python -m unittest tests.test_vector_production_readiness -v",
+    "python -m unittest tests.test_rerank_production_readiness -v",
     "python tools/run_quality_gates.py --json",
     "python -m json.tool CODEX_HANDOFF.json",
     "git diff --check"
   ],
   "test_status": [
-    "python -m unittest tests.test_vector_production_readiness -v: 24 tests OK.",
-    "python tools/run_quality_gates.py --json: passed=true, all 5 gates passed; unittest gate ran 737 tests OK.",
+    "python -m unittest tests.test_rerank_production_readiness -v: 23 tests OK.",
+    "python tools/run_quality_gates.py --json: passed=true, all 5 gates passed; unittest gate ran 743 tests OK.",
     "python -m json.tool CODEX_HANDOFF.json: valid JSON.",
     "git diff --check: no whitespace/conflict issues."
   ],
-  "roadmap_item_status": "ALL FIVE STAGE 2B REAL PARENT BLOCKERS STILL UNCHECKED. This improves the real embedding/vector implementation path but does not prove production provider/store/index readiness.",
+  "roadmap_item_status": "ALL FIVE STAGE 2B REAL PARENT BLOCKERS STILL UNCHECKED. This improves the real reranker/RRF implementation path but does not prove production provider/RRF eval readiness.",
   "risks": [
     "The adapter shape is real but unproven against an external provider in this environment.",
-    "SQLiteVectorIndex is persistent local storage, not a production ANN vector DB.",
-    "A future real-provider pass needs credentials supplied via env var, provider call evidence, vector DB/index manifest, eval run, observability, and rollout/rollback evidence."
+    "The RRF eval report builder currently uses local deterministic rerank scores, not a real cross-encoder.",
+    "A future real-provider pass needs credentials supplied via env var, provider call evidence, eval run manifest, observability, and rollout/rollback evidence."
   ],
   "credentials": [
     "No credentials or .env files were read, created, or modified.",

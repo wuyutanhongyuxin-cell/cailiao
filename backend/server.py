@@ -1547,6 +1547,7 @@ def _vector_config_from_param(raw: str) -> Any:
 # handling, network access, a persistent index, or semantic/NLI reasoning.
 
 RERANK_TEST_MODE = "deterministic_local_test"
+RERANK_HTTP_COMPATIBLE_MODE = "http_rerank_compatible"
 RERANK_TOP_K_DEFAULT = 10
 
 
@@ -1591,6 +1592,108 @@ class DeterministicLocalReranker(Reranker):
         if isinstance(channels, dict) and isinstance(channels.get("bm25_like"), dict):
             bm25_score = float(channels["bm25_like"].get("score") or 0.0)
         return coverage + min(bm25_score, 10.0) * 1e-4
+
+
+class HTTPRerankProvider(Reranker):
+    """Credential-safe generic HTTP rerank adapter.
+
+    This adapter is compatible with simple rerank APIs that accept
+    ``{"model", "query", "documents"}`` and return either ``results`` entries
+    with ``index``/``relevance_score`` or ``scores``. It is never enabled by
+    default. It reads only the configured env var at call time and redacts key
+    values from metadata/errors.
+    """
+
+    mode = RERANK_HTTP_COMPATIBLE_MODE
+
+    def __init__(self, endpoint_url: str, model: str, credential_source: str,
+                 timeout_sec: float = 30.0) -> None:
+        self.endpoint_url = str(endpoint_url or "").strip()
+        self.model = str(model or "").strip()
+        self.credential_source = str(credential_source or "").strip()
+        self.timeout_sec = float(timeout_sec or 30.0)
+        self.connectivity_proven = False
+        self._validate_static_config()
+
+    def _validate_static_config(self) -> None:
+        parsed = urllib.parse.urlparse(self.endpoint_url)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            raise ValueError("rerank endpoint_url must be an absolute http(s) URL")
+        if not self.model:
+            raise ValueError("rerank model is required")
+        if _is_placeholder_credential_source(self.credential_source) or not _is_env_var_name(self.credential_source):
+            raise ValueError("credential_source must be a non-placeholder environment variable name")
+
+    def metadata(self) -> dict[str, Any]:
+        return {
+            "mode": self.mode,
+            "endpoint_host": urllib.parse.urlparse(self.endpoint_url).netloc,
+            "model": self.model,
+            "credential_source": self.credential_source,
+            "is_real_rerank_model": True,
+            "connectivity_proven": self.connectivity_proven,
+            "secret_value_exposed": False,
+        }
+
+    def _credential(self) -> str:
+        value = os.environ.get(self.credential_source)
+        if not value:
+            raise RuntimeError(f"rerank credential env var {self.credential_source!r} is not set")
+        return value
+
+    def rerank_items(self, query: str, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        docs = [_searchable_text(item) for item in items]
+        payload = json.dumps({"model": self.model, "query": str(query or ""), "documents": docs}).encode("utf-8")
+        req = urllib.request.Request(
+            self.endpoint_url,
+            data=payload,
+            method="POST",
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self._credential()}",
+            },
+        )
+        try:
+            opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+            with opener.open(req, timeout=self.timeout_sec) as resp:
+                body = resp.read().decode("utf-8")
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+            raise RuntimeError(f"rerank provider request failed for {self.metadata()['endpoint_host']}") from exc
+        try:
+            data = json.loads(body)
+            scores = self._scores_from_response(data, len(items))
+        except (TypeError, ValueError, json.JSONDecodeError) as exc:
+            raise RuntimeError("rerank provider returned an invalid rerank response") from exc
+        self.connectivity_proven = True
+        scored = []
+        for idx, item in enumerate(items):
+            clone = dict(item)
+            clone["rerank"] = {"score": float(scores[idx]), "original_rank": idx + 1, "mode": self.mode}
+            clone["hit_reasons"] = sorted(set(clone.get("hit_reasons", []) +
+                                             [f"rerank_score:{scores[idx]:.4f}", f"rerank_mode:{self.mode}"]))
+            scored.append(clone)
+        scored.sort(key=lambda it: (-it["rerank"]["score"], it["rerank"]["original_rank"],
+                                    str(it.get("chunk_id", it.get("id", "")))))
+        return scored
+
+    @staticmethod
+    def _scores_from_response(data: dict[str, Any], expected: int) -> list[float]:
+        if isinstance(data.get("scores"), list):
+            scores = [float(v) for v in data["scores"]]
+        else:
+            scores = [0.0] * expected
+            results = data.get("results")
+            if not isinstance(results, list):
+                raise ValueError("missing results/scores")
+            for row in results:
+                idx = int(row["index"])
+                scores[idx] = float(row.get("relevance_score", row.get("score")))
+        if len(scores) != expected:
+            raise ValueError("mismatched score count")
+        return scores
+
+    def score(self, query: str, item: dict[str, Any]) -> float:
+        return self.rerank_items(query, [item])[0]["rerank"]["score"]
 
 
 class RerankPipeline:
@@ -6165,6 +6268,7 @@ def build_reranker_provider_readiness(config: dict[str, Any] | None = None) -> d
     provider = str(raw.get("provider") or "").strip()
     mode = str(raw.get("mode") or "").strip()
     model = str(raw.get("model") or "").strip()
+    endpoint_url = str(raw.get("endpoint_url") or "").strip()
     credential_source = str(raw.get("credential_source") or "").strip()
     metrics = raw.get("eval_metrics") if isinstance(raw.get("eval_metrics"), list) else []
     metrics = [str(m).strip().lower() for m in metrics if str(m).strip()]
@@ -6177,8 +6281,12 @@ def build_reranker_provider_readiness(config: dict[str, Any] | None = None) -> d
     else:
         if not model:
             missing.append("model")
+        if provider in {"http_rerank_compatible", "openai_compatible", "cohere_compatible"} and not endpoint_url:
+            missing.append("endpoint_url")
         if not credential_source:
             missing.append("credential_source (env var NAME, never a secret value)")
+        elif _is_placeholder_credential_source(credential_source) or not _is_env_var_name(credential_source):
+            missing.append("credential_source env var NAME must be non-placeholder")
         if not known_metrics:
             missing.append(f"at least one eval metric {sorted(RERANKER_EVAL_METRICS)}")
 
@@ -6192,6 +6300,7 @@ def build_reranker_provider_readiness(config: dict[str, Any] | None = None) -> d
         "is_local_test_reranker": is_local_test,
         "is_real_provider_declared": (not is_local_test) and not missing,
         "model": model,
+        "endpoint_host": urllib.parse.urlparse(endpoint_url).netloc if endpoint_url else "",
         "credential_source": credential_source,
         "eval_metrics": known_metrics,
         "missing": missing,
@@ -6207,7 +6316,7 @@ def validate_reranker_provider_config(config: Any) -> dict[str, Any]:
                 "warnings": [], "is_real_provider_declared": False}
     leaked = [f for f in VECTOR_FORBIDDEN_FIELDS if f in config]
     if leaked:
-        errors.append(f"reranker config must not carry credential/endpoint value field(s) {leaked}; "
+        errors.append(f"reranker config must not carry credential value field(s) {leaked}; "
                       "use 'credential_source' (an env var name) instead")
     readiness = build_reranker_provider_readiness(config)
     if readiness["is_local_test_reranker"]:
@@ -6310,6 +6419,80 @@ def fuse_ranked_results_rrf(result_sets: Any, rank_constant: int = RRF_K,
     for rank, entry in enumerate(fused, start=1):
         entry["rank"] = rank
     return fused
+
+
+def build_stub_rrf_rerank_eval_report(dataset: dict[str, Any], rank_constant: int = RRF_K) -> dict[str, Any]:
+    """Evaluate BM25-like ranking vs BM25+local-stub rerank over a ready set.
+
+    This is evidence that the RRF/rerank evaluation harness runs. It is NOT real
+    cross-encoder evidence: scores come from DeterministicLocalReranker.
+    """
+    readiness = summarize_real_query_readiness(dataset)
+    if readiness.get("status") != "ready_real" or not dataset.get("corpus"):
+        return {
+            "method": "stub_rrf_rerank_eval_v1",
+            "ran": False,
+            "refused": True,
+            "reason": "dataset must be ready_real and include corpus",
+            "readiness": readiness,
+        }
+    corpus = dataset.get("corpus") if isinstance(dataset.get("corpus"), list) else []
+    cases = dataset.get("cases") if isinstance(dataset.get("cases"), list) else []
+    reranker = DeterministicLocalReranker()
+    per_case = []
+    base_hits = rerank_hits = 0
+    for case in cases:
+        query = str(case.get("query") or "")
+        relevant = set(case.get("relevant_titles") or [])
+        candidates = []
+        for doc in corpus:
+            title = str(doc.get("title") or doc.get("id") or "")
+            text = str(doc.get("text") or "")
+            q_terms = set(_bm25_terms(query))
+            d_terms = Counter(_bm25_terms(text))
+            bm25 = sum(d_terms.get(t, 0) for t in q_terms)
+            candidates.append({
+                "id": title,
+                "chunk_id": title,
+                "document_title": title,
+                "title": title,
+                "content": text,
+                "channels": {"bm25_like": {"score": bm25}},
+                "hit_reasons": [],
+            })
+        candidates.sort(key=lambda it: (-it["channels"]["bm25_like"]["score"], it["id"]))
+        bm25_ranked = [it["id"] for it in candidates]
+        reranked_items = RerankPipeline(True, RERANK_TEST_MODE, reranker, top_k=len(candidates)).apply(query, candidates)
+        reranked = [it["id"] for it in reranked_items]
+        fused = fuse_ranked_results_rrf([bm25_ranked, reranked], rank_constant=rank_constant)
+        bm25_top = bm25_ranked[0] if bm25_ranked else ""
+        rerank_top = fused[0]["id"] if fused else ""
+        base_ok = bm25_top in relevant
+        rerank_ok = rerank_top in relevant
+        base_hits += int(base_ok)
+        rerank_hits += int(rerank_ok)
+        per_case.append({
+            "id": case.get("id"),
+            "bm25_top": bm25_top,
+            "rrf_rerank_top": rerank_top,
+            "bm25_hit": base_ok,
+            "rrf_rerank_hit": rerank_ok,
+        })
+    total = len(cases) or 1
+    return {
+        "method": "stub_rrf_rerank_eval_v1",
+        "boundary": "local deterministic reranker/RRF eval harness only; not real cross-encoder/provider evidence",
+        "ran": True,
+        "refused": False,
+        "provider_evidence": "local_stub",
+        "is_real_rerank_provider_evidence": False,
+        "case_count": len(cases),
+        "bm25_top1_recall": round(base_hits / total, 6),
+        "rrf_rerank_top1_recall": round(rerank_hits / total, 6),
+        "rank_constant": rank_constant,
+        "per_case": per_case,
+        "readiness": readiness,
+    }
 
 
 def build_rerank_pipeline_readiness(config: dict[str, Any] | None = None) -> dict[str, Any]:
