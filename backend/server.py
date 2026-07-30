@@ -5933,7 +5933,7 @@ def build_vector_index_readiness(config: dict[str, Any] | None = None) -> dict[s
         "method": "vector_index_readiness_v1",
         "boundary": (
             "production-readiness verdict over DECLARED config only; the shipped code "
-            "still uses the deterministic local skeleton — a ready verdict here means the "
+            "still uses the deterministic local skeleton; a ready verdict here means the "
             "config is complete, not that a real provider/store was contacted or installed"
         ),
         "production_ready": production_ready,
@@ -5945,6 +5945,223 @@ def build_vector_index_readiness(config: dict[str, Any] | None = None) -> dict[s
             "embedder": "deterministic_local_test",
             "store": "in_process",
             "is_real_embedding_model": False,
+            "production_ready": False,
+        },
+    }
+
+
+# --- Stage 2: real reranker / cross-encoder + RRF production-readiness v1 ------
+
+# The only reranker actually implemented is the deterministic local one; it is
+# explicitly NOT a production/real cross-encoder.
+RERANKER_LOCAL_TEST_MODES = frozenset({"deterministic_local", "deterministic_local_test", "local", "test"})
+
+# Reranker eval metrics recognized for a readiness declaration (per SBERT refs).
+RERANKER_EVAL_METRICS = frozenset({"mrr", "mrr@k", "ndcg", "ndcg@k", "map"})
+
+
+def build_reranker_provider_readiness(config: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Assess whether a reranker/cross-encoder config describes a REAL provider.
+
+    Distinguishes the existing deterministic local reranker (never production) from
+    a declared real cross-encoder provider. A real provider must name a non-test
+    provider, a model, and a credential SOURCE (env var NAME) — never a secret. It
+    also declares at least one eval metric (mrr/ndcg/map) so re-ranking quality can
+    be measured. Declared metadata only; no model call, no credential read.
+    """
+    raw = config if isinstance(config, dict) else {}
+    provider = str(raw.get("provider") or "").strip()
+    mode = str(raw.get("mode") or "").strip()
+    model = str(raw.get("model") or "").strip()
+    credential_source = str(raw.get("credential_source") or "").strip()
+    metrics = raw.get("eval_metrics") if isinstance(raw.get("eval_metrics"), list) else []
+    metrics = [str(m).strip().lower() for m in metrics if str(m).strip()]
+    known_metrics = [m for m in metrics if m in RERANKER_EVAL_METRICS]
+
+    is_local_test = (mode in RERANKER_LOCAL_TEST_MODES) or (provider in RERANKER_LOCAL_TEST_MODES) or not provider
+    missing: list[str] = []
+    if is_local_test:
+        missing.append("real reranker provider (current config is the deterministic local reranker)")
+    else:
+        if not model:
+            missing.append("model")
+        if not credential_source:
+            missing.append("credential_source (env var NAME, never a secret value)")
+        if not known_metrics:
+            missing.append(f"at least one eval metric {sorted(RERANKER_EVAL_METRICS)}")
+
+    return {
+        "method": "reranker_provider_readiness_v1",
+        "boundary": (
+            "declared reranker-readiness metadata only; distinguishes the deterministic "
+            "local reranker from a real cross-encoder; no model call, no credential read"
+        ),
+        "provider": provider or "(none)",
+        "is_local_test_reranker": is_local_test,
+        "is_real_provider_declared": (not is_local_test) and not missing,
+        "model": model,
+        "credential_source": credential_source,
+        "eval_metrics": known_metrics,
+        "missing": missing,
+    }
+
+
+def validate_reranker_provider_config(config: Any) -> dict[str, Any]:
+    """Validate a reranker-provider config's shape and credential hygiene."""
+    errors: list[str] = []
+    warnings: list[str] = []
+    if not isinstance(config, dict):
+        return {"passed": False, "errors": [f"config must be a JSON object, got {type(config).__name__}"],
+                "warnings": [], "is_real_provider_declared": False}
+    leaked = [f for f in VECTOR_FORBIDDEN_FIELDS if f in config]
+    if leaked:
+        errors.append(f"reranker config must not carry credential/endpoint value field(s) {leaked}; "
+                      "use 'credential_source' (an env var name) instead")
+    readiness = build_reranker_provider_readiness(config)
+    if readiness["is_local_test_reranker"]:
+        warnings.append("config resolves to the deterministic local reranker (not a real cross-encoder)")
+    return {"passed": not errors, "errors": errors, "warnings": warnings,
+            "is_real_provider_declared": readiness["is_real_provider_declared"]}
+
+
+def build_rrf_fusion_plan(config: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Build a Reciprocal Rank Fusion plan (rank-based, no score-scale dependence).
+
+    RRF sums ``1 / (rank_constant + rank)`` across result sets (Elasticsearch/Qdrant
+    hybrid-search convention). ``rank_constant`` defaults to the module RRF_K (60);
+    ``rank_window_size`` bounds how deep each set contributes. Metadata only — this
+    describes the fusion, the actual fusion is done by fuse_ranked_results_rrf.
+    """
+    raw = config if isinstance(config, dict) else {}
+    rank_constant = raw.get("rank_constant", RRF_K)
+    try:
+        rank_constant = int(rank_constant)
+    except (TypeError, ValueError):
+        rank_constant = RRF_K
+    if rank_constant < 1:
+        rank_constant = RRF_K
+    window = raw.get("rank_window_size", 100)
+    try:
+        window = int(window)
+    except (TypeError, ValueError):
+        window = 100
+    if window < 1:
+        window = 100
+    channels = raw.get("channels") if isinstance(raw.get("channels"), list) else ["bm25", "vector", "rerank"]
+    channels = [str(c).strip() for c in channels if str(c).strip()]
+    return {
+        "method": "rrf_fusion_plan_v1",
+        "boundary": "rank-based RRF plan metadata; no score-scale normalization, no model call",
+        "rank_constant": rank_constant,
+        "rank_window_size": window,
+        "channels": channels,
+        "formula": "score = sum over sets of 1 / (rank_constant + rank)",
+    }
+
+
+def validate_rrf_fusion_plan(plan: Any) -> dict[str, Any]:
+    """Validate an RRF fusion plan: positive rank_constant/window, >=1 channel."""
+    errors: list[str] = []
+    if not isinstance(plan, dict):
+        return {"passed": False, "errors": [f"plan must be a JSON object, got {type(plan).__name__}"],
+                "warnings": []}
+    rc = plan.get("rank_constant")
+    if not (isinstance(rc, int) and not isinstance(rc, bool) and rc >= 1):
+        errors.append("'rank_constant' must be an integer >= 1")
+    win = plan.get("rank_window_size")
+    if not (isinstance(win, int) and not isinstance(win, bool) and win >= 1):
+        errors.append("'rank_window_size' must be an integer >= 1")
+    channels = plan.get("channels")
+    if not (isinstance(channels, list) and channels):
+        errors.append("'channels' must be a non-empty list")
+    return {"passed": not errors, "errors": errors, "warnings": []}
+
+
+def fuse_ranked_results_rrf(result_sets: Any, rank_constant: int = RRF_K,
+                            rank_window_size: int | None = None) -> list[dict[str, Any]]:
+    """Deterministically fuse ranked id lists via Reciprocal Rank Fusion.
+
+    ``result_sets`` is a list of ranked lists, each a list of ids (best first) or of
+    ``{"id": ..., "rank": int}`` entries. Each contributes ``1 / (rank_constant + rank)``
+    (1-based rank), optionally truncated to ``rank_window_size``. Purely rank-based —
+    no score scale is used — with stable tie-breaking (fused score desc, then id asc).
+    Stdlib only; deterministic.
+    """
+    try:
+        rc = int(rank_constant)
+    except (TypeError, ValueError):
+        rc = RRF_K
+    if rc < 1:
+        rc = RRF_K
+    scores: dict[str, float] = {}
+    for rset in result_sets if isinstance(result_sets, list) else []:
+        if not isinstance(rset, list):
+            continue
+        for pos, item in enumerate(rset, start=1):
+            if isinstance(item, dict):
+                cid = str(item.get("id", "")).strip()
+                rank = item.get("rank", pos)
+                try:
+                    rank = int(rank)
+                except (TypeError, ValueError):
+                    rank = pos
+            else:
+                cid = str(item).strip()
+                rank = pos
+            if not cid:
+                continue
+            if rank_window_size is not None and rank > rank_window_size:
+                continue
+            scores[cid] = scores.get(cid, 0.0) + 1.0 / (rc + rank)
+    fused = [{"id": cid, "fused_score": round(score, 8)} for cid, score in scores.items()]
+    fused.sort(key=lambda e: (-e["fused_score"], e["id"]))
+    for rank, entry in enumerate(fused, start=1):
+        entry["rank"] = rank
+    return fused
+
+
+def build_rerank_pipeline_readiness(config: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Aggregate reranker provider + RRF plan + eval metrics into a production verdict.
+
+    ``production_ready`` is true ONLY when a real reranker provider is declared (with
+    eval metrics), a valid RRF fusion plan is present, and eval metrics are declared.
+    The current shipped reranker is the deterministic local one and is NEVER
+    production-ready. Deterministic, stdlib only; no network, no credential read.
+    """
+    raw = config if isinstance(config, dict) else {}
+    provider = build_reranker_provider_readiness(raw.get("provider") if isinstance(raw.get("provider"), dict) else raw)
+    rrf_raw = raw.get("rrf")
+    rrf_plan = build_rrf_fusion_plan(rrf_raw if isinstance(rrf_raw, dict) else {})
+    # Gate on the USER-SUPPLIED rrf config when present (build_rrf_fusion_plan
+    # sanitizes bad values to defaults, so validate the raw input to catch errors);
+    # with no rrf supplied, the built default plan is valid.
+    rrf_check = validate_rrf_fusion_plan(rrf_raw) if isinstance(rrf_raw, dict) else validate_rrf_fusion_plan(rrf_plan)
+
+    missing: list[str] = []
+    if not provider["is_real_provider_declared"]:
+        missing.append("real reranker/cross-encoder provider")
+        missing.extend(f"provider: {m}" for m in provider["missing"])
+    if not rrf_check["passed"]:
+        missing.append("valid RRF fusion plan")
+        missing.extend(f"rrf: {e}" for e in rrf_check["errors"])
+    if not provider["eval_metrics"]:
+        missing.append("declared eval metrics (mrr/ndcg/map)")
+
+    production_ready = not missing
+    return {
+        "method": "rerank_pipeline_readiness_v1",
+        "boundary": (
+            "production-readiness verdict over DECLARED config only; the shipped code "
+            "still uses the deterministic local reranker; a ready verdict here means the "
+            "config is complete, not that a real cross-encoder was contacted or evaluated"
+        ),
+        "production_ready": production_ready,
+        "provider": provider,
+        "rrf_plan": rrf_plan,
+        "missing": missing,
+        "current_shipped_state": {
+            "reranker": "deterministic_local",
+            "is_real_rerank_model": False,
             "production_ready": False,
         },
     }
