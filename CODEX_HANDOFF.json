@@ -1,45 +1,45 @@
 {
   "status": "implemented_by_codex_after_claude_channel_failed",
-  "task_id": "cailiao-stage2b-cross-encoder-rerank-provider-rrf-eval-v1",
-  "phase": "Stage 2B line 107 bridge: HTTP rerank provider adapter plus local-stub RRF rerank eval report path. The real cross-encoder/reranker parent remains unchecked.",
-  "baseline": "6d336c630b3f2c1faf4d5ff0dc525ba2da1ddf13 (Add embedding provider adapter and sqlite vector index)",
-  "summary": "Claude dispatch produced no matching report or WSL diff, so Codex implemented the next aligned step directly. Added HTTPRerankProvider, a stdlib generic rerank API adapter requiring endpoint_url, model, and credential_source env var name. It reads only the named env var at call time, never .env, does not expose key values in metadata/errors, and proves connectivity only after a successful call. Added build_stub_rrf_rerank_eval_report(dataset), which runs a JSON-serializable BM25-like vs BM25+local-stub-rerank RRF report over a ready_real dataset with corpus and explicitly marks provider_evidence=local_stub and is_real_rerank_provider_evidence=false.",
+  "task_id": "cailiao-stage2b-nli-llm-provider-semantic-eval-v1",
+  "phase": "Stage 2B line 114 bridge: HTTP NLI/LLM semantic judge adapter plus local-stub semantic eval report path. The real semantic entailment/conflict parent remains unchecked.",
+  "baseline": "ff5c69dc7a2d122a0113d7ba50680df39a3aded8 (Add rerank provider adapter and stub RRF eval)",
+  "summary": "Claude dispatch produced no matching report or WSL diff, so Codex implemented the next aligned step directly. Added HTTPSemanticJudgeProvider, a stdlib generic semantic judge adapter requiring endpoint_url, model, and credential_source env var name. It reads only the named env var at call time, never .env, does not expose key values in metadata/errors, and proves connectivity only after a successful call. Added normalize_semantic_eval_verdict and build_stub_semantic_eval_report(cases), which reports verdict labels entailment/contradiction/neutral/abstain, confusion matrix, per-label precision/recall/F1, accuracy, provider_evidence=local_stub, and is_real_nli_provider_evidence=false.",
   "changed_files": [
     "backend/server.py",
-    "tests/test_rerank_production_readiness.py",
+    "tests/test_semantic_conflict_readiness.py",
     "docs/ROADMAP.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "HTTPRerankProvider: stdlib HTTP POST to generic rerank endpoints with endpoint/model/env-var credential source config.",
-    "build_stub_rrf_rerank_eval_report: local deterministic RRF rerank eval harness over ready_real+corpus datasets.",
-    "Focused tests verify request path/body/auth header through a local HTTP stub, missing env failure, secret non-leakage, placeholder credential_source rejection, only-input-candidate reordering, endpoint_url readiness handling, and JSON-serializable stub eval report.",
-    "ROADMAP records the bridge while keeping the real reranker/RRF parent unchecked."
+    "HTTPSemanticJudgeProvider: stdlib HTTP POST to generic semantic judge endpoints with endpoint/model/env-var credential source config.",
+    "build_stub_semantic_eval_report: local-stub semantic evaluation harness with confusion matrix and per-label precision/recall/F1.",
+    "Focused tests verify request path/body/auth header through a local HTTP stub, missing env failure, secret non-leakage, placeholder credential_source rejection, endpoint_url readiness handling, verdict aliases including abstain, and JSON-serializable stub eval report.",
+    "ROADMAP records the bridge while keeping the real NLI/LLM semantic parent unchecked."
   ],
   "not_implemented": [
-    "ROADMAP reranker/cross-encoder parent remains unchecked: no real external provider credential, real provider call, production cross-encoder inference, real RRF eval, telemetry, or acceptance evidence.",
+    "ROADMAP semantic entailment/conflict parent remains unchecked: no real external NLI/LLM credential, real provider call, production semantic inference, real eval run, telemetry, or acceptance evidence.",
     "No .env/secret file was read. No real external network call was made.",
-    "NLI/LLM semantic entailment/conflict evidence remains unchecked."
+    "All remaining real parent blockers still need external proof before any parent checkbox can honestly change."
   ],
   "test_files": [
-    "tests/test_rerank_production_readiness.py"
+    "tests/test_semantic_conflict_readiness.py"
   ],
   "required_test_commands_for_codex": [
-    "python -m unittest tests.test_rerank_production_readiness -v",
+    "python -m unittest tests.test_semantic_conflict_readiness -v",
     "python tools/run_quality_gates.py --json",
     "python -m json.tool CODEX_HANDOFF.json",
     "git diff --check"
   ],
   "test_status": [
-    "python -m unittest tests.test_rerank_production_readiness -v: 23 tests OK.",
-    "python tools/run_quality_gates.py --json: passed=true, all 5 gates passed; unittest gate ran 743 tests OK.",
+    "python -m unittest tests.test_semantic_conflict_readiness -v: 26 tests OK.",
+    "python tools/run_quality_gates.py --json: passed 5 gates; unittest ran 750 tests OK.",
     "python -m json.tool CODEX_HANDOFF.json: valid JSON.",
-    "git diff --check: no whitespace/conflict issues."
+    "git diff --check: clean."
   ],
-  "roadmap_item_status": "ALL FIVE STAGE 2B REAL PARENT BLOCKERS STILL UNCHECKED. This improves the real reranker/RRF implementation path but does not prove production provider/RRF eval readiness.",
+  "roadmap_item_status": "ALL FIVE STAGE 2B REAL PARENT BLOCKERS STILL UNCHECKED. This improves the real NLI/LLM semantic implementation path but does not prove production semantic eval readiness.",
   "risks": [
-    "The adapter shape is real but unproven against an external provider in this environment.",
-    "The RRF eval report builder currently uses local deterministic rerank scores, not a real cross-encoder.",
+    "The adapter shape is real but unproven against an external NLI/LLM provider in this environment.",
+    "The semantic eval report builder currently uses local stub predictions, not real NLI/LLM inference.",
     "A future real-provider pass needs credentials supplied via env var, provider call evidence, eval run manifest, observability, and rollout/rollback evidence."
   ],
   "credentials": [

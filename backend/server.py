@@ -6701,6 +6701,7 @@ NLI_LEXICAL_MODES = frozenset({"lexical", "deterministic_lexical", "none", "test
 
 # The three canonical verdicts (FEVER/CFEVER-style) the pipeline reasons in.
 NLI_VERDICTS = ("supports", "refutes", "not_enough_info")
+SEMANTIC_EVAL_VERDICTS = ("entailment", "contradiction", "neutral", "abstain")
 
 # Accepted input label vocab -> canonical verdict. Covers SNLI/MNLI (entailment/
 # contradiction/neutral) and FEVER/CFEVER (supports/refutes/NEI) label spellings.
@@ -6726,6 +6727,151 @@ def map_nli_label_to_verdict(label: Any) -> str:
     return NLI_LABEL_MAP[key]
 
 
+def normalize_semantic_eval_verdict(label: Any) -> str:
+    key = str(label or "").strip().lower()
+    aliases = {
+        "entailment": "entailment", "entail": "entailment", "supports": "entailment",
+        "support": "entailment",
+        "contradiction": "contradiction", "contradict": "contradiction", "refutes": "contradiction",
+        "refute": "contradiction",
+        "neutral": "neutral", "not_enough_info": "neutral", "nei": "neutral",
+        "not enough info": "neutral",
+        "abstain": "abstain", "abstention": "abstain", "refusal": "abstain", "refuse": "abstain",
+    }
+    if key not in aliases:
+        raise ValueError(f"unknown semantic eval verdict {label!r} (known: {sorted(aliases)})")
+    return aliases[key]
+
+
+class HTTPSemanticJudgeProvider:
+    """Credential-safe generic HTTP NLI/LLM semantic judge adapter."""
+
+    mode = "http_semantic_judge_compatible"
+
+    def __init__(self, endpoint_url: str, model: str, credential_source: str,
+                 timeout_sec: float = 30.0) -> None:
+        self.endpoint_url = str(endpoint_url or "").strip()
+        self.model = str(model or "").strip()
+        self.credential_source = str(credential_source or "").strip()
+        self.timeout_sec = float(timeout_sec or 30.0)
+        self.connectivity_proven = False
+        self._validate_static_config()
+
+    def _validate_static_config(self) -> None:
+        parsed = urllib.parse.urlparse(self.endpoint_url)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            raise ValueError("semantic judge endpoint_url must be an absolute http(s) URL")
+        if not self.model:
+            raise ValueError("semantic judge model is required")
+        if _is_placeholder_credential_source(self.credential_source) or not _is_env_var_name(self.credential_source):
+            raise ValueError("credential_source must be a non-placeholder environment variable name")
+
+    def metadata(self) -> dict[str, Any]:
+        return {
+            "mode": self.mode,
+            "endpoint_host": urllib.parse.urlparse(self.endpoint_url).netloc,
+            "model": self.model,
+            "credential_source": self.credential_source,
+            "is_real_nli_model": True,
+            "does_semantic_entailment": True,
+            "connectivity_proven": self.connectivity_proven,
+            "secret_value_exposed": False,
+        }
+
+    def _credential(self) -> str:
+        value = os.environ.get(self.credential_source)
+        if not value:
+            raise RuntimeError(f"semantic judge credential env var {self.credential_source!r} is not set")
+        return value
+
+    def judge(self, claim: str, evidence: str) -> dict[str, Any]:
+        payload = json.dumps({
+            "model": self.model,
+            "claim": str(claim or ""),
+            "evidence": str(evidence or ""),
+            "labels": list(SEMANTIC_EVAL_VERDICTS),
+        }).encode("utf-8")
+        req = urllib.request.Request(
+            self.endpoint_url,
+            data=payload,
+            method="POST",
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self._credential()}",
+            },
+        )
+        try:
+            opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+            with opener.open(req, timeout=self.timeout_sec) as resp:
+                body = resp.read().decode("utf-8")
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+            raise RuntimeError(f"semantic judge request failed for {self.metadata()['endpoint_host']}") from exc
+        try:
+            data = json.loads(body)
+            verdict = normalize_semantic_eval_verdict(data.get("verdict") or data.get("label"))
+            confidence = float(data.get("confidence", 0.0))
+        except (TypeError, ValueError, json.JSONDecodeError) as exc:
+            raise RuntimeError("semantic judge returned an invalid response") from exc
+        self.connectivity_proven = True
+        return {"verdict": verdict, "confidence": max(0.0, min(1.0, confidence))}
+
+
+def build_stub_semantic_eval_report(cases: list[dict[str, Any]]) -> dict[str, Any]:
+    """Build a local-stub semantic entailment/conflict eval report.
+
+    Cases need claim/evidence/expected_verdict and may include predicted_verdict.
+    This proves eval math/shape only; it is not real NLI/LLM provider evidence.
+    """
+    labels = list(SEMANTIC_EVAL_VERDICTS)
+    matrix = {gold: {pred: 0 for pred in labels} for gold in labels}
+    per_case = []
+    for idx, case in enumerate(cases if isinstance(cases, list) else []):
+        try:
+            gold = normalize_semantic_eval_verdict(case.get("expected_verdict"))
+        except ValueError:
+            gold = "abstain"
+        try:
+            pred = normalize_semantic_eval_verdict(case.get("predicted_verdict", gold))
+        except ValueError:
+            pred = "abstain"
+        matrix[gold][pred] += 1
+        per_case.append({
+            "id": case.get("id", f"case-{idx + 1:03d}"),
+            "expected_verdict": gold,
+            "predicted_verdict": pred,
+            "correct": gold == pred,
+        })
+    metrics: dict[str, dict[str, float]] = {}
+    for label in labels:
+        tp = matrix[label][label]
+        fp = sum(matrix[gold][label] for gold in labels if gold != label)
+        fn = sum(matrix[label][pred] for pred in labels if pred != label)
+        precision = tp / (tp + fp) if (tp + fp) else 0.0
+        recall = tp / (tp + fn) if (tp + fn) else 0.0
+        f1 = 2 * precision * recall / (precision + recall) if (precision + recall) else 0.0
+        metrics[label] = {
+            "precision": round(precision, 6),
+            "recall": round(recall, 6),
+            "f1": round(f1, 6),
+        }
+    total = len(per_case)
+    correct = sum(1 for c in per_case if c["correct"])
+    return {
+        "method": "stub_semantic_eval_v1",
+        "boundary": "local-stub semantic eval harness only; not real NLI/LLM provider evidence",
+        "ran": bool(total),
+        "refused": not bool(total),
+        "provider_evidence": "local_stub",
+        "is_real_nli_provider_evidence": False,
+        "verdict_labels": labels,
+        "case_count": total,
+        "accuracy": round(correct / total, 6) if total else 0.0,
+        "confusion_matrix": matrix,
+        "metrics_by_label": metrics,
+        "per_case": per_case,
+    }
+
+
 def build_nli_provider_readiness(config: dict[str, Any] | None = None) -> dict[str, Any]:
     """Assess whether an NLI/entailment provider config describes a REAL model.
 
@@ -6738,6 +6884,7 @@ def build_nli_provider_readiness(config: dict[str, Any] | None = None) -> dict[s
     provider = str(raw.get("provider") or "").strip()
     mode = str(raw.get("mode") or "").strip().lower()
     model = str(raw.get("model") or "").strip()
+    endpoint_url = str(raw.get("endpoint_url") or "").strip()
     credential_source = str(raw.get("credential_source") or "").strip()
 
     is_lexical = (mode in NLI_LEXICAL_MODES) or (provider.lower() in NLI_LEXICAL_MODES) or not provider
@@ -6747,8 +6894,12 @@ def build_nli_provider_readiness(config: dict[str, Any] | None = None) -> dict[s
     else:
         if not model:
             missing.append("model")
+        if provider.lower() in {"http_semantic_judge_compatible", "openai_compatible", "llm_compatible"} and not endpoint_url:
+            missing.append("endpoint_url")
         if not credential_source:
             missing.append("credential_source (env var NAME, never a secret value)")
+        elif _is_placeholder_credential_source(credential_source) or not _is_env_var_name(credential_source):
+            missing.append("credential_source env var NAME must be non-placeholder")
 
     return {
         "method": "nli_provider_readiness_v1",
@@ -6760,6 +6911,7 @@ def build_nli_provider_readiness(config: dict[str, Any] | None = None) -> dict[s
         "is_lexical_only": is_lexical,
         "is_real_provider_declared": (not is_lexical) and not missing,
         "model": model,
+        "endpoint_host": urllib.parse.urlparse(endpoint_url).netloc if endpoint_url else "",
         "credential_source": credential_source,
         "missing": missing,
     }
@@ -6774,7 +6926,7 @@ def validate_nli_provider_config(config: Any) -> dict[str, Any]:
                 "warnings": [], "is_real_provider_declared": False}
     leaked = [f for f in VECTOR_FORBIDDEN_FIELDS if f in config]
     if leaked:
-        errors.append(f"NLI config must not carry credential/endpoint value field(s) {leaked}; "
+        errors.append(f"NLI config must not carry credential value field(s) {leaked}; "
                       "use 'credential_source' (an env var name) instead")
     readiness = build_nli_provider_readiness(config)
     if readiness["is_lexical_only"]:
