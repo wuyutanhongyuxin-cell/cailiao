@@ -1,65 +1,57 @@
 {
   "status": "implemented_by_claude",
-  "task_id": "cailiao-stage2b-evidence-package-validator-v1",
-  "phase": "Stage 2B: deterministic evidence package validator aggregating all external-blocker evidence into one readiness report, reusing the audit + seven Stage 2B contract/status helpers. All five parent items REMAIN UNCHECKED; only the aggregate validator/CLI/doc/example/tests were added.",
-  "baseline": "8eafe392b44b8465185b3712463f25fa85e2c938 (Add Stage 2B industry implementation checklist)",
-  "summary": "Added build_stage2b_evidence_package_validator(config=None): a deterministic, stdlib-only aggregate that reuses build_external_dependency_audit and the seven Stage 2B helpers (artifact contracts, eval-run contract, observability, release dossier, reproducibility/provenance, risk register, industry checklist) as the single source of truth for each evidence group's readiness. Output has method=stage2b_evidence_package_validator_v1, evidence_package_doc, required_evidence_groups (exactly declared_artifacts/eval_run_manifest/observability_snapshot/release_dossier/reproducibility_provenance/risk_treatment/industry_checklist), blocker_ids (5 ids in existing order), per-blocker evidence_requirements mapping each group to its required item summary, evidence_group_ready flags, ready_for_stage2b_completion=false by default, and roadmap_parent_items_checked=false. Metadata/package validator only: no network, no provider call, no model download, no eval, no artifact file/hash read, no credential/.env read, no approval/risk-acceptance fabrication, no ROADMAP parent auto-check.",
+  "task_id": "cailiao-stage2b-real-query-public-doit-intake-review-fix-v1",
+  "phase": "Stage 2B line 97 review fix: tighten validate_artifact() in the public DoIT intake tool to verify set_hash against the ordered per-case query_sha256 values (tamper detection). Continuation of the uncommitted intake task; NO real DoIT artifact produced (no network); all five Stage 2B parent blockers REMAIN UNCHECKED.",
+  "baseline": "5fb296b91838d31a4d1e80bc76f6955e23acb706 (Add Stage 2B evidence package validator); intake tooling + this fix are uncommitted in the working tree",
+  "summary": "Addressed the Codex review finding on tools/prepare_stage2b_real_query_set.py: validate_artifact() now (1) requires set_hash to exist and be a 'sha256:' string, and (2) when all per-case query_sha256 values are present, requires set_hash == _sha256('|'.join(case['query_sha256'] for case in cases)) — the same computation build_artifact uses — failing validation on mismatch. This closes a tamper gap where cases could be reordered/edited without set_hash detecting it (verified: reordering cases now fails validation). Two focused tests were added (tamper-only-set_hash fails; missing set_hash fails). Deterministic and stdlib-only. No real DoIT artifact was produced (WSL has no network); all five Stage 2B parent blockers remain unchecked.",
   "changed_files": [
-    "backend/server.py",
-    "docs/STAGE2B_EVIDENCE_PACKAGE_VALIDATOR.md",
-    "examples/stage2b_evidence_package.example.json",
-    "tools/check_stage2b_evidence_package_validator.py",
-    "tests/test_stage2b_evidence_package_validator.py",
+    "tools/prepare_stage2b_real_query_set.py",
+    "tests/test_stage2b_real_query_public_doit_intake.py",
+    "tests/data/doit_fixture.sample.jsonl",
+    "docs/STAGE2B_REAL_QUERY_PUBLIC_DOIT_INTAKE.md",
     "tools/run_quality_gates.py",
     "README.md",
     "docs/ROADMAP.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "backend/server.py: added STAGE2B_EVIDENCE_PACKAGE_DOC, STAGE2B_EVIDENCE_PACKAGE_EXAMPLE_FILE, STAGE2B_EVIDENCE_GROUPS (7, fixed order), _STAGE2B_EVIDENCE_REQUIREMENTS (5 blockers x 7 groups), and build_stage2b_evidence_package_validator(config=None) reusing the audit + seven helpers; ready_for_stage2b_completion true only when all groups ready AND all blockers satisfied; false by default; roadmap_parent_items_checked=false.",
-    "docs/STAGE2B_EVIDENCE_PACKAGE_VALIDATOR.md: evidence groups, blockers, readiness logic, and boundary.",
-    "examples/stage2b_evidence_package.example.json: template-only default-not-ready snapshot (is_template=true; all groups missing; all blockers unsatisfied).",
-    "tools/check_stage2b_evidence_package_validator.py: CLI (--config/--json); exit 0 only if ready_for_stage2b_completion, 1 otherwise (repo default -> 1), 2 on load error.",
-    "tests/test_stage2b_evidence_package_validator.py: 10 tests (method + default not ready; groups exact order; blocker_ids exact order + lines; each blocker maps all 7 groups; default all groups missing + blockers unsatisfied; evidence_group_ready keys; JSON serializable; doc lists groups; example template + not ready; CLI default exits 1).",
-    "tools/run_quality_gates.py: py-compile gate now includes the new test and CLI.",
-    "README.md and docs/ROADMAP.md document the validator as a checked sub-note; all real parent items stay unchecked."
+    "tools/prepare_stage2b_real_query_set.py: validate_artifact() now validates set_hash is a sha256 string and, when per-case hashes are all present, equals _sha256('|'.join(case query_sha256 values)); mismatch fails validation. build_artifact()/select/prepare/validate behavior otherwise unchanged and still deterministic + stdlib-only.",
+    "tests/test_stage2b_real_query_public_doit_intake.py: added test_tampered_set_hash_fails (tamper ONLY set_hash -> fail) and test_missing_set_hash_fails; existing 17 tests retained (19 total).",
+    "Prior intake deliverables from cailiao-stage2b-real-query-public-doit-intake-v1 remain in the working tree (tool, invented fixture, doc, py-compile wiring, README/ROADMAP sub-notes)."
   ],
   "not_implemented": [
-    "No real data, provider call, model download, eval result, telemetry, connectivity, approval, risk acceptance, or credential; the validator only aggregates declared evidence-group readiness and lists required evidence.",
-    "All five Stage 2B real parent items (ROADMAP lines 97/100/103/107/114) remain unchecked by design.",
-    "ready_for_stage2b_completion=true (only via a fully-declared config all helpers accept) is a shape-completeness verdict, never live provider connectivity/eval.",
-    "No network, no provider call, no model download, no artifact file/hash read, no credential/.env read."
+    "NO real DoIT artifact was produced: the WSL session still has no outbound network/DNS, so the public dataset could not be downloaded; per the hard rule the artifact was NOT faked.",
+    "All five Stage 2B real parent blockers (ROADMAP lines 97/100/103/107/114) remain unchecked by design.",
+    "No provider result, model call, eval, telemetry, approval, or production readiness fabricated. No network, no credential/.env read, no git push."
   ],
   "test_files": [
-    "tests/test_stage2b_evidence_package_validator.py"
+    "tests/test_stage2b_real_query_public_doit_intake.py"
   ],
   "required_test_commands_for_codex": [
-    "python -m unittest tests.test_stage2b_evidence_package_validator -v",
+    "python -m unittest tests.test_stage2b_real_query_public_doit_intake -v",
     "python -m unittest discover -s tests -v",
-    "python tools/check_stage2b_evidence_package_validator.py --json",
     "python tools/run_quality_gates.py --json",
     "python -m json.tool CODEX_HANDOFF.json",
     "git diff --check"
   ],
   "test_status": [
-    "python -m unittest tests.test_stage2b_evidence_package_validator -v: 10 tests OK.",
-    "python -m unittest discover -s tests -v: 690 tests OK.",
-    "python tools/check_stage2b_evidence_package_validator.py --json: ready_for_stage2b_completion=false, 7 groups missing, 5 blockers unsatisfied (lines 97/100/103/107/114), roadmap_parent_items_checked=false, exit 1.",
-    "python tools/run_quality_gates.py --json: passed=true, all 5 gates passed; unittest gate ran 690 tests OK.",
+    "python -m unittest tests.test_stage2b_real_query_public_doit_intake -v: 19 tests OK (17 prior + 2 new set_hash tests).",
+    "python -m unittest discover -s tests -v: 709 tests OK.",
+    "manual check: a valid artifact still passes; reordering cases now fails with a set_hash mismatch error.",
+    "python tools/run_quality_gates.py --json (default 'python' on PATH): passed=true, all 5 gates passed; unittest gate ran 709 tests OK.",
     "python -m json.tool CODEX_HANDOFF.json: valid JSON.",
     "git diff --check: no whitespace/conflict issues."
   ],
-  "roadmap_item_status": "ALL FIVE STAGE 2B REAL PARENT ITEMS UNCHECKED (lines 97/100/103/107/114). Only a checked sub-note for the evidence package validator was added.",
+  "roadmap_item_status": "ALL FIVE STAGE 2B REAL PARENT BLOCKERS UNCHECKED (lines 97/100/103/107/114). Only the checked sub-note under line 97 for the public DoIT intake tooling remains; this fix hardens that tooling's validator.",
   "risks": [
-    "ready_for_stage2b_completion=true is a declared-metadata-shape aggregate delegating to the audit + seven helpers; a fully-declared but wrong config would count as ready. It informs a human decision and never auto-checks a ROADMAP parent.",
-    "Each evidence group's readiness is exactly as strict as the helper it delegates to (declared-metadata shape); the validator adds aggregation, not new verification.",
-    "evidence_requirements are documentation strings describing what would close each group per blocker; they are not machine-validated artifact schemas.",
-    "Concurrency note: this repo has an active concurrent writer; this task was implemented on committed HEAD 8eafe39 and its files are additive. If a concurrent commit supersedes them, re-verify against the new HEAD.",
+    "set_hash equality is only enforced when every per-case query_sha256 is present and well-formed; if some case hashes are missing/malformed those cases already error, and the set_hash equality check is skipped (avoids a misleading second error) — the artifact still fails validation via the per-case errors.",
+    "The intake still produces CANDIDATE evidence only (public human-authored prompts); it does not by itself complete line 97 (relevance targets/qrels, anonymization, readiness sign-off still required).",
+    "No real artifact exists in-repo because there was no network; a real artifact must be generated later on a networked machine per the docs.",
     "Environment note: the local interpreter is python3 (no bare 'python' on PATH); the quality-gate runner honors PYTHON=python3, and a local 'python->python3' PATH shim lets its default-interpreter meta-test pass."
   ],
   "credentials": [
     "No credentials or .env files were read, created, or modified.",
     "No external network calls, provider calls, model downloads, or eval runs were used for implementation or local tests.",
-    "Claude performed no Git push; Codex performs commit/push only after independent verification."
+    "No push performed; commit/push left to the maintainer."
   ]
 }
