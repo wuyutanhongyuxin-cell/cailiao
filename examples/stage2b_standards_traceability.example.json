@@ -1,0 +1,10 @@
+{
+  "is_template": true,
+  "purpose": "Example wrapper for Stage 2B standards traceability inputs. Not real proof.",
+  "artifacts": {},
+  "notes": [
+    "Traceability maps blockers to references and evidence requirements only.",
+    "Populate artifacts only after real external data/provider work exists.",
+    "Never place credential values in this file."
+  ]
+}

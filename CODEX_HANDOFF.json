@@ -1,35 +1,46 @@
 {
   "status": "codex_implemented_after_claude_not_consuming_task",
-  "task_id": "cailiao-ci-actions-node24-upgrade-v1",
-  "phase": "CI maintenance after Stage 2B human action packet.",
-  "baseline": "76bb0c1 Add Stage 2B human action packet",
-  "summary": "Claude task dispatch returned sent=true, but two polls showed no matching report and no WSL diff. Codex upgraded the quality-gates workflow to current major action tags to address the Node.js 20 deprecation warning observed on the successful GitHub Actions run. Application code and ROADMAP parent state were not changed.",
+  "task_id": "cailiao-stage2b-standards-traceability-v1",
+  "phase": "Stage 2B standards traceability hardening.",
+  "baseline": "1cc1d58 Clarify handoff push status",
+  "summary": "Claude task dispatch returned sent=true, but two polls showed no matching report and no WSL diff. Codex added a Stage 2B standards traceability matrix mapping the five unresolved external blockers to industry references, evidence artifacts, existing guardrails, and remaining real-world proof. No real parent item was checked.",
   "changed_files": [
-    ".github/workflows/quality-gates.yml",
+    "backend/server.py",
+    "tools/check_stage2b_standards_traceability.py",
+    "docs/STAGE2B_STANDARDS_TRACEABILITY.md",
+    "examples/stage2b_standards_traceability.example.json",
+    "tests/test_stage2b_standards_traceability.py",
+    "tools/run_quality_gates.py",
+    "README.md",
+    "docs/ROADMAP.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    ".github/workflows/quality-gates.yml: changed actions/checkout from v4 to v7.",
-    ".github/workflows/quality-gates.yml: changed actions/setup-python from v5 to v7.",
-    "CODEX_HANDOFF.json: updated current task and verification log."
+    "backend/server.py: added build_stage2b_standards_traceability(config=None).",
+    "tools/check_stage2b_standards_traceability.py: added CLI; default exits 1 while external proof remains missing.",
+    "docs/STAGE2B_STANDARDS_TRACEABILITY.md and examples/stage2b_standards_traceability.example.json: documented/template-only traceability.",
+    "tests/test_stage2b_standards_traceability.py: added helper, file, and CLI honesty tests.",
+    "tools/run_quality_gates.py, README.md, docs/ROADMAP.md: wired and documented the matrix."
   ],
   "not_implemented": [
-    "No application code changed in this slice.",
     "No real query set, provider connection, vector DB connection, model download, or eval run was performed.",
     "ROADMAP parent lines 97, 100, 103, 107, and 114 remain unchecked by design."
   ],
   "required_test_commands_for_codex": [
+    "python -m unittest tests.test_stage2b_standards_traceability -v",
     "python tools/run_quality_gates.py --json",
     "python -m json.tool CODEX_HANDOFF.json",
     "git diff --check"
   ],
   "test_status": [
-    "python tools/run_quality_gates.py --json: passed=true, 5 gates passed, 633 tests OK.",
+    "python -m unittest tests.test_stage2b_standards_traceability -v: 6 tests OK.",
+    "python tools/check_stage2b_standards_traceability.py --json: expected exit 1; reported 5 outstanding external proofs.",
+    "python tools/run_quality_gates.py --json: passed=true, 5 gates passed, 639 tests OK.",
     "python -m json.tool CODEX_HANDOFF.json: valid JSON.",
     "git diff --check: passed."
   ],
   "claude_monitoring": [
-    "Task file written to E:/tmp/without_human/tmp/cailiao-ci-actions-node24-upgrade-v1.md.",
+    "Task file written to E:/tmp/without_human/tmp/cailiao-stage2b-standards-traceability-v1.md.",
     "send-claude-task.ps1 returned sent=true and used_uia=true.",
     "Two post-dispatch polls showed no matching report and no WSL diff.",
     "Codex proceeded to avoid idle looping."

@@ -7107,6 +7107,92 @@ def build_stage2b_human_action_packet(config: dict[str, Any] | None = None) -> d
     }
 
 
+# --- Stage 2B standards traceability matrix v1 --------------------------------
+
+STAGE2B_STANDARDS_TRACEABILITY_DOC = "docs/STAGE2B_STANDARDS_TRACEABILITY.md"
+STAGE2B_STANDARDS_TRACEABILITY_EXAMPLE_FILE = "examples/stage2b_standards_traceability.example.json"
+
+_STAGE2B_REFERENCE_LIBRARY = {
+    "nist_ai_rmf_genai": {
+        "name": "NIST AI RMF / Generative AI Profile",
+        "url": "https://www.nist.gov/itl/ai-risk-management-framework",
+        "applies": "risk governance, measurement, transparency, validation, human oversight",
+    },
+    "beir": {
+        "name": "BEIR retrieval benchmark metrics",
+        "url": "https://github.com/beir-cellar/beir",
+        "applies": "retrieval evaluation with recall, precision, nDCG, MAP, MRR style metrics",
+    },
+    "elastic_rrf": {
+        "name": "Elasticsearch reciprocal rank fusion",
+        "url": "https://www.elastic.co/docs/reference/elasticsearch/rest-apis/reciprocal-rank-fusion",
+        "applies": "RRF fusion, rank_constant, rank_window_size",
+    },
+    "qdrant_hybrid": {
+        "name": "Qdrant hybrid queries and fusion",
+        "url": "https://qdrant.tech/documentation/search/hybrid-queries/",
+        "applies": "dense/sparse hybrid retrieval, fusion prefetch patterns",
+    },
+    "sbert_retrieve_rerank": {
+        "name": "SentenceTransformers retrieve and rerank",
+        "url": "https://www.sbert.net/examples/sentence_transformer/applications/retrieve_rerank/README.html",
+        "applies": "bi-encoder retrieval followed by CrossEncoder reranking over Top-K candidates",
+    },
+}
+
+_STAGE2B_TRACEABILITY_REFERENCE_IDS = {
+    "real_query_set": ["nist_ai_rmf_genai", "beir"],
+    "real_query_bm25_calibration": ["beir"],
+    "real_embedding_provider_vector_store": ["nist_ai_rmf_genai", "qdrant_hybrid", "beir"],
+    "real_reranker_rrf": ["sbert_retrieve_rerank", "elastic_rrf", "qdrant_hybrid", "beir"],
+    "real_nli_semantic_conflict": ["nist_ai_rmf_genai", "beir"],
+}
+
+
+def build_stage2b_standards_traceability(config: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Map Stage 2B external blockers to industry references and proof needed.
+
+    Deterministic metadata only. The URLs were curated into the repository as
+    references; this function never opens them, never contacts providers, never
+    runs evals, never reads credentials, and never checks ROADMAP parent items.
+    """
+    audit = build_external_dependency_audit(config)
+    actions = build_stage2b_human_action_packet(config)
+    artifact_by_id = {a["id"]: a["acceptance_artifacts"] for a in actions["action_items"]}
+    rows = []
+    for blocker in audit["blockers"]:
+        bid = blocker["id"]
+        ref_ids = _STAGE2B_TRACEABILITY_REFERENCE_IDS[bid]
+        rows.append({
+            "id": bid,
+            "roadmap_line": blocker["roadmap_line"],
+            "topic": blocker["topic"],
+            "status": "aligned_but_needs_external_input" if not blocker["satisfied"] else "declared_metadata_ready",
+            "standard_or_reference": [dict(_STAGE2B_REFERENCE_LIBRARY[rid]) for rid in ref_ids],
+            "required_evidence_artifacts": list(artifact_by_id[bid]),
+            "repo_guardrails": blocker["protected_by"],
+            "remaining_real_world_proof": blocker["required_external_input"],
+            "satisfied": blocker["satisfied"],
+        })
+    outstanding_ids = [r["id"] for r in rows if not r["satisfied"]]
+    return {
+        "method": "stage2b_standards_traceability_v1",
+        "boundary": (
+            "standards/reference traceability over existing Stage 2B external blockers only; "
+            "no runtime network, no provider call, no model download, no eval execution, "
+            "no credential/.env read, and no ROADMAP parent auto-check"
+        ),
+        "traceability_doc": STAGE2B_STANDARDS_TRACEABILITY_DOC,
+        "example_file": STAGE2B_STANDARDS_TRACEABILITY_EXAMPLE_FILE,
+        "reference_count": len(_STAGE2B_REFERENCE_LIBRARY),
+        "row_count": len(rows),
+        "rows": rows,
+        "outstanding_ids": outstanding_ids,
+        "all_external_proofs_present": not outstanding_ids,
+        "roadmap_parent_items_checked": False,
+    }
+
+
 # --- Stage 2B evaluation-run contract / manifest (declared-shape) v1 ----------
 
 STAGE2B_EVAL_RUN_CONTRACT_DOC = "docs/STAGE2B_EVAL_RUN_CONTRACT.md"
