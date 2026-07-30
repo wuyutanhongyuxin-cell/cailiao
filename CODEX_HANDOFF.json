@@ -1,39 +1,48 @@
 {
   "status": "codex_implemented_after_claude_not_consuming_task",
-  "task_id": "cailiao-stage2b-audit-line-reference-consistency-v1",
-  "phase": "Stage 2B audit consistency hardening.",
-  "baseline": "a1945c1 Integrate Stage 2B rollout protocols into audit",
-  "summary": "Claude task dispatch succeeded at the channel level, but polling showed no matching report and no WSL diff. Codex fixed the stale ROADMAP prose in the external dependency audit summary: rerank now references line 107 and NLI semantic conflict references line 114. Added focused tests asserting all five external blocker roadmap_line values match current ROADMAP parent lines 97/100/103/107/114. No real parent item was checked.",
+  "task_id": "cailiao-stage2b-human-action-packet-v1",
+  "phase": "Stage 2B external blocker human-action packet.",
+  "baseline": "cfe8234 Fix Stage 2B audit line references",
+  "summary": "Claude task dispatch returned sent=true, but two polls showed no matching report and no WSL diff. Codex added a small Stage 2B human action packet that turns the five unresolved external blockers into machine-readable action items with ROADMAP lines, required external inputs, acceptance artifacts, current repo state, and protecting gates. No real parent item was checked.",
   "changed_files": [
+    "backend/server.py",
+    "tools/check_stage2b_human_action_packet.py",
+    "docs/STAGE2B_HUMAN_ACTION_PACKET.md",
+    "examples/stage2b_human_action_packet.example.json",
+    "tests/test_stage2b_human_action_packet.py",
+    "tools/run_quality_gates.py",
+    "README.md",
     "docs/ROADMAP.md",
-    "tests/test_external_dependency_audit.py",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "docs/ROADMAP.md: external dependency audit summary now references current parent lines 97/100/103/107/114.",
-    "tests/test_external_dependency_audit.py: added exact roadmap_line assertions for all five blockers.",
-    "CODEX_HANDOFF.json: updated current task status and verification requirements."
+    "backend/server.py: added build_stage2b_human_action_packet(config=None).",
+    "tools/check_stage2b_human_action_packet.py: added CLI; default exits 1 while real human actions remain unresolved.",
+    "docs/STAGE2B_HUMAN_ACTION_PACKET.md and examples/stage2b_human_action_packet.example.json: documented/template-only action packet.",
+    "tests/test_stage2b_human_action_packet.py: added helper, file, and CLI honesty tests.",
+    "tools/run_quality_gates.py, README.md, docs/ROADMAP.md: wired and documented the new packet."
   ],
   "not_implemented": [
     "No real query set, provider connection, vector DB connection, model download, or eval run was performed.",
     "ROADMAP parent lines 97, 100, 103, 107, and 114 remain unchecked by design."
   ],
   "required_test_commands_for_codex": [
-    "python -m unittest tests.test_external_dependency_audit -v",
+    "python -m unittest tests.test_stage2b_human_action_packet -v",
     "python tools/run_quality_gates.py --json",
     "python -m json.tool CODEX_HANDOFF.json",
     "git diff --check"
   ],
   "test_status": [
-    "python -m unittest tests.test_external_dependency_audit -v: 10 tests OK.",
-    "python tools/run_quality_gates.py --json: passed=true, 5 gates passed, 626 tests OK.",
+    "python -m unittest tests.test_stage2b_human_action_packet -v: 7 tests OK.",
+    "python tools/check_stage2b_human_action_packet.py --json: expected exit 1; reported 5 outstanding human actions.",
+    "python tools/run_quality_gates.py --json: passed=true, 5 gates passed, 633 tests OK.",
     "python -m json.tool CODEX_HANDOFF.json: valid JSON.",
     "git diff --check: passed."
   ],
   "claude_monitoring": [
-    "Task file written to /home/kiro/kiro-work/work/CODEX_TO_CLAUDE_LATEST.md.",
+    "Task file written to E:/tmp/without_human/tmp/cailiao-stage2b-human-action-packet-v1.md.",
     "send-claude-task.ps1 returned sent=true and used_uia=true.",
-    "Post-dispatch poll showed no matching report and no WSL diff.",
+    "Two post-dispatch polls showed no matching report and no WSL diff.",
     "Codex proceeded to avoid idle looping."
   ],
   "credentials": [

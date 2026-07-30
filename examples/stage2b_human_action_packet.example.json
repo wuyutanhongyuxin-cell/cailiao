@@ -1,0 +1,10 @@
+{
+  "is_template": true,
+  "purpose": "Example wrapper for Stage 2B human action packet inputs. Do not treat as real evidence.",
+  "artifacts": {},
+  "notes": [
+    "Populate artifacts only with real external metadata after human collection and approval.",
+    "Use credential_source env var names only. Never place secret values in this file.",
+    "This template intentionally leaves all blockers unresolved."
+  ]
+}

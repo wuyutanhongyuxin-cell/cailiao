@@ -7027,6 +7027,86 @@ def build_stage2b_artifact_contracts(config: dict[str, Any] | None = None) -> di
     }
 
 
+# --- Stage 2B human action packet (external input checklist) v1 --------------
+
+STAGE2B_HUMAN_ACTION_PACKET_DOC = "docs/STAGE2B_HUMAN_ACTION_PACKET.md"
+STAGE2B_HUMAN_ACTION_PACKET_EXAMPLE_FILE = "examples/stage2b_human_action_packet.example.json"
+
+_STAGE2B_HUMAN_ACCEPTANCE_ARTIFACTS = {
+    "real_query_set": [
+        "50-100 anonymized real queries",
+        "per-query provenance and anonymization attestation",
+        "qrels/relevance targets with no placeholder markers",
+    ],
+    "real_query_bm25_calibration": [
+        "ready_real query set",
+        "corpus snapshot used for sweep",
+        "BM25 sweep manifest with chosen k1/b/threshold and metrics",
+    ],
+    "real_embedding_provider_vector_store": [
+        "embedding provider metadata with credential_source env var name only",
+        "persistent vector-store/index descriptor",
+        "production index build manifest and rollback plan",
+    ],
+    "real_reranker_rrf": [
+        "cross-encoder/reranker provider metadata with credential_source env var name only",
+        "RRF or weighted-RRF configuration",
+        "rerank eval manifest with quality and latency metrics",
+    ],
+    "real_nli_semantic_conflict": [
+        "NLI/LLM provider metadata with credential_source env var name only",
+        "supports/refutes/not_enough_info label set",
+        "semantic-conflict eval manifest and decision policy",
+    ],
+}
+
+
+def build_stage2b_human_action_packet(config: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Return the human action packet for the five unresolved Stage 2B blockers.
+
+    This is an external-input checklist for humans/operators. It mirrors
+    ``build_external_dependency_audit`` and adds the concrete acceptance artifacts
+    that must be supplied outside the repo before the real ROADMAP parent items can
+    be considered. It never collects data, reads secrets, contacts providers, runs
+    evals, or checks ROADMAP parent items.
+    """
+    audit = build_external_dependency_audit(config)
+    action_items = []
+    for blocker in audit["blockers"]:
+        bid = blocker["id"]
+        action_items.append({
+            "id": bid,
+            "roadmap_line": blocker["roadmap_line"],
+            "topic": blocker["topic"],
+            "required_external_input": blocker["required_external_input"],
+            "acceptance_artifacts": list(_STAGE2B_HUMAN_ACCEPTANCE_ARTIFACTS[bid]),
+            "current_repo_state": blocker["current_repo_state"],
+            "protected_by": blocker["protected_by"],
+            "satisfied": blocker["satisfied"],
+            "human_action_required": not blocker["satisfied"],
+            "verification_mode": blocker["verification_mode"],
+            "detail": blocker["detail"],
+        })
+
+    outstanding_ids = [a["id"] for a in action_items if a["human_action_required"]]
+    return {
+        "method": "stage2b_human_action_packet_v1",
+        "boundary": (
+            "human/operator action checklist only; identifies external real-world inputs "
+            "still needed before ROADMAP parent items can be completed; no data collection, "
+            "provider call, model download, eval execution, credential/.env read, or parent "
+            "ROADMAP auto-check"
+        ),
+        "packet_doc": STAGE2B_HUMAN_ACTION_PACKET_DOC,
+        "example_file": STAGE2B_HUMAN_ACTION_PACKET_EXAMPLE_FILE,
+        "action_item_count": len(action_items),
+        "outstanding_action_ids": outstanding_ids,
+        "all_human_actions_resolved": not outstanding_ids,
+        "roadmap_parent_items_checked": False,
+        "action_items": action_items,
+    }
+
+
 # --- Stage 2B evaluation-run contract / manifest (declared-shape) v1 ----------
 
 STAGE2B_EVAL_RUN_CONTRACT_DOC = "docs/STAGE2B_EVAL_RUN_CONTRACT.md"
