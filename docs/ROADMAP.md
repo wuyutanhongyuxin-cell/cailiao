@@ -14,6 +14,8 @@
 
 收尾执行进度：任务级生成/审计/导出流 v1 已落地，支持 `POST /api/tasks/{id}/generate`、`audit`、`export/preflight`、`export/docx`。生成复用现有 `call_llm` 配置边界，blocked 状态不调用模型；审计聚合写作状态、证据状态、失败数和修复单元数；预检/导出复用既有 DOCX helper，并把预检元数据写回 `export_artifacts`。边界：后端/API 闭环，不新增 provider、不自动审批、不替代人工终审。
 
+收尾执行进度：最小任务前端 UI v1 已落地。前端新增「任务」面板，仅调用上述同源后端任务 API，把「新建/列出/载入/保存任务 → 附加当前起草与本地证据 → 任务证据检索/附加/批准 → 生成/硬审/导出预检/导出 DOCX」串成可操作闭环；新增独立 GET helper（与既有 POST `api` 分离），服务端/用户文本经 `escapeHtml`，未选任务时给简明状态，任务证据批准标注为人工/确定性词面确认。边界：仅前端最小面板，不重写应用、不删既有面板、不改后端路由、不加依赖、不联网（除浏览器→本地后端）；不实现真实模型/embedding/rerank/NLI 行为，不标记任何 Stage 2B 真实外部父项完成（第 97/100/103/107/114 行保持未勾选）。证据逐条勾选批准、任务列表分页/搜索等仍待后续。
+
 ## 阶段 0：可运行 MVP
 
 状态：已完成
@@ -209,6 +211,7 @@
 - [x] 最终完成阻断审计 v1：`docs/FINAL_COMPLETION_BLOCKER_AUDIT.md` + 确定性 `build_final_completion_blocker_audit(config=None)` 与 `tools/check_final_completion_blocker_audit.py`；复用 external dependency audit 与 risk register，声明当前 `project_complete=false`、`repo_only_work_remaining=false`、`blocked_by_external_input=true`，并列出 5 个真实外部 blocker 与 ROADMAP 行 97/100/103/107/114；默认 CLI 退出 1、`roadmap_parent_items_checked=false`。**诚实边界：仅最终完成边界审计，运行期不联网、不调用 provider、不下载模型、不运行评测、不伪造 risk acceptance/approval、不读 `.env`/凭据；不勾选任何真实父项。**
 - [x] 阶段 2B 业界实施清单 v1：`docs/STAGE2B_INDUSTRY_IMPLEMENTATION_CHECKLIST.md` + 确定性 `build_stage2b_industry_implementation_checklist(config=None)` 与 `tools/check_stage2b_industry_implementation_checklist.py`；把联网复核的 NIST AI RMF/AIRC、BEIR、Elasticsearch RRF、Qdrant hybrid、SentenceTransformers retrieve-rerank、OpenTelemetry、FEVER/SNLI/CFEVER 方法转成 5 个 blocker 的实施步骤、最小证据、质量门禁、观测要求、回滚/人审规则；默认 `ready_for_stage2b_completion=false`、CLI 退出 1、`roadmap_parent_items_checked=false`。**诚实边界：仅清单/元数据，运行期不联网、不调用 provider/向量库、不下载模型、不运行评测、不创建 telemetry、不伪造 approval/risk acceptance、不读 `.env`/凭据；不勾选任何真实父项。**
 - [x] 阶段 2B 证据包校验器 v1：`docs/STAGE2B_EVIDENCE_PACKAGE_VALIDATOR.md` + 模板占位 `examples/stage2b_evidence_package.example.json` + 确定性 `build_stage2b_evidence_package_validator(config=None)` 与 `tools/check_stage2b_evidence_package_validator.py`；复用既有 `build_external_dependency_audit` 与七个 Stage 2B 契约/状态 helper（artifact contracts / eval-run contract / observability / release dossier / reproducibility / risk register / industry checklist）为单一事实源，把全部外部 blocker 证据聚合为一处就绪报告：固定 7 个证据组（`declared_artifacts`/`eval_run_manifest`/`observability_snapshot`/`release_dossier`/`reproducibility_provenance`/`risk_treatment`/`industry_checklist`）、按既有顺序的 5 个 `blocker_ids`（行 97/100/103/107/114）、逐 blocker×组的所需证据摘要，并报告各组当前就绪度；默认 `ready_for_stage2b_completion=false`、CLI 退出 1、`roadmap_parent_items_checked=false`。**诚实边界：仅元数据/证据包校验，运行期不联网、不调用 provider、不下载模型、不运行评测、不读工件文件或哈希、不读 `.env`/凭据、不伪造 approval/risk acceptance；不勾选任何真实父项。**
+- [x] 最小任务前端 UI v1：`frontend/index.html`（新增「任务」导航 + `section#tasks.panel` 与全部稳定 id）、`frontend/app.js`（MaterialTask 前端模块）、`frontend/styles.css`（任务面板样式）与静态测试 `tests/test_frontend_task_ui.py`；只调用同源后端任务 API，把「新建/列出/载入/保存 → 任务证据检索/附加/批准 → 生成/硬审/导出预检/导出 DOCX」串成可操作闭环；独立 GET helper 与既有 POST `api` 分离，所有服务端/用户文本经 `escapeHtml`，未选任务时给简明状态，任务证据批准标注为人工/确定性词面确认（非语义蕴含/真伪判断）。**诚实边界：仅前端最小面板，不重写应用、不删既有面板、不改后端路由、不加依赖、不联网（除浏览器→本地后端）、不读 `.env`/凭据、不新增模型/embedding/rerank/NLI 行为；不勾选任何 Stage 2B 真实外部父项。**
 
 ## 不应过早做的事
 

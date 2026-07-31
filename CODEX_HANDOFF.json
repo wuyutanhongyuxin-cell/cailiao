@@ -1,57 +1,76 @@
 {
-  "status": "implemented_by_codex_after_claude_no_ack_or_diff",
-  "task_id": "cailiao-final-003-task-generate-audit-export-flow",
-  "phase": "Final delivery closeout slice 003: task-scoped generate, audit, preflight, and DOCX export",
-  "baseline": "3205509876dad8cb19104a498a68b0a683848e1d (Add task evidence API)",
-  "claude_channel": {
-    "task_written_to_wsl": "/home/kiro/kiro-work/work/CODEX_TO_CLAUDE_LATEST.md",
-    "used_tty": true,
-    "observed_kind": "none",
-    "report_or_ack": "TTY dispatch returned sent=true, but no matching ack/report/diff appeared within 120 seconds.",
-    "codex_takeover_reason": "Claude channel produced no verifiable output for this task ID; Codex implemented to keep the closeout loop moving."
-  },
-  "summary": "Added backend MaterialTask workflow endpoints for generate, audit, DOCX preflight metadata, and task DOCX export. The implementation reuses existing analysis, prompt, model boundary, draft version, preflight, and DOCX helpers.",
+  "status": "implemented_by_claude",
+  "task_id": "cailiao-final-004-minimal-task-ui",
+  "phase": "Final delivery closeout slice 004: minimal frontend MaterialTask workspace panel (frontend-only).",
+  "baseline": "10073b030c1601640d66ef6e8c8d22fa70e59043 (Add task workflow API)",
+  "summary": "Added a compact, operational 任务 (MaterialTask) frontend panel that drives the existing same-origin backend task APIs end to end: create/list/load/save task, task evidence search/attach/approve, and generate/audit/export-preflight/export-docx. No backend routes changed, no dependencies added, no network beyond the browser calling the local backend. Task evidence approval is framed as a manual, deterministic lexical confirmation, never a semantic entailment / truth judgement.",
   "changed_files": [
-    "backend/server.py",
-    "tests/test_material_task_flow.py",
+    "frontend/index.html",
+    "frontend/app.js",
+    "frontend/styles.css",
+    "tests/test_frontend_task_ui.py",
     "tools/run_quality_gates.py",
     "README.md",
     "docs/ROADMAP.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "generate_material_task(task_id, config=None): blocked gate, existing call_llm path, draft persistence, draft_versions persistence, latest_analysis persistence.",
-    "audit_material_task(task_id): evidence_status, writing_state, blocker/failure/repair counts, can_export.",
-    "build_material_task_export_preflight(task_id, style_profile=None): existing DOCX preflight plus task audit and export_artifacts metadata.",
-    "export_material_task_docx(task_id, style_profile=None): existing export_docx wrapper.",
-    "HTTP routes: POST /api/tasks/{id}/generate, /audit, /export/preflight, /export/docx.",
-    "Focused helper and real HTTP handler tests.",
-    "Unified quality-gate py_compile coverage for tests/test_material_task_flow.py."
+    "index.html: nav button <button class=\"nav\" data-panel=\"tasks\">任务</button> and section#tasks.panel with all required stable ids: taskCreateBtn, taskRefreshBtn, taskList, taskCurrentId, taskLoadCurrentBtn, taskSaveCurrentBtn, taskEvidenceQuery, taskEvidenceSearchBtn, taskEvidenceResults, taskAttachManualBtn, taskApproveSelectedBtn, taskGenerateBtn, taskAuditBtn, taskPreflightBtn, taskExportDocxBtn, taskStatus, taskLog.",
+    "app.js createTask(): POST /api/tasks from current compose fields/genre/facts/draft plus local state.evidence (carried as selected_evidence).",
+    "app.js refreshTasks()/renderTaskList(): GET /api/tasks, newest first, each row has a 'set current' button; switching to the tasks panel auto-refreshes.",
+    "app.js loadCurrentTask(): GET /api/tasks/{id}, writes genre/title/fields/facts/draft and selected_evidence back into the compose workspace and state.evidence.",
+    "app.js saveCurrentTask(): PUT /api/tasks/{id} with current compose state.",
+    "app.js searchTaskEvidence(): POST /api/tasks/{id}/evidence/search (empty query -> backend uses task title/fields).",
+    "app.js attachSelectedEvidence(): single-select one search result, POST /api/tasks/{id}/evidence/attach with {item}.",
+    "app.js approveTaskEvidence(): collects attached evidence ids, POST /api/tasks/{id}/evidence/approve with {evidence_ids}; labelled manual/deterministic lexical confirmation.",
+    "app.js generateTask(): POST /api/tasks/{id}/generate, updates draft/prompt/analysis/status.",
+    "app.js auditTask(): POST /api/tasks/{id}/audit, renders compact status/blocker/failure/repair-unit/can-export counts.",
+    "app.js preflightTask(): POST /api/tasks/{id}/export/preflight, renders can_export and paragraph/font/table summary.",
+    "app.js exportTaskDocx(): POST /api/tasks/{id}/export/docx, downloads docx.",
+    "Constraints met: separate GET helper apiGet (distinct from POST api); escapeHtml used in renderTaskList/renderTaskEvidenceResults/renderTaskStatus; every action guards the no-task case with a concise status; only same-origin relative /api/... calls; existing compose/evidence/library/review/export/settings behavior preserved (origSetPanel override keeps the library branch and adds a tasks branch).",
+    "styles.css: 5 minimal task-panel rules (taskBar/taskEvidence/taskItem/taskEvItem).",
+    "tools/run_quality_gates.py: tests/test_frontend_task_ui.py added to the py-compile fixed list.",
+    "README.md: added a '最小任务 UI' capability row and boundary, and updated the closeout progress note.",
+    "docs/ROADMAP.md: added a '最小任务前端 UI v1' progress note and a completed-items [x] entry; explicitly does not check any Stage 2B real external parent (lines 97/100/103/107/114 remain unchecked)."
   ],
   "not_implemented": [
-    "No frontend task workspace changes.",
-    "No new model provider or provider configuration.",
-    "No automatic manual approval or semantic truth judgement.",
-    "No network call in tests and no .env/credential read.",
-    "No real external parent blockers marked complete."
+    "No per-item approve checkboxes: approveTaskEvidence approves all currently-attached evidence at once; attach is single-select, one item per click.",
+    "No task list pagination / search / rename / delete in the UI.",
+    "No headless-browser/runtime DOM test; tests are static string assertions over the built HTML/JS.",
+    "No frontend redesign, no changes to existing panels, no backend route changes.",
+    "No model/embedding/rerank/NLI behavior added; the five Stage 2B real external parent blockers remain unchecked."
+  ],
+  "test_files": [
+    "tests/test_frontend_task_ui.py",
+    "tests/test_frontend_ui.py"
   ],
   "required_test_commands_for_codex": [
-    "python -m unittest tests.test_material_task_flow -v",
+    "python -m unittest tests.test_frontend_task_ui -v",
+    "python -m unittest tests.test_frontend_ui -v",
     "python -m unittest discover -s tests -v",
     "python tools/run_quality_gates.py --json",
     "python -m json.tool CODEX_HANDOFF.json",
     "git diff --check"
   ],
   "test_status": [
-    "python -m unittest tests.test_material_task_flow -v: 7 tests OK.",
-    "python -m unittest discover -s tests -v: 772 tests OK.",
-    "python tools/run_quality_gates.py --json: passed 5 gates; unittest ran 772 tests OK.",
-    "python -m json.tool CODEX_HANDOFF.json: valid JSON.",
-    "git diff --check: clean."
+    "python3 -m unittest tests.test_frontend_task_ui -v: 10 tests OK.",
+    "python3 -m unittest tests.test_frontend_ui -v: 13 tests OK (existing frontend tests still pass).",
+    "python3 -m unittest discover -s tests: Ran 782 tests OK.",
+    "tools/run_quality_gates.py --json: passed=true, all 5 gates green (py-compile, unittest, eval-retrieval, git-diff, secret-scan) when run with a 'python' shim on PATH pointing at python3.",
+    "python3 -m json.tool CODEX_HANDOFF.json: valid JSON.",
+    "git diff --check: clean.",
+    "Environment note: this WSL has no 'python' on PATH by default (only python3); run_quality_gates.py and test_quality_gates.py assume the interpreter is named 'python'. Use a python->python3 shim (used here) or PYTHON=python3 (which makes test_quality_gates' gates.PY=='python' assertion fail). This is an environment naming difference, not a code issue; the gate contract was not modified."
   ],
-  "next_task_recommendation": "cailiao-final-004-minimal-task-ui: add a minimal frontend task workspace that calls existing task/evidence/generate/audit/export APIs without rewriting the app.",
+  "roadmap_item_status": "Minimal task UI v1 (FINAL_DELIVERY_PLAN slice 4 frontend) landed. Per-item approval, task-list pagination/search, and fuller frontend orchestration remain for a later round. ALL FIVE STAGE 2B REAL PARENT BLOCKERS STILL UNCHECKED.",
+  "risks": [
+    "Tests are static assertions (ids/functions/routes/escapeHtml/same-origin/no-task copy); runtime DOM/network behavior is not exercised without a headless browser.",
+    "approveTaskEvidence approves every attached evidence item rather than a user-picked subset.",
+    "generate/audit/approve mutate server-side task state (local SQLite), but strictly via same-origin backend APIs; no external network.",
+    "Backend and Stage 2B real external parents were not touched and remain unchecked."
+  ],
   "credentials": [
-    "No credentials or .env files were read, created, or modified.",
-    "No real provider or external network call was made by tests."
+    "Frontend issues only same-origin relative /api/... requests; no external host, no cross-origin call.",
+    "No .env or credential file was read or printed; no network behavior added beyond browser -> local backend.",
+    "No third-party dependency added; no backend route change; GitHub Actions untouched; no real/manual data written to the repo."
   ]
 }

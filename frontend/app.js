@@ -570,10 +570,310 @@ if (importBtn) {
   $('verifyClaimBtn').addEventListener('click', verifyClaim);
 }
 
+// --- Final delivery: minimal MaterialTask workspace (v1) --------------------
+// Uses only same-origin backend task APIs. No model/embedding/rerank/NLI logic
+// lives here; task evidence approval is a manual, deterministic confirmation
+// (lexical bookkeeping only, never a semantic entailment / truth judgement).
+
+state.taskEvidenceResults = [];
+state.taskSelectedEvidenceIndex = null;
+
+// GET helper, kept separate from the POST `api` above.
+async function apiGet(path) {
+  const res = await fetch(path, { headers: { 'Accept': 'application/json' } });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+function currentTaskId() {
+  return ($('taskCurrentId').value || '').trim();
+}
+
+function taskLog(message) {
+  $('taskLog').textContent = message;
+}
+
+function renderTaskStatus(task) {
+  const box = $('taskStatus');
+  if (!task) {
+    box.textContent = '未选择任务。可从当前起草区新建，或刷新后从列表选择。';
+    return;
+  }
+  const selected = (task.selected_evidence || []).length;
+  const approved = (task.selected_evidence || []).filter((e) => e && e.approved).length;
+  const facts = (task.approved_facts || []).length;
+  const status = (task.latest_analysis && task.latest_analysis.status) || '未审';
+  box.innerHTML = `当前任务：<strong>${escapeHtml(task.title || '未命名')}</strong>`
+    + ` · 文种 ${escapeHtml(task.genre || 'work_plan')}`
+    + ` · 状态 ${escapeHtml(String(status))}`
+    + ` · 证据 ${selected}（已批准 ${approved}）· 批准事实 ${facts}`;
+}
+
+async function refreshTasks() {
+  try {
+    const data = await apiGet('/api/tasks');
+    renderTaskList(data.items || []);
+    taskLog(`已载入 ${(data.items || []).length} 条任务。`);
+  } catch (e) {
+    taskLog(`无法读取任务列表：${e.message}`);
+  }
+}
+
+function renderTaskList(items) {
+  if (!items.length) {
+    $('taskList').innerHTML = '<div class="item">暂无任务。用“从当前起草新建任务”创建一条。</div>';
+    return;
+  }
+  $('taskList').innerHTML = items.map((task) => {
+    const status = (task.latest_analysis && task.latest_analysis.status) || '未审';
+    const selected = (task.selected_evidence || []).length;
+    return `
+      <div class="item taskItem" data-task-id="${escapeHtml(task.id)}">
+        <strong>${escapeHtml(task.title || '未命名任务')}</strong>
+        <div>${escapeHtml(task.genre || 'work_plan')} · 状态 ${escapeHtml(String(status))} · 证据 ${selected}</div>
+        <div class="muted">更新 ${escapeHtml(task.updated_at || '')}</div>
+        <button class="taskPick" data-task-id="${escapeHtml(task.id)}">设为当前</button>
+      </div>`;
+  }).join('');
+  document.querySelectorAll('.taskPick').forEach((btn) => btn.addEventListener('click', () => {
+    $('taskCurrentId').value = btn.dataset.taskId;
+    loadCurrentTask();
+  }));
+}
+
+async function createTask() {
+  const base = payload();
+  const body = {
+    title: base.title,
+    genre: base.genre,
+    fields: base.fields,
+    facts: base.facts,
+    draft: base.draft,
+    // Carry local compose evidence over as the task's selected evidence.
+    selected_evidence: state.evidence,
+  };
+  try {
+    const task = await api('/api/tasks', body);
+    $('taskCurrentId').value = task.id || '';
+    renderTaskStatus(task);
+    await refreshTasks();
+    taskLog(`已新建任务 ${escapeHtml(task.id || '')}。`);
+  } catch (e) {
+    taskLog(`新建任务失败：${e.message}`);
+  }
+}
+
+async function loadCurrentTask() {
+  const id = currentTaskId();
+  if (!id) { taskLog('未填写任务 ID。请先选择或新建任务。'); return; }
+  try {
+    const task = await apiGet(`/api/tasks/${encodeURIComponent(id)}`);
+    // Push task state into the compose workspace.
+    if (task.genre && state.rules[task.genre]) { $('genre').value = task.genre; renderGenreFields(); }
+    $('title').value = task.title || '';
+    $('facts').value = task.facts || '';
+    $('draft').value = task.draft || '';
+    const fields = task.fields || {};
+    document.querySelectorAll('[data-field]').forEach((el) => { el.value = fields[el.dataset.field] || ''; });
+    state.evidence = (task.selected_evidence || []).map((e) => ({
+      title: e.document_title || e.title || '', source: e.organization || e.source || '',
+      url: e.source_url || e.url || '', body: e.content || e.body || '',
+    }));
+    localStorage.setItem('mws_evidence', JSON.stringify(state.evidence));
+    renderEvidence();
+    renderTaskStatus(task);
+    taskLog(`已载入任务 ${escapeHtml(id)} 到起草区。`);
+  } catch (e) {
+    taskLog(`载入任务失败：${e.message}`);
+  }
+}
+
+async function saveCurrentTask() {
+  const id = currentTaskId();
+  if (!id) { taskLog('未填写任务 ID。请先选择或新建任务。'); return; }
+  const base = payload();
+  const body = {
+    title: base.title, genre: base.genre, fields: base.fields,
+    facts: base.facts, draft: base.draft, selected_evidence: state.evidence,
+  };
+  try {
+    const res = await fetch(`/api/tasks/${encodeURIComponent(id)}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const task = await res.json();
+    renderTaskStatus(task);
+    taskLog(`已保存起草区到任务 ${escapeHtml(id)}。`);
+  } catch (e) {
+    taskLog(`保存任务失败：${e.message}`);
+  }
+}
+
+async function searchTaskEvidence() {
+  const id = currentTaskId();
+  if (!id) { taskLog('未选择任务，无法检索任务证据。'); return; }
+  const body = { query: ($('taskEvidenceQuery').value || '').trim(), limit: 10 };
+  try {
+    const data = await api(`/api/tasks/${encodeURIComponent(id)}/evidence/search`, body);
+    state.taskEvidenceResults = data.items || [];
+    state.taskSelectedEvidenceIndex = null;
+    renderTaskEvidenceResults(state.taskEvidenceResults);
+    taskLog(`任务证据检索：命中 ${(data.items || []).length} 条（查询：${escapeHtml(data.query || '')}）。`);
+  } catch (e) {
+    taskLog(`任务证据检索失败：${e.message}`);
+  }
+}
+
+function renderTaskEvidenceResults(items) {
+  if (!items.length) {
+    $('taskEvidenceResults').innerHTML = '<div class="item">无检索结果。先向资料库导入文档，或调整查询。</div>';
+    return;
+  }
+  $('taskEvidenceResults').innerHTML = items.map((item, idx) => {
+    const title = item.document_title || item.title || '未命名';
+    const org = item.organization || item.source || '';
+    const loc = item.location_kind ? `${item.location_kind} ${item.location_value || ''}` : '';
+    const body = (item.content || item.body || '').slice(0, 200);
+    return `
+      <div class="item taskEvItem">
+        <label><input type="radio" name="taskEvPick" value="${idx}" /> [${idx + 1}] ${escapeHtml(title)}</label>
+        <div>${escapeHtml(org)} ${escapeHtml(item.document_number || '')} ${escapeHtml(loc)}</div>
+        <p>${escapeHtml(body)}</p>
+      </div>`;
+  }).join('');
+  document.querySelectorAll('input[name="taskEvPick"]').forEach((el) => el.addEventListener('change', () => {
+    state.taskSelectedEvidenceIndex = Number(el.value);
+  }));
+}
+
+async function attachSelectedEvidence() {
+  const id = currentTaskId();
+  if (!id) { taskLog('未选择任务，无法附加证据。'); return; }
+  const idx = state.taskSelectedEvidenceIndex;
+  if (idx === null || !state.taskEvidenceResults[idx]) { taskLog('请先在检索结果中选择一条再附加。'); return; }
+  try {
+    const data = await api(`/api/tasks/${encodeURIComponent(id)}/evidence/attach`, { item: state.taskEvidenceResults[idx] });
+    renderTaskStatus(data.task);
+    const status = data.evidence_status || {};
+    taskLog(`已附加证据。当前任务证据 ${status.selected || 0} 条（已批准 ${status.approved_evidence || 0}）。`);
+  } catch (e) {
+    taskLog(`附加证据失败：${e.message}`);
+  }
+}
+
+async function approveTaskEvidence() {
+  const id = currentTaskId();
+  if (!id) { taskLog('未选择任务，无法批准证据。'); return; }
+  let task;
+  try {
+    task = await apiGet(`/api/tasks/${encodeURIComponent(id)}/evidence/status`);
+  } catch (e) { /* status endpoint returns counts, not ids; fall through */ }
+  try {
+    // Approve every currently-attached evidence item (manual, deterministic).
+    const full = await apiGet(`/api/tasks/${encodeURIComponent(id)}`);
+    const ids = (full.selected_evidence || [])
+      .map((e) => e.id || e.chunk_id).filter(Boolean);
+    if (!ids.length) { taskLog('任务暂无已附加证据可批准。'); return; }
+    const data = await api(`/api/tasks/${encodeURIComponent(id)}/evidence/approve`, { evidence_ids: ids });
+    renderTaskStatus(data.task);
+    const status = data.evidence_status || {};
+    taskLog(`已人工批准 ${ids.length} 条证据（词面确认，非语义判断）。已批准证据 ${status.approved_evidence || 0}，批准事实 ${status.approved_facts || 0}。`);
+  } catch (e) {
+    taskLog(`批准证据失败：${e.message}`);
+  }
+}
+
+async function generateTask() {
+  const id = currentTaskId();
+  if (!id) { taskLog('未选择任务，无法生成。'); return; }
+  const body = { config: { model_mode: state.config.model_mode } };
+  try {
+    const data = await api(`/api/tasks/${encodeURIComponent(id)}/generate`, body);
+    if (data.draft) $('draft').value = data.draft;
+    if (data.prompt) $('prompt').value = data.prompt;
+    if (data.analysis) renderAnalysis(data.analysis);
+    renderTaskStatus(data.task);
+    const ws = data.writing_state || {};
+    taskLog(`生成模式：${escapeHtml(String(data.mode || ''))}。工作流状态：${escapeHtml(String(ws.state || ''))}。`);
+  } catch (e) {
+    taskLog(`生成失败：${e.message}`);
+  }
+}
+
+async function auditTask() {
+  const id = currentTaskId();
+  if (!id) { taskLog('未选择任务，无法硬审。'); return; }
+  try {
+    const data = await api(`/api/tasks/${encodeURIComponent(id)}/audit`, {});
+    const audit = data.audit || {};
+    if (data.task && data.task.latest_analysis) renderAnalysis(data.task.latest_analysis);
+    renderTaskStatus(data.task);
+    taskLog(`硬审：状态 ${escapeHtml(String(audit.status || ''))}`
+      + ` · 阻断 ${audit.blocker_count || 0} · 失败 ${audit.failure_count || 0}`
+      + ` · 修复单元 ${audit.repair_unit_count || 0} · 可导出 ${audit.can_export ? '是' : '否'}。`);
+  } catch (e) {
+    taskLog(`硬审失败：${e.message}`);
+  }
+}
+
+async function preflightTask() {
+  const id = currentTaskId();
+  if (!id) { taskLog('未选择任务，无法预检。'); return; }
+  try {
+    const data = await api(`/api/tasks/${encodeURIComponent(id)}/export/preflight`, {});
+    const audit = data.audit || {};
+    const summary = (data.preflight && data.preflight.summary) || {};
+    renderTaskStatus(data.task);
+    taskLog(`导出预检：可导出 ${audit.can_export ? '是' : '否'}`
+      + ` · 段落 ${summary.paragraph_count != null ? summary.paragraph_count : '-'}`
+      + ` · 未知字体 ${summary.unknown_font_count != null ? summary.unknown_font_count : '-'}`
+      + ` · 表格 ${summary.table_count != null ? summary.table_count : '-'}。`);
+  } catch (e) {
+    taskLog(`导出预检失败：${e.message}`);
+  }
+}
+
+async function exportTaskDocx() {
+  const id = currentTaskId();
+  if (!id) { taskLog('未选择任务，无法导出。'); return; }
+  try {
+    const res = await fetch(`/api/tasks/${encodeURIComponent(id)}/export/docx`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `material-task-${id}.docx`;
+    a.click();
+    URL.revokeObjectURL(url);
+    taskLog(`已导出任务 ${escapeHtml(id)} 的 Word 草稿。`);
+  } catch (e) {
+    taskLog(`导出失败：${e.message}`);
+  }
+}
+
+function wireTaskPanel() {
+  $('taskCreateBtn').addEventListener('click', createTask);
+  $('taskRefreshBtn').addEventListener('click', refreshTasks);
+  $('taskLoadCurrentBtn').addEventListener('click', loadCurrentTask);
+  $('taskSaveCurrentBtn').addEventListener('click', saveCurrentTask);
+  $('taskEvidenceSearchBtn').addEventListener('click', searchTaskEvidence);
+  $('taskAttachManualBtn').addEventListener('click', attachSelectedEvidence);
+  $('taskApproveSelectedBtn').addEventListener('click', approveTaskEvidence);
+  $('taskGenerateBtn').addEventListener('click', generateTask);
+  $('taskAuditBtn').addEventListener('click', auditTask);
+  $('taskPreflightBtn').addEventListener('click', preflightTask);
+  $('taskExportDocxBtn').addEventListener('click', exportTaskDocx);
+}
+wireTaskPanel();
+
 const origSetPanel = setPanel;
 setPanel = function (name) {
   origSetPanel(name);
   if (name === 'library') { renderDocuments(); renderJobs(); }
+  if (name === 'tasks') { refreshTasks(); }
 };
 
 init().catch((err) => {

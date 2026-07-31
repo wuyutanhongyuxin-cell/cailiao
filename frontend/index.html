@@ -18,6 +18,7 @@
       </div>
       <nav>
         <button class="nav active" data-panel="compose">起草</button>
+        <button class="nav" data-panel="tasks">任务</button>
         <button class="nav" data-panel="evidence">证据</button>
         <button class="nav" data-panel="library">资料库</button>
         <button class="nav" data-panel="review">审稿</button>
@@ -63,6 +64,40 @@
           <label>草稿</label>
           <textarea id="draft" placeholder="生成后在这里编辑；也可以粘贴旧稿直接审。"></textarea>
         </div>
+      </section>
+
+      <section id="tasks" class="panel">
+        <div class="taskBar">
+          <button id="taskCreateBtn" class="primary">从当前起草新建任务</button>
+          <button id="taskRefreshBtn">刷新任务列表</button>
+          <div class="block"><label>当前任务 ID</label><input id="taskCurrentId" placeholder="选择或新建任务后填入" /></div>
+          <button id="taskLoadCurrentBtn">载入到起草区</button>
+          <button id="taskSaveCurrentBtn">保存起草区到任务</button>
+        </div>
+        <p class="muted">任务把起草要素、事实、草稿与选中证据收束到一条材料主轴上。任务证据的批准是人工/确定性操作：只做词面记录与显式确认，不做语义蕴含或真伪判断。未选择任务时，仅能新建或刷新。</p>
+        <div id="taskStatus" class="muted">未选择任务。</div>
+        <div id="taskList" class="list"></div>
+
+        <div class="taskEvidence">
+          <div class="grid two evidenceForm">
+            <div class="block wide"><label>任务证据检索（留空则用任务标题/要素）</label><input id="taskEvidenceQuery" placeholder="输入政策名、文号、关键词或数值" /></div>
+          </div>
+          <div class="exportActions">
+            <button id="taskEvidenceSearchBtn" class="primary">检索任务证据</button>
+            <button id="taskAttachManualBtn">附加选中结果</button>
+            <button id="taskApproveSelectedBtn">批准已附加证据</button>
+          </div>
+          <p class="muted">检索结果来自资料库确定性词面/BM25/RRF 排序；词面覆盖不等于语义蕴含，附加与批准均需人工判断。</p>
+          <div id="taskEvidenceResults" class="list"></div>
+        </div>
+
+        <div class="taskActions exportActions">
+          <button id="taskGenerateBtn" class="primary">生成/提示词</button>
+          <button id="taskAuditBtn">硬审</button>
+          <button id="taskPreflightBtn">导出预检</button>
+          <button id="taskExportDocxBtn">导出 Word</button>
+        </div>
+        <pre id="taskLog"></pre>
       </section>
 
       <section id="evidence" class="panel">
