@@ -88,6 +88,10 @@
 | Word 导出 | 生成基础 DOCX 草稿 |
 | 零前端依赖 | 无 CDN、无 npm，Python 标准库即可启动 |
 
+## 最终收尾方案
+
+项目后续应优先把现有能力收束为端到端材料任务闭环，而不是继续扩展分散的评测/治理骨架。详细实施清单见 [docs/FINAL_DELIVERY_PLAN.md](docs/FINAL_DELIVERY_PLAN.md)。
+
 ## 快速开始
 
 要求 Windows 10/11 与 Python 3.10+。模型服务可选。
