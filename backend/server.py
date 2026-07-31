@@ -160,6 +160,31 @@ JOB_COLUMNS = [
     "related_document_id", "note",
 ]
 
+MATERIAL_TASK_COLUMNS = [
+    "id", "title", "genre", "fields_json", "facts", "selected_evidence_json",
+    "approved_facts_json", "draft", "draft_versions_json", "locked_paragraphs_json",
+    "latest_analysis_json", "repair_history_json", "export_artifacts_json",
+    "manual_approvals_json", "created_at", "updated_at",
+]
+
+MATERIAL_TASK_JSON_FIELDS = {
+    "fields_json": {},
+    "selected_evidence_json": [],
+    "approved_facts_json": [],
+    "draft_versions_json": [],
+    "locked_paragraphs_json": [],
+    "latest_analysis_json": {},
+    "repair_history_json": [],
+    "export_artifacts_json": [],
+    "manual_approvals_json": [],
+}
+
+MATERIAL_TASK_MUTABLE_FIELDS = {
+    "title", "genre", "fields", "facts", "selected_evidence", "approved_facts",
+    "draft", "draft_versions", "locked_paragraphs", "latest_analysis",
+    "repair_history", "export_artifacts", "manual_approvals",
+}
+
 # Phase 1B columns to add to pre-existing tables via idempotent migration.
 _DOC_MIGRATION_COLUMNS = {
     "source_type": "TEXT", "authority_level": "INTEGER", "region": "TEXT",
@@ -256,6 +281,28 @@ def init_schema(conn: sqlite3.Connection) -> None:
         )
         """
     )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS material_tasks (
+            id TEXT PRIMARY KEY,
+            title TEXT,
+            genre TEXT,
+            fields_json TEXT,
+            facts TEXT,
+            selected_evidence_json TEXT,
+            approved_facts_json TEXT,
+            draft TEXT,
+            draft_versions_json TEXT,
+            locked_paragraphs_json TEXT,
+            latest_analysis_json TEXT,
+            repair_history_json TEXT,
+            export_artifacts_json TEXT,
+            manual_approvals_json TEXT,
+            created_at TEXT,
+            updated_at TEXT
+        )
+        """
+    )
     # Migrate tables created by an earlier (Phase 1A) schema.
     _ensure_columns(conn, "documents", _DOC_MIGRATION_COLUMNS)
     _ensure_columns(conn, "evidence_chunks", _CHUNK_MIGRATION_COLUMNS)
@@ -264,6 +311,7 @@ def init_schema(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX IF NOT EXISTS idx_jobs_status ON import_jobs(status)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_docs_source_url ON documents(source_url)")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_docs_docnum ON documents(document_number)")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_material_tasks_updated ON material_tasks(updated_at)")
     conn.commit()
 
 
@@ -9148,6 +9196,169 @@ def search_evidence(q: str) -> list[dict[str, str]]:
     return [dict(zip(["id", "title", "source", "url", "body", "created_at"], row)) for row in rows]
 
 
+def _now_iso() -> str:
+    return datetime.now().isoformat(timespec="microseconds")
+
+
+def _json_dumps_stable(value: Any) -> str:
+    return json.dumps(value, ensure_ascii=False, sort_keys=True)
+
+
+def _json_or_default(raw: Any, default: Any) -> Any:
+    if raw is None or raw == "":
+        return default.copy() if isinstance(default, (dict, list)) else default
+    if isinstance(raw, (dict, list)):
+        return raw
+    try:
+        value = json.loads(str(raw))
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return default.copy() if isinstance(default, (dict, list)) else default
+    if isinstance(default, dict) and isinstance(value, dict):
+        return value
+    if isinstance(default, list) and isinstance(value, list):
+        return value
+    return default.copy() if isinstance(default, (dict, list)) else default
+
+
+def _task_row_to_dict(row: sqlite3.Row | tuple[Any, ...] | None) -> dict[str, Any] | None:
+    if row is None:
+        return None
+    raw = dict(zip(MATERIAL_TASK_COLUMNS, row))
+    return {
+        "id": raw["id"],
+        "title": raw.get("title") or "",
+        "genre": raw.get("genre") or "work_plan",
+        "fields": _json_or_default(raw.get("fields_json"), {}),
+        "facts": raw.get("facts") or "",
+        "selected_evidence": _json_or_default(raw.get("selected_evidence_json"), []),
+        "approved_facts": _json_or_default(raw.get("approved_facts_json"), []),
+        "draft": raw.get("draft") or "",
+        "draft_versions": _json_or_default(raw.get("draft_versions_json"), []),
+        "locked_paragraphs": _json_or_default(raw.get("locked_paragraphs_json"), []),
+        "latest_analysis": _json_or_default(raw.get("latest_analysis_json"), {}),
+        "repair_history": _json_or_default(raw.get("repair_history_json"), []),
+        "export_artifacts": _json_or_default(raw.get("export_artifacts_json"), []),
+        "manual_approvals": _json_or_default(raw.get("manual_approvals_json"), []),
+        "created_at": raw.get("created_at") or "",
+        "updated_at": raw.get("updated_at") or "",
+    }
+
+
+def _task_storage_values(payload: dict[str, Any], *, existing: dict[str, Any] | None = None) -> dict[str, Any]:
+    existing = existing or {}
+    genre = str(payload.get("genre") or existing.get("genre") or "work_plan")
+    if genre not in RULES["genres"]:
+        genre = "work_plan"
+    values = {
+        "title": str(payload.get("title", existing.get("title", "材料任务")) or "材料任务").strip(),
+        "genre": genre,
+        "fields_json": _json_dumps_stable(_json_or_default(payload.get("fields", existing.get("fields", {})), {})),
+        "facts": str(payload.get("facts", existing.get("facts", "")) or ""),
+        "selected_evidence_json": _json_dumps_stable(_json_or_default(
+            payload.get("selected_evidence", existing.get("selected_evidence", payload.get("evidence", []))), [])),
+        "approved_facts_json": _json_dumps_stable(_json_or_default(
+            payload.get("approved_facts", existing.get("approved_facts", [])), [])),
+        "draft": str(payload.get("draft", existing.get("draft", "")) or ""),
+        "draft_versions_json": _json_dumps_stable(_json_or_default(
+            payload.get("draft_versions", existing.get("draft_versions", [])), [])),
+        "locked_paragraphs_json": _json_dumps_stable(_json_or_default(
+            payload.get("locked_paragraphs", existing.get("locked_paragraphs", [])), [])),
+        "latest_analysis_json": _json_dumps_stable(_json_or_default(
+            payload.get("latest_analysis", existing.get("latest_analysis", {})), {})),
+        "repair_history_json": _json_dumps_stable(_json_or_default(
+            payload.get("repair_history", existing.get("repair_history", [])), [])),
+        "export_artifacts_json": _json_dumps_stable(_json_or_default(
+            payload.get("export_artifacts", existing.get("export_artifacts", [])), [])),
+        "manual_approvals_json": _json_dumps_stable(_json_or_default(
+            payload.get("manual_approvals", existing.get("manual_approvals", [])), [])),
+    }
+    return values
+
+
+def create_material_task(payload: dict[str, Any]) -> dict[str, Any]:
+    now = _now_iso()
+    task_id = uuid.uuid4().hex
+    values = _task_storage_values(payload if isinstance(payload, dict) else {})
+    row = {
+        "id": task_id,
+        **values,
+        "created_at": now,
+        "updated_at": now,
+    }
+    conn = db()
+    _insert_row(conn, "material_tasks", MATERIAL_TASK_COLUMNS, row)
+    conn.commit()
+    saved = conn.execute(
+        f"SELECT {','.join(MATERIAL_TASK_COLUMNS)} FROM material_tasks WHERE id=?", (task_id,)
+    ).fetchone()
+    conn.close()
+    return _task_row_to_dict(saved) or {}
+
+
+def get_material_task(task_id: str) -> dict[str, Any] | None:
+    conn = db()
+    row = conn.execute(
+        f"SELECT {','.join(MATERIAL_TASK_COLUMNS)} FROM material_tasks WHERE id=?",
+        (task_id,),
+    ).fetchone()
+    conn.close()
+    return _task_row_to_dict(row)
+
+
+def list_material_tasks(limit: int = 50) -> list[dict[str, Any]]:
+    conn = db()
+    rows = conn.execute(
+        f"SELECT {','.join(MATERIAL_TASK_COLUMNS)} FROM material_tasks ORDER BY updated_at DESC LIMIT ?",
+        (_bounded_int(limit, 50, 1, 200),),
+    ).fetchall()
+    conn.close()
+    return [_task_row_to_dict(row) or {} for row in rows]
+
+
+def update_material_task(task_id: str, payload: dict[str, Any]) -> dict[str, Any] | None:
+    existing = get_material_task(task_id)
+    if existing is None:
+        return None
+    clean_payload = {k: v for k, v in (payload or {}).items() if k in MATERIAL_TASK_MUTABLE_FIELDS}
+    values = _task_storage_values(clean_payload, existing=existing)
+    values["updated_at"] = _now_iso()
+    set_clause = ",".join(f"{key}=?" for key in values)
+    conn = db()
+    conn.execute(
+        f"UPDATE material_tasks SET {set_clause} WHERE id=?",
+        tuple(values.values()) + (task_id,),
+    )
+    conn.commit()
+    row = conn.execute(
+        f"SELECT {','.join(MATERIAL_TASK_COLUMNS)} FROM material_tasks WHERE id=?",
+        (task_id,),
+    ).fetchone()
+    conn.close()
+    return _task_row_to_dict(row)
+
+
+def task_payload(task: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "genre": task.get("genre") or "work_plan",
+        "title": task.get("title") or "",
+        "fields": task.get("fields") or {},
+        "facts": task.get("facts") or "",
+        "draft": task.get("draft") or "",
+        "evidence": task.get("selected_evidence") or [],
+        "approved_facts": task.get("approved_facts") or [],
+        "locked_paragraphs": task.get("locked_paragraphs") or [],
+    }
+
+
+def analyze_material_task(task_id: str) -> dict[str, Any] | None:
+    task = get_material_task(task_id)
+    if task is None:
+        return None
+    analysis = analyze_payload(task_payload(task))
+    saved = update_material_task(task_id, {"latest_analysis": analysis})
+    return {"task": saved, "analysis": analysis}
+
+
 def _bounded_int(raw: Any, default: int, minimum: int, maximum: int) -> int:
     try:
         value = int(raw)
@@ -9801,33 +10012,46 @@ class Handler(SimpleHTTPRequestHandler):
         return json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
 
     def do_GET(self) -> None:
-        if self.path.startswith("/api/health"):
+        parsed = urllib.parse.urlparse(self.path)
+        path = parsed.path
+        if path == "/api/health":
             self.json_response({"ok": True, "provider_configured": bool(os.getenv("MATERIAL_LLM_API_KEY")), "rules": RULES["genres"]})
             return
-        if self.path.startswith("/api/config"):
+        if path == "/api/config":
             self.json_response(build_local_config({}))
             return
-        if self.path.startswith("/api/access/context"):
+        if path == "/api/access/context":
             # No auth provider: expose a deterministic demo context. A role query
             # param lets the demo UI preview a different role's allowed actions.
             role = self._query_param("role")
             self.json_response(build_access_context({"role": role} if role else None))
             return
-        if self.path.startswith("/api/governance/policy"):
+        if path == "/api/governance/policy":
             self.json_response(build_governance_policy())
             return
-        if self.path.startswith("/api/providers/risk"):
+        if path == "/api/providers/risk":
             # Deterministic demo: default (offline) provider risk summary.
             self.json_response(build_provider_risk_summary({}))
             return
-        if self.path.startswith("/api/supply-chain/sbom"):
+        if path == "/api/supply-chain/sbom":
             self.json_response(build_supply_chain_summary())
             return
-        if self.path.startswith("/api/evidence/search"):
+        if path == "/api/tasks":
+            self.json_response({"items": list_material_tasks(limit=self._query_param("limit") or 50)})
+            return
+        if path.startswith("/api/tasks/"):
+            task_id = path.rsplit("/", 1)[-1]
+            task = get_material_task(task_id)
+            if task is None:
+                self.json_response({"error": "task not found"}, HTTPStatus.NOT_FOUND)
+            else:
+                self.json_response(task)
+            return
+        if path == "/api/evidence/search":
             q = self.path.split("q=", 1)[1] if "q=" in self.path else ""
             self.json_response({"items": search_evidence(q)})
             return
-        if self.path.startswith("/api/library/documents"):
+        if path == "/api/library/documents":
             self.json_response({"items": list_documents(
                 source_type=self._query_param("source_type"),
                 region=self._query_param("region"),
@@ -9835,7 +10059,7 @@ class Handler(SimpleHTTPRequestHandler):
                 sort=self._query_param("sort"),
             )})
             return
-        if self.path.startswith("/api/library/document"):
+        if path == "/api/library/document":
             doc_id = self._query_param("id")
             doc = get_document(doc_id)
             if doc is None:
@@ -9843,14 +10067,14 @@ class Handler(SimpleHTTPRequestHandler):
             else:
                 self.json_response(doc)
             return
-        if self.path.startswith("/api/library/chunks"):
+        if path == "/api/library/chunks":
             self.json_response({"items": list_chunks(
                 self._query_param("document_id"), sort=self._query_param("sort"))})
             return
-        if self.path.startswith("/api/library/jobs"):
+        if path == "/api/library/jobs":
             self.json_response({"items": list_jobs(self._query_param("status"))})
             return
-        if self.path.startswith("/api/library/search"):
+        if path == "/api/library/search":
             filters = {k: self._query_param(k) for k in ("source_type", "region", "organization", "format", "min_authority", "status", "document_status", "effective_only", "date_from", "date_to")}
             self.json_response(search_library(
                 self._query_param("q"), filters=filters,
@@ -9867,9 +10091,20 @@ class Handler(SimpleHTTPRequestHandler):
     def do_POST(self) -> None:
         try:
             payload = self.read_json()
-            if self.path == "/api/analyze":
+            parsed = urllib.parse.urlparse(self.path)
+            path = parsed.path
+            if path == "/api/analyze":
                 self.json_response(analyze_payload(payload))
-            elif self.path == "/api/generate":
+            elif path == "/api/tasks":
+                self.json_response(create_material_task(payload), HTTPStatus.CREATED)
+            elif path.startswith("/api/tasks/") and path.endswith("/analyze"):
+                task_id = path.split("/")[-2]
+                result = analyze_material_task(task_id)
+                if result is None:
+                    self.json_response({"error": "task not found"}, HTTPStatus.NOT_FOUND)
+                else:
+                    self.json_response(result)
+            elif path == "/api/generate":
                 analysis = analyze_payload(payload)
                 prompt = build_prompt(payload, analysis)
                 if analysis["status"] == "blocked":
@@ -9930,6 +10165,22 @@ class Handler(SimpleHTTPRequestHandler):
                 self.wfile.write(raw)
             else:
                 self.json_response({"error": "not found"}, 404)
+        except Exception as exc:
+            self.json_response({"error": str(exc)}, 500)
+
+    def do_PUT(self) -> None:
+        try:
+            payload = self.read_json()
+            path = urllib.parse.urlparse(self.path).path
+            if path.startswith("/api/tasks/"):
+                task_id = path.rsplit("/", 1)[-1]
+                task = update_material_task(task_id, payload)
+                if task is None:
+                    self.json_response({"error": "task not found"}, HTTPStatus.NOT_FOUND)
+                else:
+                    self.json_response(task)
+            else:
+                self.json_response({"error": "not found"}, HTTPStatus.NOT_FOUND)
         except Exception as exc:
             self.json_response({"error": str(exc)}, 500)
 

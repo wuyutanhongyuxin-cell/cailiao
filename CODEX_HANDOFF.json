@@ -1,65 +1,54 @@
 {
   "status": "implemented_by_codex_after_claude_no_ack_or_diff",
-  "task_id": "cailiao-stage2b-public-nli-eval-intake-v1",
-  "phase": "Stage 2B line 114 bridge: public FEVER/SNLI/CFEVER-style NLI eval data intake for local stub semantic eval. The real semantic entailment/conflict parent remains unchecked.",
-  "baseline": "af1385b88550c712b38b4a8682e599267f239db6 (Add semantic judge adapter and stub eval)",
+  "task_id": "cailiao-final-001-material-task-api",
+  "phase": "Final delivery closeout slice 001: backend MaterialTask v1 task state and API",
+  "baseline": "596da19bd051ebd3c72cc351403372ef28727dc6 (Add final delivery plan)",
   "claude_channel": {
     "task_written_to_wsl": "/home/kiro/kiro-work/work/CODEX_TO_CLAUDE_LATEST.md",
-    "sent_via_cli_session_to_session": true,
     "observed_kind": "none",
-    "report_or_ack": "No matching Task ID appeared in CLAUDE_ACK_FROM_CODEX.txt or CLAUDE_TO_CODEX.md, and WSL repo had no diff during polling.",
-    "codex_takeover_reason": "Claude channel produced no verifiable ack/report/diff for this Task ID."
+    "report_or_ack": "No verifiable ack/report/diff arrived within polling window.",
+    "codex_takeover_reason": "Claude channel unavailable for this slice; Codex implemented to avoid blocking the closeout loop."
   },
-  "summary": "Added stdlib-only public NLI semantic eval intake helpers and CLI. The tool reads local JSON/JSONL only, accepts FEVER/CFEVER/SNLI/MNLI-style claim/evidence or hypothesis/premise records, normalizes entailment/contradiction/neutral labels, validates source/license/hash/schema/credential hygiene, and can feed the existing local stub semantic eval report. It explicitly reports is_real_nli_provider_evidence=false and roadmap_parent_items_checked=false.",
+  "summary": "Added SQLite-backed MaterialTask v1 records and HTTP APIs so existing analysis, writing-state, approved-facts, paragraph-version, locked-paragraph, repair, export, and manual-approval metadata can attach to one durable task.",
   "changed_files": [
     "backend/server.py",
-    "tools/prepare_stage2b_public_nli_eval.py",
-    "tests/data/public_nli_fixture.sample.jsonl",
-    "tests/test_public_nli_eval_intake.py",
+    "tests/test_material_tasks.py",
+    "tools/run_quality_gates.py",
+    "README.md",
     "docs/ROADMAP.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "load_public_nli_eval_records(path): local JSON/JSONL loader only; no download.",
-    "build_public_nli_semantic_eval_dataset(records, provenance): deterministic transform to semantic eval cases with set_hash.",
-    "validate_public_nli_semantic_eval_dataset(dataset): schema, count, labels, duplicate id, credential-shaped field, template, provider-evidence, and roadmap-parent guard.",
-    "summarize_public_nli_semantic_eval_readiness(dataset): combines validation with build_stub_semantic_eval_report while preserving local-stub boundary.",
-    "tools/prepare_stage2b_public_nli_eval.py build/validate CLI.",
-    "Focused fixture and tests covering build, validation, rejection, summary, and CLI."
+    "material_tasks table and updated_at index.",
+    "create_material_task/get_material_task/list_material_tasks/update_material_task helpers.",
+    "task-level analyze_material_task wrapper around existing analyze_payload.",
+    "HTTP routes: POST /api/tasks, GET /api/tasks, GET /api/tasks/{id}, PUT /api/tasks/{id}, POST /api/tasks/{id}/analyze.",
+    "Focused direct-storage and real HTTP handler tests.",
+    "Unified quality-gate py_compile coverage for tests/test_material_tasks.py."
   ],
   "not_implemented": [
-    "ROADMAP semantic entailment/conflict parent remains unchecked: no real external NLI/LLM credential, provider call, production semantic inference, real model eval run, telemetry, approval, or rollout evidence.",
-    "No dataset was downloaded by this task. The fixture is tiny and test-only.",
-    "No .env/secret file was read. No real external network call was made.",
-    "All five Stage 2B real parent blockers remain unchecked until real data/provider/eval evidence exists."
-  ],
-  "test_files": [
-    "tests/test_public_nli_eval_intake.py",
-    "tests/test_semantic_conflict_readiness.py"
+    "No frontend task workspace changes.",
+    "No task-scoped evidence recommendation/attach/approval endpoints yet.",
+    "No embedding/rerank/NLI provider work.",
+    "No real external parent blockers marked complete."
   ],
   "required_test_commands_for_codex": [
-    "python -m unittest tests.test_public_nli_eval_intake -v",
-    "python -m unittest tests.test_semantic_conflict_readiness -v",
+    "python -m unittest tests.test_material_tasks -v",
+    "python -m unittest discover -s tests -v",
     "python tools/run_quality_gates.py --json",
     "python -m json.tool CODEX_HANDOFF.json",
     "git diff --check"
   ],
   "test_status": [
-    "python -m unittest tests.test_public_nli_eval_intake -v: 5 tests OK.",
-    "python -m unittest tests.test_semantic_conflict_readiness -v: 26 tests OK.",
-    "python tools/run_quality_gates.py --json: passed 5 gates; unittest ran 755 tests OK.",
+    "python -m unittest tests.test_material_tasks -v: 3 tests OK.",
+    "python -m unittest discover -s tests -v: 758 tests OK.",
+    "python tools/run_quality_gates.py --json: passed 5 gates; unittest ran 758 tests OK.",
     "python -m json.tool CODEX_HANDOFF.json: valid JSON.",
     "git diff --check: clean."
   ],
-  "roadmap_item_status": "ALL FIVE STAGE 2B REAL PARENT BLOCKERS STILL UNCHECKED. This adds public NLI eval intake plumbing but does not prove production semantic eval readiness.",
-  "risks": [
-    "The helper validates dataset shape and boundary claims, not the truth or legal sufficiency of a downloaded public dataset.",
-    "The eval summary uses local stub predictions, not real NLI/LLM inference.",
-    "A future real-provider pass still needs credentials supplied via env var, provider call evidence, eval manifest, observability, and rollout/rollback evidence."
-  ],
+  "next_task_recommendation": "cailiao-final-002-task-evidence-search-attach: add task-scoped evidence search, attach, approve, and approved_fact promotion endpoints using existing library/search and conservative deterministic behavior.",
   "credentials": [
     "No credentials or .env files were read, created, or modified.",
-    "No real provider or external network call was made.",
-    "Codex handles commit/push after independent verification."
+    "No real provider or external network call was made."
   ]
 }
