@@ -172,6 +172,7 @@ def _gate_py_compile() -> tuple[str, str, int]:
                              "backend/server.py", "tests/test_library.py",
                              "tests/test_material_tasks.py",
                              "tests/test_material_task_evidence.py",
+                             "tests/test_material_task_flow.py",
                              "tests/test_claim_insufficiency.py",
                              "tests/test_writing_state.py",
                              "tests/test_structured_writing_plan.py",

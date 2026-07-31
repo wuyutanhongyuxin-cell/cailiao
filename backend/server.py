@@ -9512,6 +9512,118 @@ def approve_task_evidence(task_id: str, evidence_ids: Any = None,
     return {"task": updated, "evidence_status": build_task_evidence_status(updated or {})}
 
 
+def _append_unique_by_id(items: list[dict[str, Any]], item: dict[str, Any], id_key: str) -> list[dict[str, Any]]:
+    existing_ids = {str(i.get(id_key) or "") for i in items if isinstance(i, dict)}
+    if str(item.get(id_key) or "") not in existing_ids:
+        items.append(item)
+    return items
+
+
+def generate_material_task(task_id: str, config: dict[str, Any] | None = None) -> dict[str, Any] | None:
+    task = get_material_task(task_id)
+    if task is None:
+        return None
+    payload = task_payload(task)
+    analysis = analyze_payload(payload)
+    prompt = build_prompt(payload, analysis)
+    if analysis.get("status") == "blocked":
+        saved = update_material_task(task_id, {"latest_analysis": analysis})
+        return {
+            "task": saved,
+            "analysis": analysis,
+            "mode": "blocked",
+            "prompt": prompt,
+            "draft": "",
+            "writing_state": analysis.get("writing_state", {}),
+        }
+    result = call_llm(prompt, config)
+    draft = str(result.get("draft") or "")
+    update_payload: dict[str, Any] = {"latest_analysis": analysis}
+    if draft:
+        payload["draft"] = draft
+        version = build_draft_version({**payload, "locked_paragraphs": task.get("locked_paragraphs") or []})
+        versions = [
+            item for item in (task.get("draft_versions") or [])
+            if isinstance(item, dict)
+        ]
+        update_payload["draft"] = draft
+        update_payload["draft_versions"] = _append_unique_by_id(versions, version, "version_id")
+        analysis = analyze_payload(payload)
+        update_payload["latest_analysis"] = analysis
+    saved = update_material_task(task_id, update_payload)
+    return {
+        "task": saved,
+        "analysis": analysis,
+        "mode": result.get("mode", "prompt_only"),
+        "prompt": prompt,
+        "draft": draft,
+        "writing_state": analysis.get("writing_state", {}),
+    }
+
+
+def audit_material_task(task_id: str) -> dict[str, Any] | None:
+    result = analyze_material_task(task_id)
+    if result is None:
+        return None
+    task = result["task"] or {}
+    analysis = result["analysis"]
+    writing_state = analysis.get("writing_state", {})
+    repair_plan = analysis.get("targeted_repair_plan", {}) if isinstance(analysis, dict) else {}
+    repair_units = repair_plan.get("repair_units", []) if isinstance(repair_plan, dict) else []
+    issues = analysis.get("issues", []) if isinstance(analysis, dict) else []
+    failures = [i for i in issues if isinstance(i, dict) and i.get("level") == "fail"]
+    blockers = writing_state.get("blockers", []) if isinstance(writing_state, dict) else []
+    return {
+        "task": task,
+        "audit": {
+            "method": "material_task_audit_v1",
+            "task_id": task_id,
+            "status": analysis.get("status"),
+            "writing_state": writing_state,
+            "evidence_status": build_task_evidence_status(task),
+            "blocker_count": len(blockers),
+            "failure_count": len(failures),
+            "repair_unit_count": len(repair_units),
+            "can_export": bool(writing_state.get("can_export")) if isinstance(writing_state, dict) else False,
+        },
+    }
+
+
+def build_material_task_export_preflight(task_id: str,
+                                         style_profile: dict[str, Any] | None = None) -> dict[str, Any] | None:
+    audit_result = audit_material_task(task_id)
+    if audit_result is None:
+        return None
+    task = audit_result["task"] or {}
+    preflight = build_export_preflight_report(task.get("title") or "", task.get("draft") or "", style_profile)
+    artifact = {
+        "kind": "docx_preflight",
+        "created_at": _now_iso(),
+        "passed": bool(audit_result["audit"]["can_export"]),
+        "can_export": bool(audit_result["audit"]["can_export"]),
+        "summary": preflight.get("summary", {}),
+    }
+    artifacts = [
+        item for item in (task.get("export_artifacts") or [])
+        if isinstance(item, dict)
+    ]
+    artifacts.append(artifact)
+    saved = update_material_task(task_id, {"export_artifacts": artifacts})
+    return {
+        "task": saved,
+        "preflight": preflight,
+        "audit": audit_result["audit"],
+        "artifact": artifact,
+    }
+
+
+def export_material_task_docx(task_id: str, style_profile: dict[str, Any] | None = None) -> bytes | None:
+    task = get_material_task(task_id)
+    if task is None:
+        return None
+    return export_docx(task.get("title") or "material-task", task.get("draft") or "", style_profile)
+
+
 def _bounded_int(raw: Any, default: int, minimum: int, maximum: int) -> int:
     try:
         value = int(raw)
@@ -10302,6 +10414,53 @@ class Handler(SimpleHTTPRequestHandler):
                     self.json_response({"error": "task not found"}, HTTPStatus.NOT_FOUND)
                 else:
                     self.json_response(result)
+            elif path.startswith("/api/tasks/") and path.endswith("/generate"):
+                if not isinstance(payload, dict):
+                    raise ValueError("body must be a JSON object")
+                if payload.get("config") is not None and not isinstance(payload.get("config"), dict):
+                    raise ValueError("config must be an object")
+                task_id = path.split("/")[-2]
+                result = generate_material_task(task_id, payload.get("config"))
+                if result is None:
+                    self.json_response({"error": "task not found"}, HTTPStatus.NOT_FOUND)
+                else:
+                    self.json_response(result)
+            elif path.startswith("/api/tasks/") and path.endswith("/audit"):
+                if not isinstance(payload, dict):
+                    raise ValueError("body must be a JSON object")
+                task_id = path.split("/")[-2]
+                result = audit_material_task(task_id)
+                if result is None:
+                    self.json_response({"error": "task not found"}, HTTPStatus.NOT_FOUND)
+                else:
+                    self.json_response(result)
+            elif path.startswith("/api/tasks/") and path.endswith("/export/preflight"):
+                if not isinstance(payload, dict):
+                    raise ValueError("body must be a JSON object")
+                if payload.get("style_profile") is not None and not isinstance(payload.get("style_profile"), dict):
+                    raise ValueError("style_profile must be an object")
+                task_id = path.split("/")[-3]
+                result = build_material_task_export_preflight(task_id, payload.get("style_profile"))
+                if result is None:
+                    self.json_response({"error": "task not found"}, HTTPStatus.NOT_FOUND)
+                else:
+                    self.json_response(result)
+            elif path.startswith("/api/tasks/") and path.endswith("/export/docx"):
+                if not isinstance(payload, dict):
+                    raise ValueError("body must be a JSON object")
+                if payload.get("style_profile") is not None and not isinstance(payload.get("style_profile"), dict):
+                    raise ValueError("style_profile must be an object")
+                task_id = path.split("/")[-3]
+                raw = export_material_task_docx(task_id, payload.get("style_profile"))
+                if raw is None:
+                    self.json_response({"error": "task not found"}, HTTPStatus.NOT_FOUND)
+                else:
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+                    self.send_header("Content-Disposition", f"attachment; filename=material-task-{task_id}.docx")
+                    self.send_header("Content-Length", str(len(raw)))
+                    self.end_headers()
+                    self.wfile.write(raw)
             elif path.startswith("/api/tasks/") and path.endswith("/analyze"):
                 task_id = path.split("/")[-2]
                 result = analyze_material_task(task_id)

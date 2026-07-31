@@ -12,6 +12,8 @@
 
 收尾执行进度：任务级证据桥接 v1 已落地，支持 `POST /api/tasks/{id}/evidence/search`、`attach`、`approve` 和 `GET /api/tasks/{id}/evidence/status`。资料库检索结果可进入 `selected_evidence`，人工批准后进入 `approved_facts` 并参与任务级分析。边界：这是确定性资料库检索/附加/批准，不是语义蕴含、向量 provider、重排 provider 或自动事实裁决。
 
+收尾执行进度：任务级生成/审计/导出流 v1 已落地，支持 `POST /api/tasks/{id}/generate`、`audit`、`export/preflight`、`export/docx`。生成复用现有 `call_llm` 配置边界，blocked 状态不调用模型；审计聚合写作状态、证据状态、失败数和修复单元数；预检/导出复用既有 DOCX helper，并把预检元数据写回 `export_artifacts`。边界：后端/API 闭环，不新增 provider、不自动审批、不替代人工终审。
+
 ## 阶段 0：可运行 MVP
 
 状态：已完成
