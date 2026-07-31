@@ -10,6 +10,8 @@
 
 收尾执行进度：MaterialTask v1 后端持久化与 API 已落地，支持任务创建、列表、详情、更新和任务级分析。它把现有 `analyze_payload`、写作状态机、批准事实、段落版本、锁定段落和导出元数据集中到一个可追踪任务记录。下一阶段应接证据搜索/附加/批准，让资料库检索结果进入任务闭环。
 
+收尾执行进度：任务级证据桥接 v1 已落地，支持 `POST /api/tasks/{id}/evidence/search`、`attach`、`approve` 和 `GET /api/tasks/{id}/evidence/status`。资料库检索结果可进入 `selected_evidence`，人工批准后进入 `approved_facts` 并参与任务级分析。边界：这是确定性资料库检索/附加/批准，不是语义蕴含、向量 provider、重排 provider 或自动事实裁决。
+
 ## 阶段 0：可运行 MVP
 
 状态：已完成

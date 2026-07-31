@@ -1,52 +1,56 @@
 {
   "status": "implemented_by_codex_after_claude_no_ack_or_diff",
-  "task_id": "cailiao-final-001-material-task-api",
-  "phase": "Final delivery closeout slice 001: backend MaterialTask v1 task state and API",
-  "baseline": "596da19bd051ebd3c72cc351403372ef28727dc6 (Add final delivery plan)",
+  "task_id": "cailiao-final-002-task-evidence-search-attach",
+  "phase": "Final delivery closeout slice 002: task-scoped evidence search, attach, and approve",
+  "baseline": "7f595f6f0bf320e804f99fe7ea4ce12a3b73fd90 (Add material task API)",
   "claude_channel": {
     "task_written_to_wsl": "/home/kiro/kiro-work/work/CODEX_TO_CLAUDE_LATEST.md",
+    "used_uia": false,
+    "used_tty": true,
     "observed_kind": "none",
-    "report_or_ack": "No verifiable ack/report/diff arrived within polling window.",
-    "codex_takeover_reason": "Claude channel unavailable for this slice; Codex implemented to avoid blocking the closeout loop."
+    "report_or_ack": "UIA could not find a Claude window. TTY dispatch returned sent=true, but no matching ack/report/diff appeared within 120 seconds.",
+    "codex_takeover_reason": "Claude channel produced no verifiable output for this task ID; Codex implemented to keep the closeout loop moving."
   },
-  "summary": "Added SQLite-backed MaterialTask v1 records and HTTP APIs so existing analysis, writing-state, approved-facts, paragraph-version, locked-paragraph, repair, export, and manual-approval metadata can attach to one durable task.",
+  "summary": "Added task-scoped evidence operations so library search results can be attached to MaterialTask records, approved into approved_facts, and then consumed by task-level analysis.",
   "changed_files": [
     "backend/server.py",
-    "tests/test_material_tasks.py",
+    "tests/test_material_task_evidence.py",
     "tools/run_quality_gates.py",
     "README.md",
     "docs/ROADMAP.md",
     "CODEX_HANDOFF.json"
   ],
   "implemented": [
-    "material_tasks table and updated_at index.",
-    "create_material_task/get_material_task/list_material_tasks/update_material_task helpers.",
-    "task-level analyze_material_task wrapper around existing analyze_payload.",
-    "HTTP routes: POST /api/tasks, GET /api/tasks, GET /api/tasks/{id}, PUT /api/tasks/{id}, POST /api/tasks/{id}/analyze.",
-    "Focused direct-storage and real HTTP handler tests.",
-    "Unified quality-gate py_compile coverage for tests/test_material_tasks.py."
+    "search_task_evidence(task_id, query=None, filters=None, limit=10).",
+    "attach_task_evidence(task_id, evidence_items) with normalization and deduplication.",
+    "approve_task_evidence(task_id, evidence_ids=None, approved_facts=None) with approved evidence promotion into approved_facts.",
+    "build_task_evidence_status(task) with selected/approved counts and ready_for_analysis.",
+    "HTTP routes: POST /api/tasks/{id}/evidence/search, attach, approve; GET /api/tasks/{id}/evidence/status.",
+    "Focused direct helper and real HTTP handler tests.",
+    "Unified quality-gate py_compile coverage for tests/test_material_task_evidence.py."
   ],
   "not_implemented": [
     "No frontend task workspace changes.",
-    "No task-scoped evidence recommendation/attach/approval endpoints yet.",
+    "No semantic entailment or automatic truth judgement.",
     "No embedding/rerank/NLI provider work.",
+    "No network call, dependency, credential, or .env use.",
     "No real external parent blockers marked complete."
   ],
   "required_test_commands_for_codex": [
-    "python -m unittest tests.test_material_tasks -v",
+    "python -m unittest tests.test_material_task_evidence -v",
     "python -m unittest discover -s tests -v",
     "python tools/run_quality_gates.py --json",
     "python -m json.tool CODEX_HANDOFF.json",
     "git diff --check"
   ],
   "test_status": [
-    "python -m unittest tests.test_material_tasks -v: 3 tests OK.",
-    "python -m unittest discover -s tests -v: 758 tests OK.",
-    "python tools/run_quality_gates.py --json: passed 5 gates; unittest ran 758 tests OK.",
+    "python -m unittest tests.test_material_task_evidence -v: 7 tests OK.",
+    "python -m unittest discover -s tests -v: 765 tests OK.",
+    "python tools/run_quality_gates.py --json: passed 5 gates; unittest ran 765 tests OK.",
     "python -m json.tool CODEX_HANDOFF.json: valid JSON.",
     "git diff --check: clean."
   ],
-  "next_task_recommendation": "cailiao-final-002-task-evidence-search-attach: add task-scoped evidence search, attach, approve, and approved_fact promotion endpoints using existing library/search and conservative deterministic behavior.",
+  "next_task_recommendation": "cailiao-final-003-task-generate-audit-export-flow: add task-scoped generate, audit gate, repair metadata, DOCX preflight/export metadata, without changing providers or frontend.",
   "credentials": [
     "No credentials or .env files were read, created, or modified.",
     "No real provider or external network call was made."

@@ -9359,6 +9359,159 @@ def analyze_material_task(task_id: str) -> dict[str, Any] | None:
     return {"task": saved, "analysis": analysis}
 
 
+def _task_query_text(task: dict[str, Any]) -> str:
+    fields = task.get("fields") or {}
+    parts = [task.get("title") or "", task.get("facts") or ""]
+    if isinstance(fields, dict):
+        parts.extend(str(v) for v in fields.values() if v is not None)
+    return " ".join(p.strip() for p in parts if str(p).strip()).strip()
+
+
+def _evidence_text(item: dict[str, Any]) -> str:
+    return str(item.get("body") or item.get("text") or item.get("content") or "").strip()
+
+
+def _evidence_key(item: dict[str, Any]) -> tuple[str, str]:
+    if item.get("id"):
+        return ("id", str(item.get("id")))
+    if item.get("chunk_id"):
+        return ("chunk_id", str(item.get("chunk_id")))
+    return ("content", f"{str(item.get('title') or '').strip()}\n{_evidence_text(item)}")
+
+
+def _normalize_task_evidence_item(item: dict[str, Any], *, approved: bool | None = None) -> dict[str, Any]:
+    now = _now_iso()
+    evidence_id = str(item.get("id") or item.get("chunk_id") or uuid.uuid4().hex)
+    normalized = {
+        "id": evidence_id,
+        "title": str(item.get("title") or item.get("document_title") or "").strip(),
+        "source": str(item.get("source") or item.get("organization") or item.get("source_type") or "").strip(),
+        "url": str(item.get("url") or item.get("source_url") or "").strip(),
+        "body": _evidence_text(item),
+        "approved": bool(item.get("approved", False) if approved is None else approved),
+        "attached_at": str(item.get("attached_at") or now),
+    }
+    for key in ("chunk_id", "document_id", "document_number", "authority_level", "status", "hit_reasons"):
+        if item.get(key) is not None:
+            normalized[key] = item.get(key)
+    return normalized
+
+
+def _normalize_approved_fact(item: Any) -> dict[str, Any] | None:
+    if isinstance(item, str):
+        text = item.strip()
+        source_id = ""
+    elif isinstance(item, dict):
+        text = str(item.get("text") or item.get("body") or item.get("fact") or "").strip()
+        source_id = str(item.get("source_evidence_id") or item.get("evidence_id") or item.get("id") or "")
+    else:
+        return None
+    if not text:
+        return None
+    fact_id = hashlib.sha256(f"{source_id}\n{text}".encode("utf-8")).hexdigest()[:16]
+    fact = {"id": fact_id, "text": text}
+    if source_id:
+        fact["source_evidence_id"] = source_id
+    return fact
+
+
+def build_task_evidence_status(task: dict[str, Any]) -> dict[str, Any]:
+    selected = task.get("selected_evidence") or []
+    approved_facts = task.get("approved_facts") or []
+    approved_evidence = [item for item in selected if isinstance(item, dict) and item.get("approved")]
+    return {
+        "method": "material_task_evidence_status_v1",
+        "task_id": task.get("id") or "",
+        "selected": len(selected),
+        "approved_evidence": len(approved_evidence),
+        "approved_facts": len(approved_facts),
+        "ready_for_analysis": bool(selected or approved_facts),
+    }
+
+
+def search_task_evidence(task_id: str, query: str | None = None,
+                         filters: dict[str, str] | None = None,
+                         limit: int = 10) -> dict[str, Any] | None:
+    task = get_material_task(task_id)
+    if task is None:
+        return None
+    resolved_query = (query or _task_query_text(task)).strip()
+    result = search_library(resolved_query, filters=filters or {}, limit=_bounded_int(limit, 10, 1, 50))
+    return {
+        "task_id": task_id,
+        "query": result.get("query", resolved_query),
+        "items": result.get("items", []),
+        "evidence_status": build_task_evidence_status(task),
+    }
+
+
+def attach_task_evidence(task_id: str, evidence_items: Any) -> dict[str, Any] | None:
+    task = get_material_task(task_id)
+    if task is None:
+        return None
+    raw_items = evidence_items if isinstance(evidence_items, list) else [evidence_items]
+    if not all(isinstance(item, dict) for item in raw_items):
+        raise ValueError("items must be objects")
+    selected = [
+        _normalize_task_evidence_item(item)
+        for item in (task.get("selected_evidence") or [])
+        if isinstance(item, dict)
+    ]
+    seen = {_evidence_key(item) for item in selected}
+    for item in raw_items:
+        normalized = _normalize_task_evidence_item(item)
+        key = _evidence_key(normalized)
+        if key in seen:
+            continue
+        selected.append(normalized)
+        seen.add(key)
+    updated = update_material_task(task_id, {"selected_evidence": selected})
+    return {"task": updated, "evidence_status": build_task_evidence_status(updated or {})}
+
+
+def approve_task_evidence(task_id: str, evidence_ids: Any = None,
+                          approved_facts: Any = None) -> dict[str, Any] | None:
+    task = get_material_task(task_id)
+    if task is None:
+        return None
+    ids = {str(v) for v in (evidence_ids or [])}
+    if evidence_ids is not None and not isinstance(evidence_ids, list):
+        raise ValueError("evidence_ids must be a list")
+    selected = [
+        _normalize_task_evidence_item(item)
+        for item in (task.get("selected_evidence") or [])
+        if isinstance(item, dict)
+    ]
+    facts = [
+        fact for fact in (_normalize_approved_fact(item) for item in (task.get("approved_facts") or []))
+        if fact is not None
+    ]
+    fact_keys = {(fact.get("source_evidence_id", ""), fact["text"]) for fact in facts}
+    for item in selected:
+        evidence_ids_for_item = {str(item.get("id") or ""), str(item.get("chunk_id") or "")}
+        should_approve = bool(ids & evidence_ids_for_item)
+        if not should_approve:
+            continue
+        item["approved"] = True
+        fact = _normalize_approved_fact({
+            "text": _evidence_text(item),
+            "source_evidence_id": item.get("id") or item.get("chunk_id") or "",
+        })
+        if fact and (fact.get("source_evidence_id", ""), fact["text"]) not in fact_keys:
+            facts.append(fact)
+            fact_keys.add((fact.get("source_evidence_id", ""), fact["text"]))
+    explicit_facts = approved_facts or []
+    if approved_facts is not None and not isinstance(approved_facts, list):
+        raise ValueError("approved_facts must be a list")
+    for fact_item in explicit_facts:
+        fact = _normalize_approved_fact(fact_item)
+        if fact and (fact.get("source_evidence_id", ""), fact["text"]) not in fact_keys:
+            facts.append(fact)
+            fact_keys.add((fact.get("source_evidence_id", ""), fact["text"]))
+    updated = update_material_task(task_id, {"selected_evidence": selected, "approved_facts": facts})
+    return {"task": updated, "evidence_status": build_task_evidence_status(updated or {})}
+
+
 def _bounded_int(raw: Any, default: int, minimum: int, maximum: int) -> int:
     try:
         value = int(raw)
@@ -10039,6 +10192,14 @@ class Handler(SimpleHTTPRequestHandler):
         if path == "/api/tasks":
             self.json_response({"items": list_material_tasks(limit=self._query_param("limit") or 50)})
             return
+        if path.startswith("/api/tasks/") and path.endswith("/evidence/status"):
+            task_id = path.split("/")[-3]
+            task = get_material_task(task_id)
+            if task is None:
+                self.json_response({"error": "task not found"}, HTTPStatus.NOT_FOUND)
+            else:
+                self.json_response(build_task_evidence_status(task))
+            return
         if path.startswith("/api/tasks/"):
             task_id = path.rsplit("/", 1)[-1]
             task = get_material_task(task_id)
@@ -10097,6 +10258,50 @@ class Handler(SimpleHTTPRequestHandler):
                 self.json_response(analyze_payload(payload))
             elif path == "/api/tasks":
                 self.json_response(create_material_task(payload), HTTPStatus.CREATED)
+            elif path.startswith("/api/tasks/") and path.endswith("/evidence/search"):
+                if not isinstance(payload, dict):
+                    raise ValueError("body must be a JSON object")
+                task_id = path.split("/")[-3]
+                filters = payload.get("filters") or {}
+                if not isinstance(filters, dict):
+                    raise ValueError("filters must be an object")
+                result = search_task_evidence(
+                    task_id,
+                    query=payload.get("query"),
+                    filters=filters,
+                    limit=payload.get("limit", 10),
+                )
+                if result is None:
+                    self.json_response({"error": "task not found"}, HTTPStatus.NOT_FOUND)
+                else:
+                    self.json_response(result)
+            elif path.startswith("/api/tasks/") and path.endswith("/evidence/attach"):
+                if not isinstance(payload, dict):
+                    raise ValueError("body must be a JSON object")
+                task_id = path.split("/")[-3]
+                items = payload.get("items", payload.get("item"))
+                if items is None:
+                    raise ValueError("items is required")
+                result = attach_task_evidence(task_id, items)
+                if result is None:
+                    self.json_response({"error": "task not found"}, HTTPStatus.NOT_FOUND)
+                else:
+                    self.json_response(result)
+            elif path.startswith("/api/tasks/") and path.endswith("/evidence/approve"):
+                if not isinstance(payload, dict):
+                    raise ValueError("body must be a JSON object")
+                task_id = path.split("/")[-3]
+                if "evidence_ids" not in payload and "approved_facts" not in payload:
+                    raise ValueError("evidence_ids or approved_facts is required")
+                result = approve_task_evidence(
+                    task_id,
+                    evidence_ids=payload.get("evidence_ids"),
+                    approved_facts=payload.get("approved_facts"),
+                )
+                if result is None:
+                    self.json_response({"error": "task not found"}, HTTPStatus.NOT_FOUND)
+                else:
+                    self.json_response(result)
             elif path.startswith("/api/tasks/") and path.endswith("/analyze"):
                 task_id = path.split("/")[-2]
                 result = analyze_material_task(task_id)
@@ -10165,6 +10370,8 @@ class Handler(SimpleHTTPRequestHandler):
                 self.wfile.write(raw)
             else:
                 self.json_response({"error": "not found"}, 404)
+        except ValueError as exc:
+            self.json_response({"error": str(exc)}, HTTPStatus.UNPROCESSABLE_ENTITY)
         except Exception as exc:
             self.json_response({"error": str(exc)}, 500)
 
